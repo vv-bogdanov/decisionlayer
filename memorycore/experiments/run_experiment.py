@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+import json
+import os
 import sys
 import time
 from pathlib import Path
 from typing import Any
+from urllib.request import Request, urlopen
 
 from memorycore.baselines import get_baseline_runner
 from memorycore.benchmarks import get_benchmark
 from memorycore.experiments.args import parse_overrides
 from memorycore.reporting import write_experiment_outputs
-
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "benchmark": "toy",
@@ -30,6 +32,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "refs_expansion_limit": 10,
     "max_memory_brief_tokens": None,
     "forgetting_threshold": None,
+    "input_cost_per_1k": 0.0,
+    "output_cost_per_1k": 0.0,
+    "judge_policy": "none",
+    "judge_model": "gpt-4o-mini",
+    "judge_url": "https://api.openai.com/v1/responses",
     "output_dir": "reports/latest",
 }
 
@@ -155,8 +162,9 @@ def run_single(merged: dict[str, Any], memory: str) -> dict[str, Any]:
                 }
             )
 
+    apply_judge(predictions, merged)
     latency = time.perf_counter() - started
-    metrics = compute_metrics(predictions, traces, latency)
+    metrics = compute_metrics(predictions, traces, latency, merged)
     write_experiment_outputs(
         output_dir=Path(str(merged["output_dir"])),
         config=merged,
@@ -221,10 +229,75 @@ def source_messages(example: Any) -> list[dict[str, Any]]:
     ]
 
 
+def apply_judge(predictions: list[dict[str, Any]], config: dict[str, Any]) -> None:
+    policy = str(config.get("judge_policy") or "none")
+    if policy == "none":
+        return
+    if policy != "llm":
+        raise ValueError(f"unknown judge_policy: {policy}")
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("judge_policy=llm requires OPENAI_API_KEY")
+    for prediction in predictions:
+        label = llm_judge_prediction(
+            question=str(prediction["question"]),
+            expected=str(prediction["expected_answer"]),
+            prediction=str(prediction["prediction"]),
+            model=str(config["judge_model"]),
+            url=str(config["judge_url"]),
+            api_key=api_key,
+        )
+        prediction["judge_label"] = label
+        prediction["judge_score"] = 1.0 if label == "correct" else 0.0
+
+
+def llm_judge_prediction(
+    *,
+    question: str,
+    expected: str,
+    prediction: str,
+    model: str,
+    url: str,
+    api_key: str,
+) -> str:
+    prompt = (
+        "Judge whether the prediction answers the question with the same meaning as the expected answer. "
+        "Return only 'correct' or 'incorrect'.\n\n"
+        f"Question: {question}\nExpected: {expected}\nPrediction: {prediction}"
+    )
+    payload = json.dumps({"model": model, "input": prompt}).encode("utf-8")
+    request = Request(
+        url,
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    with urlopen(request, timeout=60) as response:
+        data = json.loads(response.read().decode("utf-8"))
+    output_text = extract_response_text(data).lower()
+    return "correct" if "correct" in output_text and "incorrect" not in output_text else "incorrect"
+
+
+def extract_response_text(data: dict[str, Any]) -> str:
+    if isinstance(data.get("output_text"), str):
+        return str(data["output_text"])
+    chunks: list[str] = []
+    for item in data.get("output", []):
+        for content in item.get("content", []):
+            text = content.get("text")
+            if isinstance(text, str):
+                chunks.append(text)
+    return "\n".join(chunks)
+
+
 def compute_metrics(
     predictions: list[dict[str, Any]],
     traces: list[dict[str, Any]],
     latency: float,
+    config: dict[str, Any],
 ) -> dict[str, Any]:
     total = len(predictions)
     correct = sum(1 for item in predictions if item["correct"])
@@ -233,7 +306,10 @@ def compute_metrics(
     decision_counts = [len(trace.get("decisions", [])) for trace in traces]
     fact_counts = [len(trace.get("facts", [])) for trace in traces]
     brief_token_counts = [token_count(item.get("memory_brief", "")) for item in predictions]
+    output_token_counts = [token_count(item.get("prediction", "")) for item in predictions]
     source_traceability = source_traceability_rate(traces)
+    prompt_tokens = sum(brief_token_counts)
+    output_tokens = sum(output_token_counts)
     metrics: dict[str, Any] = {
         "accuracy": round(correct / total, 6) if total else 0.0,
         "exact_match": round(exact_matches / total, 6) if total else 0.0,
@@ -242,6 +318,13 @@ def compute_metrics(
         "correct": correct,
         "latency_seconds": round(latency, 6),
         "memory_brief_tokens": round(avg(brief_token_counts), 6),
+        "prompt_tokens": prompt_tokens,
+        "output_tokens": output_tokens,
+        "cost_estimate_usd": round(
+            prompt_tokens * float(config.get("input_cost_per_1k") or 0.0) / 1000
+            + output_tokens * float(config.get("output_cost_per_1k") or 0.0) / 1000,
+            6,
+        ),
         "decisions_selected_per_recall": round(avg(decision_counts), 6),
         "facts_selected_per_recall": round(avg(fact_counts), 6),
         "source_traceability": round(source_traceability, 6),
@@ -250,6 +333,12 @@ def compute_metrics(
     type_metrics = grouped_metrics(predictions, "question_type")
     if type_metrics:
         metrics["question_type_metrics"] = type_metrics
+    judge_predictions = [item for item in predictions if "judge_score" in item]
+    if judge_predictions:
+        metrics["judge_score"] = round(
+            sum(float(item["judge_score"]) for item in judge_predictions) / len(judge_predictions),
+            6,
+        )
     abstention_predictions = [item for item in predictions if item.get("is_abstention")]
     if abstention_predictions:
         metrics["abstention_accuracy"] = round(
@@ -284,12 +373,8 @@ def grouped_metrics(
         metrics[group] = {
             "examples": total,
             "accuracy": round(correct / total, 6) if total else 0.0,
-            "exact_match": round(sum(1 for item in rows if item["exact_match"]) / total, 6)
-            if total
-            else 0.0,
-            "substring_match": round(sum(1 for item in rows if item["substring_match"]) / total, 6)
-            if total
-            else 0.0,
+            "exact_match": round(sum(1 for item in rows if item["exact_match"]) / total, 6) if total else 0.0,
+            "substring_match": round(sum(1 for item in rows if item["substring_match"]) / total, 6) if total else 0.0,
         }
     return metrics
 

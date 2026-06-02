@@ -162,9 +162,7 @@ class MemoryRuntime:
                     [ref.to_dict() for ref in fact.refs],
                 )
             )
-            trace.recall_count_updates.append(
-                {"fact_id": fact.id, "before": before, "after": fact.recall_count}
-            )
+            trace.recall_count_updates.append({"fact_id": fact.id, "before": before, "after": fact.recall_count})
 
         related_facts = (
             self._expand_related_facts(decisions + facts, refs_expansion_limit, refs_expansion_depth)

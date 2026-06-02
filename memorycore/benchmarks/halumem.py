@@ -10,7 +10,9 @@ class HaluMemBenchmark(BenchmarkAdapter):
     def load(self) -> list[BenchmarkExample]:
         if self.data_path is None:
             raise ValueError("halumem requires data_path")
-        return self.apply_window([
-            record_to_example(record, fallback_scope="benchmark:halumem")
-            for record in load_json_records(self.data_path)
-        ])
+        return self.apply_window(
+            [
+                record_to_example(record, fallback_scope="benchmark:halumem")
+                for record in load_json_records(self.data_path)
+            ]
+        )

@@ -23,4 +23,3 @@ def coerce_value(value: str) -> object:
         except ValueError:
             pass
     return value
-

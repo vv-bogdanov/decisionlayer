@@ -66,4 +66,3 @@ class MemoryStore:
             "facts": [item.to_dict() for item in self.facts.values()],
             "decisions": [item.to_dict() for item in self.decisions.values()],
         }
-

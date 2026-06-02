@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from memorycore.benchmarks import get_benchmark
 from memorycore.experiments.run_experiment import run_experiment
 
@@ -31,6 +33,36 @@ def test_longmemeval_default_fixture_runs(tmp_path: Path) -> None:
     assert (tmp_path / "predictions.jsonl").exists()
     assert (tmp_path / "trace.jsonl").exists()
     assert (tmp_path / "report.md").exists()
+
+
+def test_cost_estimate_uses_configured_token_prices(tmp_path: Path) -> None:
+    result = run_experiment(
+        {
+            "benchmark": "toy",
+            "memory": "decisions_facts",
+            "input_cost_per_1k": 1.0,
+            "output_cost_per_1k": 2.0,
+            "output_dir": str(tmp_path),
+        }
+    )
+
+    assert result["metrics"]["prompt_tokens"] > 0
+    assert result["metrics"]["output_tokens"] > 0
+    assert result["metrics"]["cost_estimate_usd"] > 0
+
+
+def test_llm_judge_is_behind_explicit_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    with pytest.raises(RuntimeError, match="OPENAI_API_KEY"):
+        run_experiment(
+            {
+                "benchmark": "toy",
+                "memory": "decisions_facts",
+                "judge_policy": "llm",
+                "output_dir": str(tmp_path),
+            }
+        )
 
 
 def test_longmemeval_real_schema_fixture_parses_and_windows() -> None:

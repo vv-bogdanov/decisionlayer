@@ -24,7 +24,7 @@ class Ref:
         return {"target": self.target, "rel": self.rel, "weight": self.weight}
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Ref":
+    def from_dict(cls, data: dict[str, Any]) -> Ref:
         return cls(
             target=str(data["target"]),
             rel=str(data.get("rel", "related")),

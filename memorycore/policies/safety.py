@@ -26,4 +26,3 @@ def get_safety_policy(name: str | None = None) -> SafetyPolicy:
     if name in {None, "default", "require_commit_for_decision"}:
         return SafetyPolicy()
     raise ValueError(f"unknown safety policy: {name}")
-

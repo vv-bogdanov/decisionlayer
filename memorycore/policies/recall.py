@@ -278,10 +278,7 @@ def tfidf_cosine_scores(query: str, documents: list[str]) -> list[float]:
     for terms in doc_terms:
         for term in set(terms):
             doc_freq[term] = doc_freq.get(term, 0) + 1
-    idf = {
-        term: log((1 + len(documents)) / (1 + count)) + 1
-        for term, count in doc_freq.items()
-    }
+    idf = {term: log((1 + len(documents)) / (1 + count)) + 1 for term, count in doc_freq.items()}
     query_vector = tfidf_vector(query_terms, idf)
     return [cosine(query_vector, tfidf_vector(terms, idf)) for terms in doc_terms]
 

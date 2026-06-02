@@ -56,11 +56,7 @@ def record_to_example(record: dict[str, Any], *, fallback_scope: str) -> Benchma
 
 def parse_messages(record: dict[str, Any], scope: str) -> list[Message]:
     raw_messages = (
-        record.get("messages")
-        or record.get("conversation")
-        or record.get("history")
-        or record.get("sessions")
-        or []
+        record.get("messages") or record.get("conversation") or record.get("history") or record.get("sessions") or []
     )
     messages: list[Message] = []
     if isinstance(raw_messages, str):
@@ -87,4 +83,3 @@ def parse_messages(record: dict[str, Any], scope: str) -> list[Message]:
         if content:
             messages.append(Message(role=role, content=str(content), scope=scope, meta=item))
     return messages
-

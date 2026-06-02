@@ -64,4 +64,3 @@ def test_forgetting_keeps_facts_referenced_by_current_decisions() -> None:
     assert disposable.id in archived
     assert not runtime.store.get_fact(protected.id).archived
     assert runtime.store.get_fact(disposable.id).archived
-

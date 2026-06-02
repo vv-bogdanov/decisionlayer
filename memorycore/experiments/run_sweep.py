@@ -10,7 +10,6 @@ from typing import Any
 from memorycore.experiments.args import parse_overrides
 from memorycore.experiments.run_experiment import DEFAULT_CONFIG, run_experiment
 
-
 DEFAULT_SWEEP_CONFIG: dict[str, Any] = {
     "benchmark": "toy",
     "data_path": None,
@@ -48,7 +47,11 @@ def run_sweep(config: dict[str, Any]) -> dict[str, Any]:
     output_dir = Path(str(merged["output_dir"]))
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    trials = run_optuna(merged, output_dir) if optuna_available() and merged["search"] == "optuna" else run_grid(merged, output_dir)
+    trials = (
+        run_optuna(merged, output_dir)
+        if optuna_available() and merged["search"] == "optuna"
+        else run_grid(merged, output_dir)
+    )
     metric = str(merged["metric"])
     best = max(trials, key=lambda row: float(row.get(metric, 0.0))) if trials else {}
     best_config = dict(merged)
@@ -292,7 +295,9 @@ def render_sweep_report(
     ]
     for row in trials:
         lines.append(
-            "| {trial} | {top_k_facts} | {top_k_decisions} | {refs_expansion_depth} | {metric} | {quality_score} |".format(
+            (
+                "| {trial} | {top_k_facts} | {top_k_decisions} | {refs_expansion_depth} | {metric} | {quality_score} |"
+            ).format(
                 trial=row["trial"],
                 top_k_facts=row["top_k_facts"],
                 top_k_decisions=row["top_k_decisions"],

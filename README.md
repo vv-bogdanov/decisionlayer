@@ -16,6 +16,8 @@ Use `uv` for the fastest reproducible local environment:
 
 ```bash
 uv run pytest
+uv run --extra dev ruff check .
+uv run --extra dev ruff format --check .
 ```
 
 Run a toy experiment:
@@ -62,6 +64,19 @@ uv run --extra experiments python -m memorycore.experiments.run_sweep benchmark=
 ```
 
 Generated reports are written under `reports/` and ignored by git.
+
+Cost estimates are disabled by default. Pass token prices explicitly when needed:
+
+```bash
+uv run python -m memorycore.experiments.run_experiment benchmark=toy memory=decisions_facts input_cost_per_1k=0.15 output_cost_per_1k=0.60
+```
+
+LLM judging is also disabled by default. Enable it only when `OPENAI_API_KEY` is
+available:
+
+```bash
+uv run python -m memorycore.experiments.run_experiment benchmark=toy memory=decisions_facts judge_policy=llm judge_model=gpt-4o-mini
+```
 
 ## Current Scope
 

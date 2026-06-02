@@ -7,7 +7,6 @@ from memorycore.benchmarks.longmemeval import LongMemEvalBenchmark
 from memorycore.benchmarks.memoryagentbench import MemoryAgentBenchBenchmark
 from memorycore.benchmarks.toy import ToyBenchmark
 
-
 BENCHMARKS: dict[str, type[BenchmarkAdapter]] = {
     "toy": ToyBenchmark,
     "longmemeval": LongMemEvalBenchmark,

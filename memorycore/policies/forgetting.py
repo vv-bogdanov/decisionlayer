@@ -31,4 +31,3 @@ def get_forgetting_policy(name: str | None) -> ForgettingPolicy:
     if name == "low_recall_count_except_decision_refs":
         return LowRecallCountExceptDecisionRefs()
     raise ValueError(f"unknown forgetting policy: {name}")
-

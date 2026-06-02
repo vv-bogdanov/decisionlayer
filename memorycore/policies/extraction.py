@@ -71,4 +71,3 @@ def get_extractor(name: str | None) -> RuleBasedExtractor:
     if name == "manual_oracle":
         return ManualOracleExtractor()
     raise ValueError(f"unknown extractor policy: {name}")
-
