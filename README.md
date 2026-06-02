@@ -30,6 +30,12 @@ Run the LongMemEval-compatible smoke fixture:
 uv run python -m memorycore.experiments.run_experiment benchmark=longmemeval memory=decisions_plus_facts recall=decision_first output_dir=reports/longmemeval_smoke
 ```
 
+Run the first baseline comparison report:
+
+```bash
+uv run python -m memorycore.experiments.run_experiment benchmark=longmemeval compare_memories=recent_context_only,simple_rag,fact_only,decisions_plus_facts output_dir=reports/comparison
+```
+
 Run a sweep:
 
 ```bash

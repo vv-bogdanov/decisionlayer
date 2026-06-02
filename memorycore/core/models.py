@@ -114,6 +114,7 @@ class TraceSelection:
     kind: str
     score: float
     reason: str
+    refs: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -121,6 +122,7 @@ class TraceSelection:
             "kind": self.kind,
             "score": self.score,
             "reason": self.reason,
+            "refs": list(self.refs),
         }
 
 
@@ -176,4 +178,3 @@ class MemoryBrief:
             for fact in self.related_facts:
                 lines.append(f"- {fact.text}")
         return "\n".join(lines)
-

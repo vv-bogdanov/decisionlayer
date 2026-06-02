@@ -29,3 +29,16 @@ def test_longmemeval_default_fixture_runs(tmp_path: Path) -> None:
     assert (tmp_path / "trace.jsonl").exists()
     assert (tmp_path / "report.md").exists()
 
+
+def test_baseline_comparison_report_runs(tmp_path: Path) -> None:
+    result = run_experiment(
+        {
+            "benchmark": "longmemeval",
+            "compare_memories": "recent_context_only,simple_rag,fact_only,decisions_plus_facts",
+            "output_dir": str(tmp_path),
+        }
+    )
+
+    assert len(result["metrics"]["baseline_metrics"]) == 4
+    assert result["metrics"]["best_memory"]
+    assert "Policy Comparison" in (tmp_path / "report.md").read_text(encoding="utf-8")

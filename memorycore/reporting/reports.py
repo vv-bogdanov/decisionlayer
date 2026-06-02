@@ -49,7 +49,29 @@ def render_markdown_report(
         "| --- | ---: |",
     ]
     for key in sorted(metrics):
+        if key == "baseline_metrics":
+            continue
         lines.append(f"| {key} | {metrics[key]} |")
+    baseline_metrics = metrics.get("baseline_metrics")
+    if isinstance(baseline_metrics, list) and baseline_metrics:
+        lines.extend(
+            [
+                "",
+                "## Policy Comparison",
+                "",
+                "| Memory | Accuracy | Examples | Brief Tokens |",
+                "| --- | ---: | ---: | ---: |",
+            ]
+        )
+        for row in baseline_metrics:
+            lines.append(
+                "| {memory} | {accuracy} | {examples} | {memory_brief_tokens} |".format(
+                    memory=row.get("memory"),
+                    accuracy=row.get("accuracy"),
+                    examples=row.get("examples"),
+                    memory_brief_tokens=row.get("memory_brief_tokens"),
+                )
+            )
     lines.extend(
         [
             "",
@@ -76,4 +98,3 @@ def render_markdown_report(
             ]
         )
     return "\n".join(lines)
-

@@ -124,7 +124,13 @@ class MemoryRuntime:
             assert isinstance(decision, Decision)
             decisions.append(decision)
             trace.decisions.append(
-                TraceSelection(decision.id, decision.kind, selected.score, selected.reason)
+                TraceSelection(
+                    decision.id,
+                    decision.kind,
+                    selected.score,
+                    selected.reason,
+                    [ref.to_dict() for ref in decision.refs],
+                )
             )
 
         facts = []
@@ -134,7 +140,15 @@ class MemoryRuntime:
             before = fact.recall_count
             fact.recall_count += 1
             facts.append(fact)
-            trace.facts.append(TraceSelection(fact.id, fact.kind, selected.score, selected.reason))
+            trace.facts.append(
+                TraceSelection(
+                    fact.id,
+                    fact.kind,
+                    selected.score,
+                    selected.reason,
+                    [ref.to_dict() for ref in fact.refs],
+                )
+            )
             trace.recall_count_updates.append(
                 {"fact_id": fact.id, "before": before, "after": fact.recall_count}
             )
@@ -164,4 +178,3 @@ class MemoryRuntime:
 
     def export_trace(self) -> list[dict[str, object]]:
         return [trace.to_dict() for trace in self.traces]
-
