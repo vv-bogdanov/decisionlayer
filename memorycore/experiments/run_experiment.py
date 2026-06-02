@@ -20,6 +20,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "compare_memories": "",
     "recall": None,
     "extractor_policy": "rule_based",
+    "extractor_model": "gpt-4o-mini",
+    "extractor_url": "https://api.openai.com/v1/responses",
+    "extractor_max_facts": 12,
+    "extractor_max_decisions": 4,
     "top_k_decisions": 5,
     "top_k_facts": 5,
     "limit": None,
@@ -31,6 +35,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "refs_expansion_depth": 0,
     "refs_expansion_limit": 10,
     "max_memory_brief_tokens": None,
+    "forgetting_policy": "none",
     "forgetting_threshold": None,
     "input_cost_per_1k": 0.0,
     "output_cost_per_1k": 0.0,
@@ -103,12 +108,17 @@ def run_single(merged: dict[str, Any], memory: str) -> dict[str, Any]:
     runner = get_baseline_runner(
         memory,
         extractor_policy=str(merged["extractor_policy"]),
+        extractor_model=str(merged["extractor_model"]),
+        extractor_url=str(merged["extractor_url"]),
+        extractor_max_facts=int(merged["extractor_max_facts"]),
+        extractor_max_decisions=int(merged["extractor_max_decisions"]),
         top_k_decisions=int(merged["top_k_decisions"]),
         top_k_facts=int(merged["top_k_facts"]),
         include_refs=int(merged.get("refs_expansion_depth") or 0) > 0,
         refs_expansion_depth=int(merged.get("refs_expansion_depth") or 0),
         refs_expansion_limit=int(merged.get("refs_expansion_limit") or 10),
         max_memory_brief_tokens=optional_int(merged.get("max_memory_brief_tokens")),
+        forgetting_policy=configured_forgetting_policy(merged),
         forgetting_threshold=optional_int(merged.get("forgetting_threshold")),
         recall_count_weight=float(merged.get("recall_count_weight") or 0.0),
         keyword_weight=float(merged.get("keyword_weight") or 0.0),
@@ -195,6 +205,8 @@ def normalize_text(text: str) -> str:
 
 def optional_int(value: object) -> int | None:
     if value in {None, ""}:
+        return None
+    if not isinstance(value, (str, int, float)):
         return None
     return int(value)
 
@@ -330,6 +342,13 @@ def compute_metrics(
         "source_traceability": round(source_traceability, 6),
         "false_decision_rate": 0.0,
     }
+    metrics["quality_score"] = composite_quality_score(metrics)
+    metrics["objectives"] = {
+        "accuracy": metrics["accuracy"],
+        "source_traceability": metrics["source_traceability"],
+        "memory_brief_tokens": metrics["memory_brief_tokens"],
+        "cost_estimate_usd": metrics["cost_estimate_usd"],
+    }
     type_metrics = grouped_metrics(predictions, "question_type")
     if type_metrics:
         metrics["question_type_metrics"] = type_metrics
@@ -346,6 +365,25 @@ def compute_metrics(
             6,
         )
     return metrics
+
+
+def configured_forgetting_policy(config: dict[str, Any]) -> str | None:
+    policy = str(config.get("forgetting_policy") or "none")
+    if policy != "none":
+        return policy
+    if optional_int(config.get("forgetting_threshold")) is not None:
+        return "low_recall_count_except_decision_refs"
+    return None
+
+
+def composite_quality_score(metrics: dict[str, Any]) -> float:
+    accuracy = float(metrics.get("accuracy", 0.0))
+    traceability = float(metrics.get("source_traceability", 0.0))
+    brief_tokens = float(metrics.get("memory_brief_tokens", 0.0))
+    cost = float(metrics.get("cost_estimate_usd", 0.0))
+    token_penalty = min(brief_tokens / 4000.0, 1.0) * 0.1
+    cost_penalty = min(cost, 1.0) * 0.05
+    return round(accuracy + 0.1 * traceability - token_penalty - cost_penalty, 6)
 
 
 def avg(values: list[int]) -> float:

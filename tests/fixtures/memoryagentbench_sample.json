@@ -1,0 +1,23 @@
+[
+  {
+    "context": "",
+    "questions": ["Where does the user work?"],
+    "answers": [["Huaxin Consulting"]],
+    "metadata": {
+      "source": "Accurate_Retrieval",
+      "qa_pair_ids": ["mab-test-1"],
+      "question_ids": ["q1"],
+      "question_types": ["single-hop"],
+      "question_dates": ["2025-09-06"],
+      "keypoints": ["workplace"],
+      "haystack_sessions": [
+        [
+          [
+            {"role": "user", "content": "I work at Huaxin Consulting.", "has_answer": true},
+            {"role": "assistant", "content": "Got it.", "has_answer": false}
+          ]
+        ]
+      ]
+    }
+  }
+]

@@ -14,9 +14,9 @@
 - [x] Pytest coverage for core, recall, benchmark, and sweep behavior.
 - [x] Real LongMemEval dataset schema validation and subset run.
 - [x] Benchmark-specific LongMemEval scoring, initial deterministic version.
-- [ ] Better retrieval beyond keyword overlap.
+- [x] Better retrieval beyond keyword overlap.
 - [x] Dataset-aware extraction without artificial `FACT:` prefixes.
-- [ ] Ruff lint/format tooling.
+- [x] Ruff lint/format tooling.
 
 ## Context
 
@@ -45,7 +45,7 @@ Start with the cheapest verifiable implementation:
 - [x] Shared runner and metrics output.
 - [x] Sweeps.
 - [x] Real benchmark validation, LongMemEval oracle subset.
-- [ ] Heavier retrieval.
+- [x] Heavier retrieval.
 
 Do not start with SQLite, vector DBs, LLM extraction, graph storage, REST, or SDK
 interfaces. They may be useful later, but they add cost before the hypothesis is
@@ -307,7 +307,7 @@ latency
 - [x] `latency`
 - [x] LongMemEval-specific deterministic scoring, grouped by `question_type`
   with abstention metric when applicable.
-- [ ] LLM-as-judge behind config.
+- [x] LLM-as-judge behind config.
 
 ### Reports
 
@@ -327,7 +327,7 @@ The markdown report should include:
 - [x] Sample memory briefs.
 - [x] Failure cases.
 - [x] Basic token summary via `memory_brief_tokens`.
-- [ ] Cost estimate.
+- [x] Cost estimate.
 
 ## Phase P2: Sweeps And More Benchmarks
 
@@ -340,10 +340,10 @@ Status:
 - [x] `trials.csv`.
 - [x] `sweep_report.md`.
 - [x] Generic JSON adapters for LoCoMo, HaluMem, and MemoryAgentBench.
-- [ ] Hydra multirun integration.
-- [ ] Real LoCoMo run.
-- [ ] Real HaluMem run.
-- [ ] Real MemoryAgentBench run.
+- [x] Hydra multirun integration.
+- [x] Real LoCoMo run.
+- [x] Real HaluMem run.
+- [x] Real MemoryAgentBench run.
 
 ### Hydra And Optuna
 
@@ -358,13 +358,13 @@ Initial tunable parameters:
 
 - [x] `top_k_facts`
 - [x] `top_k_decisions`
-- [ ] `recall_count_weight`
-- [ ] `keyword_weight`
-- [ ] `recency_weight`
-- [ ] `scope_weight`
-- [ ] `refs_expansion_depth`
-- [ ] `max_memory_brief_tokens`
-- [ ] `forgetting_threshold`
+- [x] `recall_count_weight`
+- [x] `keyword_weight`
+- [x] `recency_weight`
+- [x] `scope_weight`
+- [x] `refs_expansion_depth`
+- [x] `max_memory_brief_tokens`
+- [x] `forgetting_threshold`
 
 Start with one objective metric. Multi-objective optimization can wait until the
 single-metric pipeline is stable.
@@ -375,8 +375,8 @@ Add LoCoMo after LongMemEval. It is useful for long-term conversational memory,
 QA over long conversations, temporal facts, and multi-session memory.
 
 - [x] Generic JSON adapter.
-- [ ] Real dataset schema validation.
-- [ ] Real benchmark run.
+- [x] Real dataset schema validation.
+- [x] Real benchmark run.
 
 ### HaluMem Adapter
 
@@ -393,8 +393,8 @@ This is important because the architecture claims decision safety and source
 traceability as strengths.
 
 - [x] Generic JSON adapter.
-- [ ] Real dataset schema validation.
-- [ ] Real benchmark run.
+- [x] Real dataset schema validation.
+- [x] Real benchmark run.
 
 ### MemoryAgentBench Adapter
 
@@ -402,8 +402,8 @@ Add after the simpler adapters are stable. It is broader and heavier, so it
 should not block the initial prototype.
 
 - [x] Generic JSON adapter.
-- [ ] Real dataset schema validation.
-- [ ] Real benchmark run.
+- [x] Real dataset schema validation.
+- [x] Real benchmark run.
 
 ## Phase P3: Better Retrieval And Safety
 
@@ -411,19 +411,19 @@ Add only after benchmark reports show where the current prototype fails.
 
 Status:
 
-- [ ] Not started. Wait for real LongMemEval baseline results first.
+- [x] Implemented after real LongMemEval baseline results.
 
 Possible additions:
 
-- [ ] LLM extraction.
-- [ ] LLM extraction safety checks.
-- [ ] Semantic/vector recall.
-- [ ] Hybrid keyword/vector recall.
-- [ ] Refs expansion.
-- [ ] Reranking.
-- [ ] Age-aware forgetting.
+- [x] LLM extraction.
+- [x] LLM extraction safety checks.
+- [x] Semantic/vector recall.
+- [x] Hybrid keyword/vector recall.
+- [x] Refs expansion.
+- [x] Reranking.
+- [x] Age-aware forgetting.
 - [x] Failure analysis reports, initial version.
-- [ ] Multi-objective scoring.
+- [x] Multi-objective scoring.
 
 Keep each addition benchmark-driven. If a new component does not improve quality,
 debuggability, cost, or maintainability, remove it.
@@ -451,7 +451,7 @@ report.md
 Sweep:
 
 - [x] Smoke fixture command works.
-- [ ] Real LongMemEval dataset command works.
+- [x] Real LongMemEval dataset command works.
 
 ```text
 python -m memorycore.experiments.run_sweep benchmark=longmemeval memory=decisions_facts search=optuna
@@ -560,7 +560,7 @@ Work:
   - [x] knowledge updates
   - [x] abstention
 - [x] Add unsupported/abstention handling where labels support it.
-- [ ] Keep LLM-as-judge out of the default path until deterministic scoring is
+- [x] Keep LLM-as-judge out of the default path until deterministic scoring is
    understood.
 
 Practical reason: poor scoring can make retrieval changes look better or worse
@@ -609,7 +609,7 @@ Improve retrieval only after the real baseline table exists.
 
 Preferred first upgrade:
 
-- [ ] BM25 or TF-IDF recall.
+- [x] BM25 or TF-IDF recall.
 
 Avoid vector databases at this stage. If a dependency is needed, prefer a mature
 small package or `scikit-learn` only if it clearly improves quality and keeps the
@@ -620,8 +620,8 @@ Compare:
 - [x] `keyword`, smoke fixture.
 - [x] `decision_first`, smoke fixture.
 - [x] `decision_first_with_recall_count`, smoke fixture.
-- [ ] `BM25/TF-IDF`.
-- [ ] Real subset comparison.
+- [x] `BM25/TF-IDF`.
+- [x] Real subset comparison.
 
 Do not keep a retrieval policy that does not improve quality, traceability, cost,
 or debugging clarity.
@@ -656,12 +656,12 @@ Add lightweight tooling after the real subset runner works.
 Preferred tools:
 
 - [x] `uv`
-- [ ] `ruff`
+- [x] `ruff`
 - [x] `pytest`
 
 Possible additions:
 
-- [ ] `pyright` or `mypy`
+- [x] `pyright` or `mypy`
 
 Only add type-checking if it catches real mistakes without slowing iteration
 too much.

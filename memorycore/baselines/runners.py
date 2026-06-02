@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any, cast
 
 from memorycore.benchmarks.base import BenchmarkExample
-from memorycore.core.models import MemoryBrief
+from memorycore.core.models import MemoryBrief, Ref
 from memorycore.core.runtime import MemoryRuntime
 from memorycore.policies.extraction import get_extractor
 
@@ -23,25 +24,37 @@ class BaselineRunner:
         self,
         *,
         extractor_policy: str = "rule_based",
+        extractor_model: str = "gpt-4o-mini",
+        extractor_url: str = "https://api.openai.com/v1/responses",
+        extractor_max_facts: int = 12,
+        extractor_max_decisions: int = 4,
         top_k_decisions: int = 5,
         top_k_facts: int = 5,
         include_refs: bool = False,
         refs_expansion_depth: int = 0,
         refs_expansion_limit: int = 10,
         max_memory_brief_tokens: int | None = None,
+        forgetting_policy: str | None = None,
         forgetting_threshold: int | None = None,
         recall_count_weight: float = 0.05,
         keyword_weight: float = 1.0,
         recency_weight: float = 0.0,
         scope_weight: float = 0.25,
     ) -> None:
-        self.extractor = get_extractor(extractor_policy)
+        self.extractor = get_extractor(
+            extractor_policy,
+            model=extractor_model,
+            url=extractor_url,
+            max_facts=extractor_max_facts,
+            max_decisions=extractor_max_decisions,
+        )
         self.top_k_decisions = top_k_decisions
         self.top_k_facts = top_k_facts
         self.include_refs = include_refs
         self.refs_expansion_depth = refs_expansion_depth
         self.refs_expansion_limit = refs_expansion_limit
         self.max_memory_brief_tokens = max_memory_brief_tokens
+        self.forgetting_policy = forgetting_policy
         self.forgetting_threshold = forgetting_threshold
         self.recall_count_weight = recall_count_weight
         self.keyword_weight = keyword_weight
@@ -55,6 +68,7 @@ class BaselineRunner:
             keyword_weight=self.keyword_weight,
             recency_weight=self.recency_weight,
             scope_weight=self.scope_weight,
+            forgetting_policy=self.forgetting_policy,
         )
         self.ingest(example, runtime)
         if self.forgetting_threshold is not None:
@@ -78,14 +92,14 @@ class BaselineRunner:
             raw = runtime.add_raw_input(message.content, scope=scope, source=message.role, meta=message.meta)
             extraction = self.extractor.extract(message.content, scope=scope, raw_input_id=raw.id)
             for fact in extraction.facts:
-                tags = list(fact.get("tags", []))
+                tags = string_list(fact.get("tags"))
                 if message.meta.get("benchmark") == "longmemeval" and "longmemeval" not in tags:
                     tags.append("longmemeval")
                 runtime.add_fact(
                     str(fact["text"]),
                     scope=str(fact["scope"]),
                     tags=tags,
-                    refs=list(fact.get("refs", [])),
+                    refs=ref_list(fact.get("refs")),
                     meta={
                         "source_role": message.role,
                         **message.meta,
@@ -97,14 +111,14 @@ class BaselineRunner:
                         f"Uncommitted decision candidate: {decision['key']} = {decision['value']}",
                         scope=str(decision["scope"]),
                         tags=["hypothesis"],
-                        refs=list(decision.get("refs", [])),
+                        refs=ref_list(decision.get("refs")),
                     )
                     continue
                 runtime.set_decision(
                     str(decision["key"]),
                     str(decision["value"]),
                     scope=str(decision["scope"]),
-                    refs=list(decision.get("refs", [])),
+                    refs=ref_list(decision.get("refs")),
                     commit=True,
                 )
 
@@ -168,7 +182,7 @@ class DecisionsFactsRefsRunner(BaselineRunner):
     name = "decisions_plus_facts_plus_refs"
     recall_policy = "decision_first"
 
-    def __init__(self, **kwargs: object) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         kwargs.setdefault("include_refs", True)
         kwargs.setdefault("refs_expansion_depth", 1)
         super().__init__(**kwargs)
@@ -178,7 +192,7 @@ class DecisionsFactsRecallCountRunner(BaselineRunner):
     name = "decisions_plus_facts_plus_refs_plus_recall_count"
     recall_policy = "decision_first_with_recall_count"
 
-    def __init__(self, **kwargs: object) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         kwargs.setdefault("include_refs", True)
         kwargs.setdefault("refs_expansion_depth", 1)
         super().__init__(**kwargs)
@@ -201,13 +215,25 @@ RUNNERS: dict[str, type[BaselineRunner]] = {
 }
 
 
-def get_baseline_runner(name: str, **kwargs: object) -> BaselineRunner:
+def get_baseline_runner(name: str, **kwargs: Any) -> BaselineRunner:
     try:
         runner_cls = RUNNERS[name]
     except KeyError as exc:
         known = ", ".join(sorted(RUNNERS))
         raise ValueError(f"unknown memory baseline: {name}; known: {known}") from exc
     return runner_cls(**kwargs)
+
+
+def string_list(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item) for item in value]
+
+
+def ref_list(value: object) -> list[Ref]:
+    if not isinstance(value, list):
+        return []
+    return cast(list[Ref], value)
 
 
 def synthesize_answer(question: str, brief: MemoryBrief) -> str:

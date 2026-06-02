@@ -64,3 +64,14 @@ def test_forgetting_keeps_facts_referenced_by_current_decisions() -> None:
     assert disposable.id in archived
     assert not runtime.store.get_fact(protected.id).archived
     assert runtime.store.get_fact(disposable.id).archived
+
+
+def test_age_aware_forgetting_keeps_newest_low_recall_facts() -> None:
+    runtime = MemoryRuntime(forgetting_policy="age_aware_low_recall_count_except_decision_refs")
+    first = runtime.add_fact("old low recall note", scope="project:test")
+    second = runtime.add_fact("new low recall note", scope="project:test")
+
+    archived = runtime.forget_facts(threshold=0)
+
+    assert first.id in archived
+    assert second.id not in archived

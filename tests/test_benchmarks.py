@@ -7,6 +7,9 @@ from memorycore.experiments.run_experiment import run_experiment
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 LONGMEMEVAL_FIXTURE = FIXTURE_DIR / "longmemeval_oracle_sample.json"
+LOCOMO_FIXTURE = FIXTURE_DIR / "locomo_sample.json"
+HALUMEM_FIXTURE = FIXTURE_DIR / "halumem_sample.jsonl"
+MEMORYAGENTBENCH_FIXTURE = FIXTURE_DIR / "memoryagentbench_sample.json"
 
 
 def test_toy_benchmark_loads_examples() -> None:
@@ -49,6 +52,8 @@ def test_cost_estimate_uses_configured_token_prices(tmp_path: Path) -> None:
     assert result["metrics"]["prompt_tokens"] > 0
     assert result["metrics"]["output_tokens"] > 0
     assert result["metrics"]["cost_estimate_usd"] > 0
+    assert result["metrics"]["quality_score"] > 0
+    assert result["metrics"]["objectives"]["accuracy"] == result["metrics"]["accuracy"]
 
 
 def test_llm_judge_is_behind_explicit_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -136,3 +141,63 @@ def test_real_schema_baseline_comparison_report_runs(tmp_path: Path) -> None:
     assert len(result["metrics"]["baseline_metrics"]) == 4
     assert result["predictions"][0]["haystack_session_ids"]
     assert "Policy Comparison" in (tmp_path / "report.md").read_text(encoding="utf-8")
+
+
+def test_locomo_real_schema_fixture_expands_qa_examples() -> None:
+    benchmark = get_benchmark("locomo", data_path=str(LOCOMO_FIXTURE))
+    examples = benchmark.load()
+
+    assert len(examples) == 1
+    example = examples[0]
+    assert example.id == "conv-test:qa:0"
+    assert example.scope == "locomo:conv-test"
+    assert example.expected_answer == "7 May 2023"
+    assert example.meta["evidence"] == ["D1:1"]
+    assert example.messages[0].meta["dia_id"] == "D1:1"
+    assert example.messages[0].meta["session_date_time"] == "2023-05-07"
+
+
+def test_halumem_real_schema_fixture_creates_memory_point_examples() -> None:
+    benchmark = get_benchmark("halumem", data_path=str(HALUMEM_FIXTURE))
+    examples = benchmark.load()
+
+    assert len(examples) == 1
+    example = examples[0]
+    assert example.id == "halu-test:memory:3"
+    assert example.expected_answer == "Martin Mark works at Huaxin Consulting"
+    assert example.meta["memory_type"] == "Persona Memory"
+    assert example.messages[-1].role == "memory"
+    assert example.messages[-1].meta["source_kind"] == "memory_point"
+
+
+def test_memoryagentbench_schema_fixture_expands_question_arrays() -> None:
+    benchmark = get_benchmark("memoryagentbench", data_path=str(MEMORYAGENTBENCH_FIXTURE))
+    examples = benchmark.load()
+
+    assert len(examples) == 1
+    example = examples[0]
+    assert example.id == "mab-test-1"
+    assert example.expected_answer == "Huaxin Consulting"
+    assert example.meta["source"] == "Accurate_Retrieval"
+    assert example.messages[0].meta["has_answer"] is True
+
+
+def test_real_schema_smoke_runs_for_additional_benchmarks(tmp_path: Path) -> None:
+    for benchmark_name, data_path in (
+        ("locomo", LOCOMO_FIXTURE),
+        ("halumem", HALUMEM_FIXTURE),
+        ("memoryagentbench", MEMORYAGENTBENCH_FIXTURE),
+    ):
+        result = run_experiment(
+            {
+                "benchmark": benchmark_name,
+                "data_path": str(data_path),
+                "memory": "decisions_facts",
+                "recall": "hybrid",
+                "limit": 1,
+                "output_dir": str(tmp_path / benchmark_name),
+            }
+        )
+
+        assert result["metrics"]["examples"] == 1
+        assert result["traces"][0]["source_messages"]

@@ -1,0 +1,29 @@
+benchmark: toy
+data_path:
+memory: decisions_plus_facts
+compare_memories:
+recall: decision_first
+extractor_policy: rule_based
+extractor_model: gpt-4o-mini
+extractor_url: https://api.openai.com/v1/responses
+extractor_max_facts: 12
+extractor_max_decisions: 4
+top_k_decisions: 5
+top_k_facts: 5
+limit:
+offset: 0
+recall_count_weight: 0.05
+keyword_weight: 1.0
+recency_weight: 0.0
+scope_weight: 0.25
+refs_expansion_depth: 0
+refs_expansion_limit: 10
+max_memory_brief_tokens:
+forgetting_policy: none
+forgetting_threshold:
+input_cost_per_1k: 0.0
+output_cost_per_1k: 0.0
+judge_policy: none
+judge_model: gpt-4o-mini
+judge_url: https://api.openai.com/v1/responses
+output_dir: reports/latest

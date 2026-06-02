@@ -203,9 +203,9 @@ class MemoryRuntime:
     ) -> list[Fact]:
         related: list[Fact] = []
         seen: set[str] = set()
-        frontier = list(items)
+        frontier: list[Decision | Fact] = list(items)
         for _ in range(max(depth, 0)):
-            next_frontier: list[Fact] = []
+            next_frontier: list[Decision | Fact] = []
             for item in frontier:
                 for ref in item.refs:
                     fact = self.store.get_fact(ref.target)
