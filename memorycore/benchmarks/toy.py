@@ -7,7 +7,7 @@ class ToyBenchmark(BenchmarkAdapter):
     name = "toy"
 
     def load(self) -> list[BenchmarkExample]:
-        return [
+        return self.apply_window([
             BenchmarkExample(
                 id="toy-1",
                 scope="project:toy",
@@ -29,5 +29,4 @@ class ToyBenchmark(BenchmarkAdapter):
                 question="Which language should the assistant answer in?",
                 expected_answer="Russian",
             ),
-        ]
-
+        ])

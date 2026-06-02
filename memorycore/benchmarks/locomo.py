@@ -10,8 +10,7 @@ class LoCoMoBenchmark(BenchmarkAdapter):
     def load(self) -> list[BenchmarkExample]:
         if self.data_path is None:
             raise ValueError("locomo requires data_path")
-        return [
+        return self.apply_window([
             record_to_example(record, fallback_scope="benchmark:locomo")
             for record in load_json_records(self.data_path)
-        ]
-
+        ])

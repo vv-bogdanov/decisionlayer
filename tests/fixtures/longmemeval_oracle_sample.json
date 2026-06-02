@@ -1,0 +1,74 @@
+[
+  {
+    "question_id": "sample_001",
+    "question_type": "single-session-user",
+    "question": "What did I have for breakfast?",
+    "answer": "oatmeal",
+    "question_date": "2023/04/10 (Mon) 10:00",
+    "haystack_dates": ["2023/04/10 (Mon) 08:00"],
+    "haystack_session_ids": ["session_breakfast"],
+    "haystack_sessions": [
+      [
+        {
+          "role": "user",
+          "content": "I had oatmeal for breakfast today.",
+          "has_answer": true
+        },
+        {
+          "role": "assistant",
+          "content": "That sounds like a simple breakfast.",
+          "has_answer": false
+        }
+      ]
+    ],
+    "answer_session_ids": ["session_breakfast"]
+  },
+  {
+    "question_id": "sample_002",
+    "question_type": "temporal-reasoning",
+    "question": "What was the first car issue I mentioned?",
+    "answer": "GPS issue",
+    "question_date": "2023/04/11 (Tue) 10:00",
+    "haystack_dates": [
+      "2023/04/10 (Mon) 09:00",
+      "2023/04/10 (Mon) 12:00"
+    ],
+    "haystack_session_ids": ["session_car_1", "session_car_2"],
+    "haystack_sessions": [
+      [
+        {
+          "role": "user",
+          "content": "The first issue with my new car was a GPS issue.",
+          "has_answer": true
+        }
+      ],
+      [
+        {
+          "role": "user",
+          "content": "Later, I noticed a tire pressure warning.",
+          "has_answer": false
+        }
+      ]
+    ],
+    "answer_session_ids": ["session_car_1"]
+  },
+  {
+    "question_id": "sample_003_abs",
+    "question_type": "single-session-assistant",
+    "question": "Which hotel did I book?",
+    "answer": "The information is not available.",
+    "question_date": "2023/04/12 (Wed) 10:00",
+    "haystack_dates": ["2023/04/11 (Tue) 09:00"],
+    "haystack_session_ids": ["session_travel"],
+    "haystack_sessions": [
+      [
+        {
+          "role": "user",
+          "content": "I am comparing hotels but have not booked one yet.",
+          "has_answer": false
+        }
+      ]
+    ],
+    "answer_session_ids": []
+  }
+]

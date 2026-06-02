@@ -49,9 +49,30 @@ def render_markdown_report(
         "| --- | ---: |",
     ]
     for key in sorted(metrics):
-        if key == "baseline_metrics":
+        if key in {"baseline_metrics", "question_type_metrics"}:
             continue
         lines.append(f"| {key} | {metrics[key]} |")
+    question_type_metrics = metrics.get("question_type_metrics")
+    if isinstance(question_type_metrics, dict) and question_type_metrics:
+        lines.extend(
+            [
+                "",
+                "## Question Type Metrics",
+                "",
+                "| Question Type | Accuracy | Exact Match | Substring Match | Examples |",
+                "| --- | ---: | ---: | ---: | ---: |",
+            ]
+        )
+        for question_type, row in sorted(question_type_metrics.items()):
+            lines.append(
+                "| {question_type} | {accuracy} | {exact_match} | {substring_match} | {examples} |".format(
+                    question_type=question_type,
+                    accuracy=row.get("accuracy"),
+                    exact_match=row.get("exact_match"),
+                    substring_match=row.get("substring_match"),
+                    examples=row.get("examples"),
+                )
+            )
     baseline_metrics = metrics.get("baseline_metrics")
     if isinstance(baseline_metrics, list) and baseline_metrics:
         lines.extend(
@@ -94,6 +115,7 @@ def render_markdown_report(
                 f"- expected: {prediction['expected_answer']}",
                 f"- predicted: {prediction['prediction']}",
                 f"- correct: {prediction['correct']}",
+                f"- question_type: {prediction.get('question_type')}",
                 "",
                 "Memory brief:",
                 "",
@@ -116,6 +138,7 @@ def render_markdown_report(
                 f"- question: {prediction['question']}",
                 f"- expected: {prediction['expected_answer']}",
                 f"- predicted: {prediction['prediction']}",
+                f"- probable cause: {prediction.get('probable_failure_cause')}",
                 "",
             ]
         )

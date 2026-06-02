@@ -20,6 +20,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "extractor_policy": "rule_based",
     "top_k_decisions": 5,
     "top_k_facts": 5,
+    "limit": None,
+    "offset": 0,
     "output_dir": "reports/latest",
 }
 
@@ -77,7 +79,12 @@ def best_memory(baseline_metrics: list[dict[str, Any]]) -> str | None:
 
 
 def run_single(merged: dict[str, Any], memory: str) -> dict[str, Any]:
-    benchmark = get_benchmark(str(merged["benchmark"]), data_path=merged.get("data_path"))
+    benchmark = get_benchmark(
+        str(merged["benchmark"]),
+        data_path=merged.get("data_path"),
+        limit=optional_int(merged.get("limit")),
+        offset=int(merged.get("offset") or 0),
+    )
     runner = get_baseline_runner(
         memory,
         extractor_policy=str(merged["extractor_policy"]),
@@ -95,6 +102,7 @@ def run_single(merged: dict[str, Any], memory: str) -> dict[str, Any]:
         exact_match = exact_match_score(result.answer, example.expected_answer)
         substring_match = substring_match_score(result.answer, example.expected_answer)
         correct = exact_match or substring_match
+        memory_brief = result.brief.render() if result.brief else ""
         predictions.append(
             {
                 "id": example.id,
@@ -105,11 +113,29 @@ def run_single(merged: dict[str, Any], memory: str) -> dict[str, Any]:
                 "exact_match": exact_match,
                 "substring_match": substring_match,
                 "memory": runner.name,
-                "memory_brief": result.brief.render() if result.brief else "",
+                "memory_brief": memory_brief,
+                "question_type": example.meta.get("question_type"),
+                "is_abstention": bool(example.meta.get("is_abstention", False)),
+                "answer_session_ids": example.meta.get("answer_session_ids", []),
+                "haystack_session_ids": example.meta.get("haystack_session_ids", []),
+                "probable_failure_cause": probable_failure_cause(
+                    correct=correct,
+                    expected=example.expected_answer,
+                    memory_brief=memory_brief,
+                    is_abstention=bool(example.meta.get("is_abstention", False)),
+                ),
             }
         )
         if result.trace:
-            traces.append({"id": example.id, **result.trace})
+            traces.append(
+                {
+                    "id": example.id,
+                    "question_type": example.meta.get("question_type"),
+                    "answer_session_ids": example.meta.get("answer_session_ids", []),
+                    "haystack_session_ids": example.meta.get("haystack_session_ids", []),
+                    **result.trace,
+                }
+            )
 
     latency = time.perf_counter() - started
     metrics = compute_metrics(predictions, traces, latency)
@@ -141,6 +167,30 @@ def normalize_text(text: str) -> str:
     return " ".join(text.lower().strip().split())
 
 
+def optional_int(value: object) -> int | None:
+    if value in {None, ""}:
+        return None
+    return int(value)
+
+
+def probable_failure_cause(
+    *,
+    correct: bool,
+    expected: str,
+    memory_brief: str,
+    is_abstention: bool,
+) -> str:
+    if correct:
+        return ""
+    if is_abstention:
+        return "abstention"
+    if not memory_brief.strip():
+        return "recall"
+    if normalize_text(expected) and normalize_text(expected) in normalize_text(memory_brief):
+        return "scoring"
+    return "extraction_or_recall"
+
+
 def compute_metrics(
     predictions: list[dict[str, Any]],
     traces: list[dict[str, Any]],
@@ -154,7 +204,7 @@ def compute_metrics(
     fact_counts = [len(trace.get("facts", [])) for trace in traces]
     brief_token_counts = [token_count(item.get("memory_brief", "")) for item in predictions]
     source_traceability = source_traceability_rate(traces)
-    return {
+    metrics: dict[str, Any] = {
         "accuracy": round(correct / total, 6) if total else 0.0,
         "exact_match": round(exact_matches / total, 6) if total else 0.0,
         "substring_match": round(substring_matches / total, 6) if total else 0.0,
@@ -167,6 +217,16 @@ def compute_metrics(
         "source_traceability": round(source_traceability, 6),
         "false_decision_rate": 0.0,
     }
+    type_metrics = grouped_metrics(predictions, "question_type")
+    if type_metrics:
+        metrics["question_type_metrics"] = type_metrics
+    abstention_predictions = [item for item in predictions if item.get("is_abstention")]
+    if abstention_predictions:
+        metrics["abstention_accuracy"] = round(
+            sum(1 for item in abstention_predictions if item["correct"]) / len(abstention_predictions),
+            6,
+        )
+    return metrics
 
 
 def avg(values: list[int]) -> float:
@@ -175,6 +235,33 @@ def avg(values: list[int]) -> float:
 
 def token_count(text: object) -> int:
     return len(str(text).split())
+
+
+def grouped_metrics(
+    predictions: list[dict[str, Any]],
+    key: str,
+) -> dict[str, dict[str, Any]]:
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for prediction in predictions:
+        value = prediction.get(key)
+        if not value:
+            continue
+        groups.setdefault(str(value), []).append(prediction)
+    metrics: dict[str, dict[str, Any]] = {}
+    for group, rows in sorted(groups.items()):
+        total = len(rows)
+        correct = sum(1 for item in rows if item["correct"])
+        metrics[group] = {
+            "examples": total,
+            "accuracy": round(correct / total, 6) if total else 0.0,
+            "exact_match": round(sum(1 for item in rows if item["exact_match"]) / total, 6)
+            if total
+            else 0.0,
+            "substring_match": round(sum(1 for item in rows if item["substring_match"]) / total, 6)
+            if total
+            else 0.0,
+        }
+    return metrics
 
 
 def source_traceability_rate(traces: list[dict[str, Any]]) -> float:

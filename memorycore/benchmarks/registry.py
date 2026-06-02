@@ -17,11 +17,16 @@ BENCHMARKS: dict[str, type[BenchmarkAdapter]] = {
 }
 
 
-def get_benchmark(name: str, *, data_path: str | None = None) -> BenchmarkAdapter:
+def get_benchmark(
+    name: str,
+    *,
+    data_path: str | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+) -> BenchmarkAdapter:
     try:
         benchmark_cls = BENCHMARKS[name]
     except KeyError as exc:
         known = ", ".join(sorted(BENCHMARKS))
         raise ValueError(f"unknown benchmark: {name}; known: {known}") from exc
-    return benchmark_cls(data_path=data_path)
-
+    return benchmark_cls(data_path=data_path, limit=limit, offset=offset)

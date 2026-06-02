@@ -48,11 +48,18 @@ class BaselineRunner:
             raw = runtime.add_raw_input(message.content, scope=scope, source=message.role, meta=message.meta)
             extraction = self.extractor.extract(message.content, scope=scope, raw_input_id=raw.id)
             for fact in extraction.facts:
+                tags = list(fact.get("tags", []))
+                if message.meta.get("benchmark") == "longmemeval" and "longmemeval" not in tags:
+                    tags.append("longmemeval")
                 runtime.add_fact(
                     str(fact["text"]),
                     scope=str(fact["scope"]),
-                    tags=list(fact.get("tags", [])),
+                    tags=tags,
                     refs=list(fact.get("refs", [])),
+                    meta={
+                        "source_role": message.role,
+                        **message.meta,
+                    },
                 )
             for decision in extraction.decisions:
                 if not decision.get("commit"):

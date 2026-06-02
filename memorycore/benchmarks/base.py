@@ -26,8 +26,16 @@ class BenchmarkExample:
 class BenchmarkAdapter:
     name = "base"
 
-    def __init__(self, data_path: str | None = None) -> None:
+    def __init__(
+        self,
+        data_path: str | None = None,
+        *,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> None:
         self.data_path = Path(data_path) if data_path else None
+        self.limit = limit
+        self.offset = offset
 
     def load(self) -> list[BenchmarkExample]:
         raise NotImplementedError
@@ -35,3 +43,8 @@ class BenchmarkAdapter:
     def iter_examples(self) -> Iterable[BenchmarkExample]:
         yield from self.load()
 
+    def apply_window(self, examples: list[BenchmarkExample]) -> list[BenchmarkExample]:
+        start = max(self.offset, 0)
+        if self.limit is None:
+            return examples[start:]
+        return examples[start : start + max(self.limit, 0)]
