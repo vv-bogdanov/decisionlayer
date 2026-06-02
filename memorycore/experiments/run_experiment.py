@@ -92,7 +92,9 @@ def run_single(merged: dict[str, Any], memory: str) -> dict[str, Any]:
     started = time.perf_counter()
     for example in benchmark.iter_examples():
         result = runner.run(example)
-        correct = score_prediction(result.answer, example.expected_answer)
+        exact_match = exact_match_score(result.answer, example.expected_answer)
+        substring_match = substring_match_score(result.answer, example.expected_answer)
+        correct = exact_match or substring_match
         predictions.append(
             {
                 "id": example.id,
@@ -100,6 +102,8 @@ def run_single(merged: dict[str, Any], memory: str) -> dict[str, Any]:
                 "expected_answer": example.expected_answer,
                 "prediction": result.answer,
                 "correct": correct,
+                "exact_match": exact_match,
+                "substring_match": substring_match,
                 "memory": runner.name,
                 "memory_brief": result.brief.render() if result.brief else "",
             }
@@ -119,7 +123,13 @@ def run_single(merged: dict[str, Any], memory: str) -> dict[str, Any]:
     return {"config": merged, "metrics": metrics, "predictions": predictions, "traces": traces}
 
 
-def score_prediction(prediction: str, expected: str) -> bool:
+def exact_match_score(prediction: str, expected: str) -> bool:
+    prediction_normalized = normalize_text(prediction)
+    expected_normalized = normalize_text(expected)
+    return prediction_normalized == expected_normalized
+
+
+def substring_match_score(prediction: str, expected: str) -> bool:
     prediction_normalized = normalize_text(prediction)
     expected_normalized = normalize_text(expected)
     if not expected_normalized:
@@ -138,12 +148,16 @@ def compute_metrics(
 ) -> dict[str, Any]:
     total = len(predictions)
     correct = sum(1 for item in predictions if item["correct"])
+    exact_matches = sum(1 for item in predictions if item["exact_match"])
+    substring_matches = sum(1 for item in predictions if item["substring_match"])
     decision_counts = [len(trace.get("decisions", [])) for trace in traces]
     fact_counts = [len(trace.get("facts", [])) for trace in traces]
     brief_token_counts = [token_count(item.get("memory_brief", "")) for item in predictions]
     source_traceability = source_traceability_rate(traces)
     return {
         "accuracy": round(correct / total, 6) if total else 0.0,
+        "exact_match": round(exact_matches / total, 6) if total else 0.0,
+        "substring_match": round(substring_matches / total, 6) if total else 0.0,
         "examples": total,
         "correct": correct,
         "latency_seconds": round(latency, 6),

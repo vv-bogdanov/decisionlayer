@@ -95,6 +95,28 @@ def render_markdown_report(
                 f"- predicted: {prediction['prediction']}",
                 f"- correct: {prediction['correct']}",
                 "",
+                "Memory brief:",
+                "",
+                "```text",
+                str(prediction.get("memory_brief", ""))[:1000],
+                "```",
+                "",
+            ]
+        )
+    failures = [prediction for prediction in predictions if not prediction.get("correct")]
+    lines.extend(["## Failure Cases", ""])
+    if not failures:
+        lines.append("No failures in this run.")
+    for prediction in failures[:10]:
+        lines.extend(
+            [
+                f"### {prediction['id']}",
+                "",
+                f"- memory: {prediction.get('memory')}",
+                f"- question: {prediction['question']}",
+                f"- expected: {prediction['expected_answer']}",
+                f"- predicted: {prediction['prediction']}",
+                "",
             ]
         )
     return "\n".join(lines)
