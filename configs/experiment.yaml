@@ -1,0 +1,9 @@
+benchmark: toy
+data_path:
+memory: decisions_plus_facts
+recall: decision_first
+extractor_policy: rule_based
+top_k_decisions: 5
+top_k_facts: 5
+output_dir: reports/latest
+

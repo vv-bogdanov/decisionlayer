@@ -1,0 +1,3 @@
+memory: recent_context_only
+extractor_policy: rule_based
+

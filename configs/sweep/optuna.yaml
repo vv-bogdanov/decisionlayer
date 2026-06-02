@@ -1,0 +1,8 @@
+search: optuna
+n_trials: 12
+metric: accuracy
+top_k_facts_min: 1
+top_k_facts_max: 8
+top_k_decisions_min: 1
+top_k_decisions_max: 5
+

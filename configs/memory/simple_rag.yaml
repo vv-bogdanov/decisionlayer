@@ -1,0 +1,3 @@
+memory: simple_rag
+extractor_policy: rule_based
+

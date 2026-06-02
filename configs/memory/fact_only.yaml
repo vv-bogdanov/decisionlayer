@@ -1,0 +1,3 @@
+memory: fact_only
+extractor_policy: rule_based
+
