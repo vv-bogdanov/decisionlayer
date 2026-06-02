@@ -7,7 +7,7 @@ def test_sweep_writes_expected_outputs(tmp_path: Path) -> None:
     result = run_sweep(
         {
             "benchmark": "toy",
-            "memory": "decisions_plus_facts",
+            "memory": "decisions_facts",
             "search": "grid",
             "n_trials": 2,
             "top_k_facts_min": 1,
@@ -22,4 +22,3 @@ def test_sweep_writes_expected_outputs(tmp_path: Path) -> None:
     assert (tmp_path / "best_config.yaml").exists()
     assert (tmp_path / "trials.csv").exists()
     assert (tmp_path / "sweep_report.md").exists()
-

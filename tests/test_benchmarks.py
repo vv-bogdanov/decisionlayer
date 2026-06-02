@@ -17,7 +17,7 @@ def test_longmemeval_default_fixture_runs(tmp_path: Path) -> None:
     result = run_experiment(
         {
             "benchmark": "longmemeval",
-            "memory": "decisions_plus_facts",
+            "memory": "decisions_facts",
             "recall": "decision_first",
             "output_dir": str(tmp_path),
         }
@@ -34,7 +34,7 @@ def test_baseline_comparison_report_runs(tmp_path: Path) -> None:
     result = run_experiment(
         {
             "benchmark": "longmemeval",
-            "compare_memories": "recent_context_only,simple_rag,fact_only,decisions_plus_facts",
+            "compare_memories": "recent_context_only,simple_rag,fact_only,decisions_facts",
             "output_dir": str(tmp_path),
         }
     )

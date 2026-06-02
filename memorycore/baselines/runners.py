@@ -129,6 +129,7 @@ RUNNERS: dict[str, type[BaselineRunner]] = {
     "simple_rag": SimpleRagRunner,
     "fact_only": FactOnlyRunner,
     "decisions_only": DecisionsOnlyRunner,
+    "decisions_facts": DecisionsFactsRunner,
     "decisions_plus_facts": DecisionsFactsRunner,
     "decisions_plus_facts_plus_refs": DecisionsFactsRefsRunner,
     "decisions_plus_facts_plus_refs_plus_recall_count": DecisionsFactsRecallCountRunner,
@@ -155,4 +156,3 @@ def synthesize_answer(question: str, brief: MemoryBrief) -> str:
     if brief.facts:
         return brief.facts[0].text
     return ""
-

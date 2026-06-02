@@ -1,3 +1,2 @@
-memory: decisions_plus_facts
+memory: decisions_facts
 extractor_policy: rule_based
-

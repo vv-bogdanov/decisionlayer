@@ -21,25 +21,25 @@ uv run pytest
 Run a toy experiment:
 
 ```bash
-uv run python -m memorycore.experiments.run_experiment benchmark=toy memory=decisions_plus_facts output_dir=reports/latest
+uv run python -m memorycore.experiments.run_experiment benchmark=toy memory=decisions_facts output_dir=reports/latest
 ```
 
 Run the LongMemEval-compatible smoke fixture:
 
 ```bash
-uv run python -m memorycore.experiments.run_experiment benchmark=longmemeval memory=decisions_plus_facts recall=decision_first output_dir=reports/longmemeval_smoke
+uv run python -m memorycore.experiments.run_experiment benchmark=longmemeval memory=decisions_facts recall=decision_first output_dir=reports/longmemeval_smoke
 ```
 
 Run the first baseline comparison report:
 
 ```bash
-uv run python -m memorycore.experiments.run_experiment benchmark=longmemeval compare_memories=recent_context_only,simple_rag,fact_only,decisions_plus_facts output_dir=reports/comparison
+uv run python -m memorycore.experiments.run_experiment benchmark=longmemeval compare_memories=recent_context_only,simple_rag,fact_only,decisions_facts output_dir=reports/comparison
 ```
 
 Run a sweep:
 
 ```bash
-uv run --extra experiments python -m memorycore.experiments.run_sweep benchmark=longmemeval memory=decisions_plus_facts search=optuna n_trials=4 output_dir=reports/sweep
+uv run --extra experiments python -m memorycore.experiments.run_sweep benchmark=longmemeval memory=decisions_facts search=optuna n_trials=4 output_dir=reports/sweep
 ```
 
 Generated reports are written under `reports/` and ignored by git.
