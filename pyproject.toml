@@ -1,0 +1,16 @@
+[project]
+name = "memorycore"
+version = "0.1.0"
+description = "Research prototype for Decision-First Agent Memory."
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+experiments = ["hydra-core>=1.3", "optuna>=3.6", "pandas>=2.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
