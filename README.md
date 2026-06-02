@@ -30,10 +30,23 @@ Run the LongMemEval-compatible smoke fixture:
 uv run python -m memorycore.experiments.run_experiment benchmark=longmemeval memory=decisions_facts recall=decision_first output_dir=reports/longmemeval_smoke
 ```
 
+Run a real LongMemEval oracle subset after downloading
+`longmemeval_oracle.json` from `xiaowu0162/longmemeval-cleaned`:
+
+```bash
+uv run python -m memorycore.experiments.run_experiment benchmark=longmemeval data_path=/path/to/longmemeval_oracle.json memory=decisions_facts recall=decision_first limit=25 output_dir=reports/longmemeval_oracle_subset
+```
+
 Run the first baseline comparison report:
 
 ```bash
 uv run python -m memorycore.experiments.run_experiment benchmark=longmemeval compare_memories=recent_context_only,simple_rag,fact_only,decisions_facts output_dir=reports/comparison
+```
+
+Run the first real LongMemEval oracle baseline comparison:
+
+```bash
+uv run python -m memorycore.experiments.run_experiment benchmark=longmemeval data_path=/path/to/longmemeval_oracle.json compare_memories=recent_context_only,simple_rag,fact_only,decisions_facts limit=25 output_dir=reports/longmemeval_oracle_baselines
 ```
 
 Run a sweep:
@@ -55,6 +68,7 @@ add_raw_input / add_fact / set_decision / recall / forget_facts / export_trace
 deterministic extraction, recall, forgetting, and safety policies
 toy benchmark
 LongMemEval-compatible adapter with local data_path support
+LongMemEval oracle schema parsing, source-message traces, limit/offset
 LoCoMo / HaluMem / MemoryAgentBench JSON adapters
 baseline runner
 experiment reports

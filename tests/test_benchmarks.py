@@ -71,6 +71,7 @@ def test_longmemeval_real_schema_run_has_grouped_metrics_and_source_refs(tmp_pat
     assert "abstention_accuracy" in result["metrics"]
     assert result["predictions"][0]["question_type"] == "single-session-user"
     assert result["traces"][0]["facts"][0]["refs"][0]["rel"] == "source"
+    assert result["traces"][0]["source_messages"][0]["content"] == "I had oatmeal for breakfast today."
     report = (tmp_path / "report.md").read_text(encoding="utf-8")
     assert "Question Type Metrics" in report
 

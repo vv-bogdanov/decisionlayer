@@ -133,6 +133,7 @@ def run_single(merged: dict[str, Any], memory: str) -> dict[str, Any]:
                     "question_type": example.meta.get("question_type"),
                     "answer_session_ids": example.meta.get("answer_session_ids", []),
                     "haystack_session_ids": example.meta.get("haystack_session_ids", []),
+                    "source_messages": source_messages(example),
                     **result.trace,
                 }
             )
@@ -189,6 +190,18 @@ def probable_failure_cause(
     if normalize_text(expected) and normalize_text(expected) in normalize_text(memory_brief):
         return "scoring"
     return "extraction_or_recall"
+
+
+def source_messages(example: Any) -> list[dict[str, Any]]:
+    return [
+        {
+            "role": message.role,
+            "content": message.content,
+            "scope": message.scope,
+            "meta": message.meta,
+        }
+        for message in example.messages
+    ]
 
 
 def compute_metrics(

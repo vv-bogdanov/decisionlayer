@@ -12,10 +12,10 @@
 - [x] Report outputs: `metrics.json`, `predictions.jsonl`, `trace.jsonl`,
   `report.md`, `best_config.yaml`, `trials.csv`, `sweep_report.md`.
 - [x] Pytest coverage for core, recall, benchmark, and sweep behavior.
-- [ ] Real LongMemEval dataset schema validation and subset run.
-- [ ] Benchmark-specific LongMemEval scoring.
+- [x] Real LongMemEval dataset schema validation and subset run.
+- [x] Benchmark-specific LongMemEval scoring, initial deterministic version.
 - [ ] Better retrieval beyond keyword overlap.
-- [ ] Dataset-aware extraction without artificial `FACT:` prefixes.
+- [x] Dataset-aware extraction without artificial `FACT:` prefixes.
 - [ ] Ruff lint/format tooling.
 
 ## Context
@@ -44,7 +44,7 @@ Start with the cheapest verifiable implementation:
 - [x] One benchmark adapter.
 - [x] Shared runner and metrics output.
 - [x] Sweeps.
-- [ ] Real benchmark validation.
+- [x] Real benchmark validation, LongMemEval oracle subset.
 - [ ] Heavier retrieval.
 
 Do not start with SQLite, vector DBs, LLM extraction, graph storage, REST, or SDK
@@ -229,8 +229,8 @@ Status:
 - [x] LongMemEval-compatible JSON adapter with local `data_path`.
 - [x] Tiny LongMemEval-compatible smoke fixture.
 - [x] Baseline runner and comparison report.
-- [ ] Real LongMemEval schema validation.
-- [ ] Real LongMemEval subset report.
+- [x] Real LongMemEval schema validation.
+- [x] Real LongMemEval oracle subset report.
 
 ### LongMemEval Adapter
 
@@ -252,7 +252,7 @@ Adapter responsibilities:
 - [x] Run recall for each question.
 - [x] Produce prediction records.
 - [x] Save trace records.
-- [ ] Validate against the real LongMemEval schema and fields.
+- [x] Validate against the real LongMemEval schema and fields.
 
 Do not hardcode dataset download into the runner. Prefer a config path, because
 datasets and licenses can change.
@@ -305,7 +305,8 @@ latency
 - [x] `source_traceability`
 - [x] `false_decision_rate`
 - [x] `latency`
-- [ ] LongMemEval-specific deterministic scoring.
+- [x] LongMemEval-specific deterministic scoring, grouped by `question_type`
+  with abstention metric when applicable.
 - [ ] LLM-as-judge behind config.
 
 ### Reports
@@ -432,7 +433,7 @@ debuggability, cost, or maintainability, remove it.
 Single experiment:
 
 - [x] Smoke fixture command works.
-- [ ] Real LongMemEval dataset command works.
+- [x] Real LongMemEval oracle subset command works.
 
 ```text
 python -m memorycore.experiments.run_experiment benchmark=longmemeval memory=decisions_facts recall=decision_first
@@ -513,12 +514,12 @@ Implement a real LongMemEval subset runner.
 
 Work:
 
-- [ ] Add clear local dataset instructions.
-- [ ] Inspect the real LongMemEval file schema.
-- [ ] Adapt `memorycore/benchmarks/longmemeval.py` to that schema.
-- [ ] Support subset limits for quick runs.
-- [ ] Preserve raw sessions/messages in traces.
-- [ ] Add tests with a small fixture matching the real schema.
+- [x] Add clear local dataset instructions.
+- [x] Inspect the real LongMemEval file schema.
+- [x] Adapt `memorycore/benchmarks/longmemeval.py` to that schema.
+- [x] Support subset limits for quick runs.
+- [x] Preserve raw sessions/messages in traces.
+- [x] Add tests with a small fixture matching the real schema.
 
 Do not download datasets automatically inside the runner. Keep `data_path`
 explicit so benchmark data, licenses, and local storage remain under user
@@ -551,14 +552,14 @@ Strengthen scoring before adding heavier retrieval.
 Work:
 
 - [x] Keep existing exact/substring metrics.
-- [ ] Add LongMemEval-specific scoring where answer types require it.
-- [ ] Separate metrics by case type when available:
-  - [ ] extraction
-  - [ ] multi-session reasoning
-  - [ ] temporal reasoning
-  - [ ] knowledge updates
-  - [ ] abstention
-- [ ] Add unsupported/abstention handling where labels support it.
+- [x] Add LongMemEval-specific scoring where answer types require it.
+- [x] Separate metrics by case type when available:
+  - [x] extraction-like single-session types
+  - [x] multi-session reasoning
+  - [x] temporal reasoning
+  - [x] knowledge updates
+  - [x] abstention
+- [x] Add unsupported/abstention handling where labels support it.
 - [ ] Keep LLM-as-judge out of the default path until deterministic scoring is
    understood.
 
@@ -575,10 +576,10 @@ Required baselines:
 - [x] `simple_rag`, smoke fixture.
 - [x] `fact_only`, smoke fixture.
 - [x] `decisions_facts`, smoke fixture.
-- [ ] `recent_context_only`, real LongMemEval subset.
-- [ ] `simple_rag`, real LongMemEval subset.
-- [ ] `fact_only`, real LongMemEval subset.
-- [ ] `decisions_facts`, real LongMemEval subset.
+- [x] `recent_context_only`, real LongMemEval oracle subset.
+- [x] `simple_rag`, real LongMemEval oracle subset.
+- [x] `fact_only`, real LongMemEval oracle subset.
+- [x] `decisions_facts`, real LongMemEval oracle subset.
 
 Target command:
 
@@ -597,7 +598,7 @@ Report must show:
 - [x] Sample memory briefs, smoke fixture.
 - [x] Failure cases, smoke fixture.
 - [x] Trace examples, smoke fixture.
-- [ ] Same report on real LongMemEval subset.
+- [x] Same report on real LongMemEval oracle subset.
 
 The point is to see whether failures come from extraction, recall, scoring, or
 the memory model itself.
@@ -638,11 +639,11 @@ dataset-aware deterministic extraction
 
 Work:
 
-- [ ] Extract facts from benchmark sessions/messages without requiring artificial
+- [x] Extract facts from benchmark sessions/messages without requiring artificial
    `FACT:` prefixes.
-- [ ] Preserve source refs for every extracted fact.
-- [ ] Only create decisions from explicit update/commit-like signals in the data.
-- [ ] Store ambiguous updates as facts or hypotheses, not decisions.
+- [x] Preserve source refs for every extracted fact.
+- [x] Only create decisions from explicit update/commit-like signals in the data.
+- [x] Store ambiguous updates as facts or hypotheses, not decisions.
 
 LLM extraction should be a separate policy later. It should not be mixed into
 the first real benchmark result, because it adds cost, randomness, and another
@@ -683,13 +684,13 @@ Add real LongMemEval subset runner
 
 It should include:
 
-- [ ] Real-schema LongMemEval parser.
-- [ ] Local fixture matching that schema.
-- [ ] Subset-limit config or CLI override.
-- [ ] Benchmark-specific metrics where practical.
-- [ ] Baseline comparison report on the subset.
-- [ ] README command for `data_path`.
-- [ ] Tests and smoke verification.
+- [x] Real-schema LongMemEval parser.
+- [x] Local fixture matching that schema.
+- [x] Subset-limit config or CLI override.
+- [x] Benchmark-specific metrics where practical.
+- [x] Baseline comparison report on the subset.
+- [x] README command for `data_path`.
+- [x] Tests and smoke verification.
 
 ### Next Definition Of Done
 
