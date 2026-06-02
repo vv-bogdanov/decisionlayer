@@ -25,6 +25,20 @@ DEFAULT_SWEEP_CONFIG: dict[str, Any] = {
     "top_k_facts_max": 8,
     "top_k_decisions_min": 1,
     "top_k_decisions_max": 5,
+    "recall_count_weight_min": 0.0,
+    "recall_count_weight_max": 0.2,
+    "keyword_weight_min": 0.5,
+    "keyword_weight_max": 2.0,
+    "recency_weight_min": 0.0,
+    "recency_weight_max": 0.5,
+    "scope_weight_min": 0.0,
+    "scope_weight_max": 1.0,
+    "refs_expansion_depth_min": 0,
+    "refs_expansion_depth_max": 2,
+    "max_memory_brief_tokens_min": 0,
+    "max_memory_brief_tokens_max": 2000,
+    "forgetting_threshold_min": -1,
+    "forgetting_threshold_max": 2,
 }
 
 
@@ -38,9 +52,9 @@ def run_sweep(config: dict[str, Any]) -> dict[str, Any]:
     metric = str(merged["metric"])
     best = max(trials, key=lambda row: float(row.get(metric, 0.0))) if trials else {}
     best_config = dict(merged)
-    for key in ("top_k_facts", "top_k_decisions"):
+    for key in TUNABLES:
         if key in best:
-            best_config[key] = int(best[key])
+            best_config[key] = best[key]
 
     write_sweep_outputs(output_dir, merged, best_config, trials)
     return {"config": merged, "best_config": best_config, "trials": trials}
@@ -71,15 +85,54 @@ def run_optuna(config: dict[str, Any], output_dir: Path) -> list[dict[str, Any]]
             int(config["top_k_decisions_min"]),
             int(config["top_k_decisions_max"]),
         )
-        result = run_trial(config, output_dir, len(trials), top_k_facts, top_k_decisions)
-        row = {
-            "trial": len(trials),
+        params = {
             "top_k_facts": top_k_facts,
             "top_k_decisions": top_k_decisions,
+            "recall_count_weight": trial.suggest_float(
+                "recall_count_weight",
+                float(config["recall_count_weight_min"]),
+                float(config["recall_count_weight_max"]),
+            ),
+            "keyword_weight": trial.suggest_float(
+                "keyword_weight",
+                float(config["keyword_weight_min"]),
+                float(config["keyword_weight_max"]),
+            ),
+            "recency_weight": trial.suggest_float(
+                "recency_weight",
+                float(config["recency_weight_min"]),
+                float(config["recency_weight_max"]),
+            ),
+            "scope_weight": trial.suggest_float(
+                "scope_weight",
+                float(config["scope_weight_min"]),
+                float(config["scope_weight_max"]),
+            ),
+            "refs_expansion_depth": trial.suggest_int(
+                "refs_expansion_depth",
+                int(config["refs_expansion_depth_min"]),
+                int(config["refs_expansion_depth_max"]),
+            ),
+            "max_memory_brief_tokens": trial.suggest_int(
+                "max_memory_brief_tokens",
+                int(config["max_memory_brief_tokens_min"]),
+                int(config["max_memory_brief_tokens_max"]),
+            ),
+            "forgetting_threshold": trial.suggest_int(
+                "forgetting_threshold",
+                int(config["forgetting_threshold_min"]),
+                int(config["forgetting_threshold_max"]),
+            ),
+        }
+        result = run_trial(config, output_dir, len(trials), params)
+        row = {
+            "trial": len(trials),
+            **params,
             **result["metrics"],
         }
+        row["quality_score"] = quality_score(result["metrics"])
         trials.append(row)
-        return float(result["metrics"].get(metric, 0.0))
+        return float(row.get(metric, result["metrics"].get(metric, 0.0)))
 
     sampler = optuna.samplers.TPESampler(seed=0)
     study = optuna.create_study(direction="maximize", sampler=sampler)
@@ -100,13 +153,24 @@ def run_grid(config: dict[str, Any], output_dir: Path) -> list[dict[str, Any]]:
         int(config["n_trials"]),
     )
     for top_k_facts, top_k_decisions in list(product(fact_values, decision_values))[: int(config["n_trials"])]:
-        result = run_trial(config, output_dir, len(trials), top_k_facts, top_k_decisions)
+        params = {
+            "top_k_facts": top_k_facts,
+            "top_k_decisions": top_k_decisions,
+            "recall_count_weight": float(config["recall_count_weight_min"]),
+            "keyword_weight": float(config["keyword_weight_min"]),
+            "recency_weight": float(config["recency_weight_min"]),
+            "scope_weight": float(config["scope_weight_min"]),
+            "refs_expansion_depth": int(config["refs_expansion_depth_min"]),
+            "max_memory_brief_tokens": int(config["max_memory_brief_tokens_min"]),
+            "forgetting_threshold": int(config["forgetting_threshold_min"]),
+        }
+        result = run_trial(config, output_dir, len(trials), params)
         trials.append(
             {
                 "trial": len(trials),
-                "top_k_facts": top_k_facts,
-                "top_k_decisions": top_k_decisions,
+                **params,
                 **result["metrics"],
+                "quality_score": quality_score(result["metrics"]),
             }
         )
     return trials
@@ -123,8 +187,7 @@ def run_trial(
     config: dict[str, Any],
     output_dir: Path,
     trial_number: int,
-    top_k_facts: int,
-    top_k_decisions: int,
+    params: dict[str, Any],
 ) -> dict[str, Any]:
     experiment_config = {
         key: value
@@ -133,12 +196,32 @@ def run_trial(
     }
     experiment_config.update(
         {
-            "top_k_facts": top_k_facts,
-            "top_k_decisions": top_k_decisions,
+            **params,
             "output_dir": str(output_dir / f"trial_{trial_number:03d}"),
         }
     )
     return run_experiment(experiment_config)
+
+
+TUNABLES = (
+    "top_k_facts",
+    "top_k_decisions",
+    "recall_count_weight",
+    "keyword_weight",
+    "recency_weight",
+    "scope_weight",
+    "refs_expansion_depth",
+    "max_memory_brief_tokens",
+    "forgetting_threshold",
+)
+
+
+def quality_score(metrics: dict[str, Any]) -> float:
+    accuracy = float(metrics.get("accuracy", 0.0))
+    traceability = float(metrics.get("source_traceability", 0.0))
+    brief_tokens = float(metrics.get("memory_brief_tokens", 0.0))
+    token_penalty = min(brief_tokens / 4000.0, 1.0) * 0.1
+    return round(accuracy + 0.1 * traceability - token_penalty, 6)
 
 
 def write_sweep_outputs(
@@ -204,12 +287,19 @@ def render_sweep_report(
         "",
         "## Trials",
         "",
-        "| trial | top_k_facts | top_k_decisions | metric |",
-        "| ---: | ---: | ---: | ---: |",
+        "| trial | top_k_facts | top_k_decisions | refs_depth | metric | quality_score |",
+        "| ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for row in trials:
         lines.append(
-            f"| {row['trial']} | {row['top_k_facts']} | {row['top_k_decisions']} | {row.get(metric, 0.0)} |"
+            "| {trial} | {top_k_facts} | {top_k_decisions} | {refs_expansion_depth} | {metric} | {quality_score} |".format(
+                trial=row["trial"],
+                top_k_facts=row["top_k_facts"],
+                top_k_decisions=row["top_k_decisions"],
+                refs_expansion_depth=row["refs_expansion_depth"],
+                metric=row.get(metric, 0.0),
+                quality_score=row.get("quality_score", 0.0),
+            )
         )
     return "\n".join(lines) + "\n"
 
@@ -222,4 +312,3 @@ def main(argv: list[str] | None = None) -> None:
 
 if __name__ == "__main__":
     main()
-

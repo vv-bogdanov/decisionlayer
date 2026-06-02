@@ -25,19 +25,49 @@ class BaselineRunner:
         extractor_policy: str = "rule_based",
         top_k_decisions: int = 5,
         top_k_facts: int = 5,
+        include_refs: bool = False,
+        refs_expansion_depth: int = 0,
+        refs_expansion_limit: int = 10,
+        max_memory_brief_tokens: int | None = None,
+        forgetting_threshold: int | None = None,
+        recall_count_weight: float = 0.05,
+        keyword_weight: float = 1.0,
+        recency_weight: float = 0.0,
+        scope_weight: float = 0.25,
     ) -> None:
         self.extractor = get_extractor(extractor_policy)
         self.top_k_decisions = top_k_decisions
         self.top_k_facts = top_k_facts
+        self.include_refs = include_refs
+        self.refs_expansion_depth = refs_expansion_depth
+        self.refs_expansion_limit = refs_expansion_limit
+        self.max_memory_brief_tokens = max_memory_brief_tokens
+        self.forgetting_threshold = forgetting_threshold
+        self.recall_count_weight = recall_count_weight
+        self.keyword_weight = keyword_weight
+        self.recency_weight = recency_weight
+        self.scope_weight = scope_weight
 
     def run(self, example: BenchmarkExample) -> BaselineResult:
-        runtime = MemoryRuntime(recall_policy=self.recall_policy)
+        runtime = MemoryRuntime(
+            recall_policy=self.recall_policy,
+            recall_count_weight=self.recall_count_weight,
+            keyword_weight=self.keyword_weight,
+            recency_weight=self.recency_weight,
+            scope_weight=self.scope_weight,
+        )
         self.ingest(example, runtime)
+        if self.forgetting_threshold is not None:
+            runtime.forget_facts(threshold=self.forgetting_threshold)
         brief = runtime.recall(
             example.question,
             scope=example.scope,
             top_k_decisions=self.top_k_decisions,
             top_k_facts=self.top_k_facts,
+            include_refs=self.include_refs,
+            refs_expansion_depth=self.refs_expansion_depth,
+            refs_expansion_limit=self.refs_expansion_limit,
+            max_memory_brief_tokens=self.max_memory_brief_tokens,
         )
         answer = synthesize_answer(example.question, brief)
         return BaselineResult(answer=answer, brief=brief, trace=brief.trace.to_dict() if brief.trace else None)
@@ -96,6 +126,21 @@ class SimpleRagRunner(BaselineRunner):
     recall_policy = "keyword"
 
 
+class BM25Runner(BaselineRunner):
+    name = "bm25"
+    recall_policy = "bm25"
+
+
+class TfIdfRunner(BaselineRunner):
+    name = "tfidf"
+    recall_policy = "tfidf"
+
+
+class HybridRunner(BaselineRunner):
+    name = "hybrid"
+    recall_policy = "hybrid"
+
+
 class FactOnlyRunner(BaselineRunner):
     name = "fact_only"
     recall_policy = "keyword"
@@ -123,10 +168,20 @@ class DecisionsFactsRefsRunner(BaselineRunner):
     name = "decisions_plus_facts_plus_refs"
     recall_policy = "decision_first"
 
+    def __init__(self, **kwargs: object) -> None:
+        kwargs.setdefault("include_refs", True)
+        kwargs.setdefault("refs_expansion_depth", 1)
+        super().__init__(**kwargs)
+
 
 class DecisionsFactsRecallCountRunner(BaselineRunner):
     name = "decisions_plus_facts_plus_refs_plus_recall_count"
     recall_policy = "decision_first_with_recall_count"
+
+    def __init__(self, **kwargs: object) -> None:
+        kwargs.setdefault("include_refs", True)
+        kwargs.setdefault("refs_expansion_depth", 1)
+        super().__init__(**kwargs)
 
 
 RUNNERS: dict[str, type[BaselineRunner]] = {
@@ -140,6 +195,9 @@ RUNNERS: dict[str, type[BaselineRunner]] = {
     "decisions_plus_facts": DecisionsFactsRunner,
     "decisions_plus_facts_plus_refs": DecisionsFactsRefsRunner,
     "decisions_plus_facts_plus_refs_plus_recall_count": DecisionsFactsRecallCountRunner,
+    "bm25": BM25Runner,
+    "tfidf": TfIdfRunner,
+    "hybrid": HybridRunner,
 }
 
 

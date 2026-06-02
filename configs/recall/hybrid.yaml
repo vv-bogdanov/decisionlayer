@@ -1,0 +1,5 @@
+recall: hybrid
+top_k_decisions: 5
+top_k_facts: 5
+refs_expansion_depth: 1
+

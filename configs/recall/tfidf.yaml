@@ -1,0 +1,4 @@
+recall: tfidf
+top_k_decisions: 5
+top_k_facts: 5
+

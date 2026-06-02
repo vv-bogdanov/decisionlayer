@@ -5,4 +5,17 @@ top_k_facts_min: 1
 top_k_facts_max: 8
 top_k_decisions_min: 1
 top_k_decisions_max: 5
-
+recall_count_weight_min: 0.0
+recall_count_weight_max: 0.2
+keyword_weight_min: 0.5
+keyword_weight_max: 2.0
+recency_weight_min: 0.0
+recency_weight_max: 0.5
+scope_weight_min: 0.0
+scope_weight_max: 1.0
+refs_expansion_depth_min: 0
+refs_expansion_depth_max: 2
+max_memory_brief_tokens_min: 0
+max_memory_brief_tokens_max: 2000
+forgetting_threshold_min: -1
+forgetting_threshold_max: 2

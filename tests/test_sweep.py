@@ -19,6 +19,8 @@ def test_sweep_writes_expected_outputs(tmp_path: Path) -> None:
     )
 
     assert len(result["trials"]) == 2
+    assert "recall_count_weight" in result["trials"][0]
+    assert "quality_score" in result["trials"][0]
     assert (tmp_path / "best_config.yaml").exists()
     assert (tmp_path / "trials.csv").exists()
     assert (tmp_path / "sweep_report.md").exists()

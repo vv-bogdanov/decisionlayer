@@ -49,6 +49,12 @@ Run the first real LongMemEval oracle baseline comparison:
 uv run python -m memorycore.experiments.run_experiment benchmark=longmemeval data_path=/path/to/longmemeval_oracle.json compare_memories=recent_context_only,simple_rag,fact_only,decisions_facts limit=25 output_dir=reports/longmemeval_oracle_baselines
 ```
 
+Compare retrieval policies on the same subset:
+
+```bash
+uv run python -m memorycore.experiments.run_experiment benchmark=longmemeval data_path=/path/to/longmemeval_oracle.json compare_memories=simple_rag,bm25,tfidf,hybrid,decisions_facts limit=25 output_dir=reports/longmemeval_retrieval_compare
+```
+
 Run a sweep:
 
 ```bash

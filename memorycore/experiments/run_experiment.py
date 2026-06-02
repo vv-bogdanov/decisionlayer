@@ -22,6 +22,14 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "top_k_facts": 5,
     "limit": None,
     "offset": 0,
+    "recall_count_weight": 0.05,
+    "keyword_weight": 1.0,
+    "recency_weight": 0.0,
+    "scope_weight": 0.25,
+    "refs_expansion_depth": 0,
+    "refs_expansion_limit": 10,
+    "max_memory_brief_tokens": None,
+    "forgetting_threshold": None,
     "output_dir": "reports/latest",
 }
 
@@ -90,6 +98,15 @@ def run_single(merged: dict[str, Any], memory: str) -> dict[str, Any]:
         extractor_policy=str(merged["extractor_policy"]),
         top_k_decisions=int(merged["top_k_decisions"]),
         top_k_facts=int(merged["top_k_facts"]),
+        include_refs=int(merged.get("refs_expansion_depth") or 0) > 0,
+        refs_expansion_depth=int(merged.get("refs_expansion_depth") or 0),
+        refs_expansion_limit=int(merged.get("refs_expansion_limit") or 10),
+        max_memory_brief_tokens=optional_int(merged.get("max_memory_brief_tokens")),
+        forgetting_threshold=optional_int(merged.get("forgetting_threshold")),
+        recall_count_weight=float(merged.get("recall_count_weight") or 0.0),
+        keyword_weight=float(merged.get("keyword_weight") or 0.0),
+        recency_weight=float(merged.get("recency_weight") or 0.0),
+        scope_weight=float(merged.get("scope_weight") or 0.0),
     )
     if merged.get("recall"):
         runner.recall_policy = str(merged["recall"])
