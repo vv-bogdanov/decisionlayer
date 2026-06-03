@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+data_root="${1:-data/longmemeval-v2}"
+base_url="https://huggingface.co/datasets/xiaowu0162/longmemeval-v2/resolve/main"
+
+mkdir -p "$data_root/haystacks"
+
+download() {
+  local source_path="$1"
+  local target_path="$2"
+  local target_dir
+  target_dir="$(dirname "$target_path")"
+  mkdir -p "$target_dir"
+
+  if [[ -s "$target_path" ]]; then
+    printf 'exists %s\n' "$target_path"
+    return
+  fi
+
+  printf 'download %s\n' "$target_path"
+  curl \
+    --fail \
+    --location \
+    --retry 5 \
+    --retry-delay 2 \
+    --continue-at - \
+    --output "$target_path.tmp" \
+    "$base_url/$source_path"
+  mv "$target_path.tmp" "$target_path"
+}
+
+download "questions.jsonl" "$data_root/questions.jsonl"
+download "haystacks/lme_v2_small.json" "$data_root/haystacks/lme_v2_small.json"
+download "haystacks/lme_v2_medium.json" "$data_root/haystacks/lme_v2_medium.json"
+download "trajectories.jsonl" "$data_root/trajectories.jsonl"
+
+sha256sum \
+  "$data_root/questions.jsonl" \
+  "$data_root/haystacks/lme_v2_small.json" \
+  "$data_root/haystacks/lme_v2_medium.json" \
+  "$data_root/trajectories.jsonl" \
+  >"$data_root/SHA256SUMS"
+
+printf 'ready %s\n' "$data_root"

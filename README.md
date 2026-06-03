@@ -35,6 +35,14 @@ uv run decision-layer run-suite \
   --oracle-decisions tests/fixtures/longmemeval_v2/oracle_decisions.json
 ```
 
+## Dataset
+
+Prepare the text-only LongMemEval-V2 files outside the runner:
+
+```bash
+scripts/prepare-longmemeval-v2 data/longmemeval-v2
+```
+
 ## Local Reader
 
 Use an OpenAI-compatible local reader such as llama.cpp router:

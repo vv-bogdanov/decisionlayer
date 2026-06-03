@@ -120,17 +120,17 @@ Interpretation:
 
 - [x] Locate the official LongMemEval-V2 repository, dataset, and runner.
 - [x] Confirm license and dataset accessibility.
-- [ ] Download or prepare the dataset outside the runner.
+- [x] Download or prepare the dataset outside the runner.
 - [x] Inspect schema and task categories.
 - [ ] Select a small reproducible subset.
 - [x] Save dataset path, row count, subset IDs, and hash in a manifest.
 
 ### 2. Baseline Run: D0
 
-- [ ] Implement the simplest compatible benchmark adapter.
+- [x] Implement the simplest compatible benchmark adapter.
 - [ ] Run baseline on the selected subset.
-- [ ] Save predictions, metrics, trace logs, and report.
-- [ ] Record prompt tokens, latency, and score.
+- [x] Save predictions, metrics, trace logs, and report.
+- [x] Record prompt tokens, latency, and score.
 
 ### 3. Oracle Decision Layer: D1
 
