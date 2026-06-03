@@ -1,7 +1,9 @@
+import json
 from pathlib import Path
 
 import pytest
 
+import memorycore.experiments.run_experiment as run_experiment_module
 from memorycore.benchmarks import get_benchmark
 from memorycore.benchmarks.memoryagentbench import (
     record_to_memoryagentbench_examples,
@@ -27,6 +29,17 @@ class ArrayLike:
 
     def tolist(self) -> list[str]:
         return self.values
+
+
+class FakeJudgeResponse:
+    def __enter__(self) -> "FakeJudgeResponse":
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return b'{"output":[{"content":[{"text":"correct"}]}]}'
 
 
 def test_toy_benchmark_loads_examples() -> None:
@@ -93,6 +106,37 @@ def test_llm_judge_is_behind_explicit_config(monkeypatch: pytest.MonkeyPatch, tm
                 "output_dir": str(tmp_path),
             }
         )
+
+
+def test_llama_cpp_judge_uses_local_responses_api_without_api_key(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_urlopen(request: object, timeout: int) -> FakeJudgeResponse:
+        del timeout
+        captured["url"] = request.full_url
+        captured["headers"] = dict(request.header_items())
+        captured["payload"] = json.loads(request.data.decode("utf-8"))
+        return FakeJudgeResponse()
+
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setattr(run_experiment_module, "urlopen", fake_urlopen)
+
+    result = run_experiment(
+        {
+            "benchmark": "toy",
+            "memory": "decisions_facts",
+            "judge_policy": "llama_cpp",
+            "output_dir": str(tmp_path),
+        }
+    )
+
+    assert result["metrics"]["judge_score"] == 1.0
+    assert captured["url"] == "http://127.0.0.1:18080/v1/responses"
+    assert captured["payload"]["model"] == "qwen36-35b-a3b-udiq3s"
+    assert "Authorization" not in captured["headers"]
 
 
 def test_longmemeval_real_schema_fixture_parses_and_windows() -> None:

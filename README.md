@@ -113,11 +113,18 @@ Cost estimates are disabled by default. Pass token prices explicitly when needed
 uv run python -m memorycore.experiments.run_experiment benchmark=toy memory=decisions_facts input_cost_per_1k=0.15 output_cost_per_1k=0.60
 ```
 
-LLM judging is also disabled by default. Enable it only when `OPENAI_API_KEY` is
-available:
+LLM judging is also disabled by default. Enable OpenAI judging only when
+`OPENAI_API_KEY` is available:
 
 ```bash
 uv run python -m memorycore.experiments.run_experiment benchmark=toy memory=decisions_facts judge_policy=llm judge_model=gpt-4o-mini
+```
+
+On this workstation, local llama.cpp judging is available through the
+OpenAI-compatible router at `http://127.0.0.1:18080/v1/responses`:
+
+```bash
+uv run python -m memorycore.experiments.run_experiment benchmark=toy memory=decisions_facts judge_policy=llama_cpp
 ```
 
 LLM extraction is also opt-in and uses the same API key. Safety checks still

@@ -46,6 +46,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "output_dir": "reports/latest",
 }
 
+LOCAL_LLAMA_JUDGE_MODEL = "qwen36-35b-a3b-udiq3s"
+LOCAL_LLAMA_JUDGE_URL = "http://127.0.0.1:18080/v1/responses"
+
 
 def run_experiment(config: dict[str, Any]) -> dict[str, Any]:
     merged = dict(DEFAULT_CONFIG)
@@ -284,18 +287,25 @@ def apply_judge(predictions: list[dict[str, Any]], config: dict[str, Any]) -> No
     policy = str(config.get("judge_policy") or "none")
     if policy == "none":
         return
-    if policy != "llm":
+    if policy not in {"llm", "llama_cpp"}:
         raise ValueError(f"unknown judge_policy: {policy}")
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
+    api_key = os.environ.get("OPENAI_API_KEY") if policy == "llm" else None
+    if policy == "llm" and not api_key:
         raise RuntimeError("judge_policy=llm requires OPENAI_API_KEY")
+    model = str(config["judge_model"])
+    url = str(config["judge_url"])
+    if policy == "llama_cpp":
+        if model == str(DEFAULT_CONFIG["judge_model"]):
+            model = LOCAL_LLAMA_JUDGE_MODEL
+        if url == str(DEFAULT_CONFIG["judge_url"]):
+            url = LOCAL_LLAMA_JUDGE_URL
     for prediction in predictions:
         label = llm_judge_prediction(
             question=str(prediction["question"]),
             expected=str(prediction["expected_answer"]),
             prediction=str(prediction["prediction"]),
-            model=str(config["judge_model"]),
-            url=str(config["judge_url"]),
+            model=model,
+            url=url,
             api_key=api_key,
         )
         prediction["judge_label"] = label
@@ -311,7 +321,7 @@ def llm_judge_prediction(
     prediction: str,
     model: str,
     url: str,
-    api_key: str,
+    api_key: str | None,
 ) -> str:
     prompt = (
         "Judge whether the prediction answers the question with the same meaning as the expected answer. "
@@ -319,15 +329,10 @@ def llm_judge_prediction(
         f"Question: {question}\nExpected: {expected}\nPrediction: {prediction}"
     )
     payload = json.dumps({"model": model, "input": prompt}).encode("utf-8")
-    request = Request(
-        url,
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    request = Request(url, data=payload, headers=headers, method="POST")
     with urlopen(request, timeout=60) as response:
         data = json.loads(response.read().decode("utf-8"))
     output_text = extract_response_text(data).lower()
