@@ -165,6 +165,14 @@ def structured_workflow_texts(text: str) -> tuple[str, ...]:
             "the least-available item; no approvals, procurement, request-management, "
             "or stockroom modules are required."
         )
+    if "requested an item" in lowered and (
+        "order the same" in lowered or "existing request" in lowered
+    ):
+        decisions.append(
+            "For ordering the same item a user recently requested, use Self-Service > "
+            "Requested Items to inspect the existing request, then Self-Service > "
+            "Service Catalog to order the item."
+        )
     if (
         ("allocate investments" in lowered or "maximizing total investment return" in lowered)
         and ("maximize returns" in lowered or "maximizing" in lowered)

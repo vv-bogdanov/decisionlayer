@@ -1,68 +1,27 @@
 {
-  "01307e07": [
-    "To locate an incident-related performance report, use the All filter, type reports, open View/Run, then locate the relevant report."
-  ],
   "025db8ef": [
     "For rebalancing workload between agents by problem tag, use Reports first, then Problems."
   ],
   "07ffeedf": [
-    "For extra device item requests for agents selected from incident-report criteria, use Open Records > Items (Item Requests).",
-    "For dashboard-based restocking of low-stock items, use Reports > View/Run to locate the stock report, then Self-Service > Service Catalog to order the least-available item; no approvals, procurement, request-management, or stockroom modules are required.",
-    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused.",
-    "For rebalancing workload between agents by problem tag, use Reports first, then Problems."
+    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
   ],
   "0b50ca0d": [
-    "For extra device item requests for agents selected from incident-report criteria, use Open Records > Items (Item Requests).",
-    "For dashboard-based restocking of low-stock items, use Reports > View/Run to locate the stock report, then Self-Service > Service Catalog to order the least-available item; no approvals, procurement, request-management, or stockroom modules are required.",
-    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused.",
-    "For rebalancing workload between agents by problem tag, use Reports first, then Problems."
-  ],
-  "0f970f01": [
-    "For dashboard-based restocking of low-stock items, use Reports > View/Run to locate the stock report, then Self-Service > Service Catalog to order the least-available item; no approvals, procurement, request-management, or stockroom modules are required."
+    "For extra device item requests for agents selected from incident-report criteria, use Open Records > Items (Item Requests)."
   ],
   "100ff132": [
-    "To locate an incident-related performance report, use the All filter, type reports, open View/Run, then locate the relevant report.",
-    "For extra device item requests for agents selected from incident-report criteria, use Open Records > Items (Item Requests).",
-    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused.",
-    "For rebalancing workload between agents by problem tag, use Reports first, then Problems."
+    "To locate an incident-related performance report, use the All filter, type reports, open View/Run, then locate the relevant report."
   ],
   "106c321b": [
     "When multiple possible answers exist for mode or most frequent value, consider the highest value."
   ],
-  "14a823df": [
-    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
-  ],
-  "19367bc7": [
-    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
-  ],
   "1bfd2eac": [
-    "For dashboard-based restocking of low-stock items, use Reports > View/Run to locate the stock report, then Self-Service > Service Catalog to order the least-available item; no approvals, procurement, request-management, or stockroom modules are required.",
-    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
-  ],
-  "233f9f09": [
-    "For dashboard-based restocking of low-stock items, use Reports > View/Run to locate the stock report, then Self-Service > Service Catalog to order the least-available item; no approvals, procurement, request-management, or stockroom modules are required."
-  ],
-  "237d2cc5": [
     "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
   ],
   "25b00876": [
     "For allocating investments to maximize returns, use Cost > Expense Lines; returns are in Short description; set selected lines to Closed Complete before Update."
   ],
-  "2d4e08b9": [
-    "For offboarding a user, unassign all hardware assets by clearing Assigned to, then delete the user profile and close the task complete.",
-    "For dashboard-based restocking of low-stock items, use Reports > View/Run to locate the stock report, then Self-Service > Service Catalog to order the least-available item; no approvals, procurement, request-management, or stockroom modules are required."
-  ],
   "32909aa1": [
     "For rebalancing workload between agents by problem tag, use Reports first, then Problems."
-  ],
-  "38726e61": [
-    "To locate an incident-related performance report, use the All filter, type reports, open View/Run, then locate the relevant report.",
-    "For extra device item requests for agents selected from incident-report criteria, use Open Records > Items (Item Requests).",
-    "For dashboard-based restocking of low-stock items, use Reports > View/Run to locate the stock report, then Self-Service > Service Catalog to order the least-available item; no approvals, procurement, request-management, or stockroom modules are required.",
-    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
-  ],
-  "3a131a42": [
-    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
   ],
   "3a2e9368": [
     "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
@@ -87,13 +46,9 @@
   "52dd33bb": [
     "For allocating investments to maximize returns, use Cost > Expense Lines; returns are in Short description; set selected lines to Closed Complete before Update."
   ],
-  "58c34839": [
-    "For offboarding a user, unassign all hardware assets by clearing Assigned to, then delete the user profile and close the task complete."
-  ],
   "5edd2533": [
     "If multiple items share the minimum value, select one.",
-    "If multiple items share the maximum value, select one.",
-    "For dashboard-based restocking of low-stock items, use Reports > View/Run to locate the stock report, then Self-Service > Service Catalog to order the least-available item; no approvals, procurement, request-management, or stockroom modules are required."
+    "If multiple items share the maximum value, select one."
   ],
   "5f100f22": [
     "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
@@ -101,11 +56,7 @@
   "616c238d": [
     "For rebalancing workload between agents by problem tag, use Reports first, then Problems."
   ],
-  "658fa827": [
-    "For dashboard-based restocking of low-stock items, use Reports > View/Run to locate the stock report, then Self-Service > Service Catalog to order the least-available item; no approvals, procurement, request-management, or stockroom modules are required."
-  ],
   "679111c6": [
-    "For offboarding a user, unassign all hardware assets by clearing Assigned to, then delete the user profile and close the task complete.",
     "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
   ],
   "6cb8ce37": [
@@ -120,16 +71,8 @@
   "75816b26": [
     "For offboarding a user, unassign all hardware assets by clearing Assigned to, then delete the user profile and close the task complete."
   ],
-  "7a07e9a0": [
-    "For extra device item requests for agents selected from incident-report criteria, use Open Records > Items (Item Requests).",
-    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
-  ],
   "7e32e4a2": [
-    "For dashboard-based restocking of low-stock items, use Reports > View/Run to locate the stock report, then Self-Service > Service Catalog to order the least-available item; no approvals, procurement, request-management, or stockroom modules are required.",
     "Do not change any other configuration while placing the order."
-  ],
-  "82cdfcc3": [
-    "For extra device item requests for agents selected from incident-report criteria, use Open Records > Items (Item Requests)."
   ],
   "83c35034": [
     "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
@@ -138,61 +81,28 @@
     "When multiple possible answers exist for mode or most frequent value, consider the highest value."
   ],
   "882965b7": [
-    "To locate an incident-related performance report, use the All filter, type reports, open View/Run, then locate the relevant report.",
-    "For extra device item requests for agents selected from incident-report criteria, use Open Records > Items (Item Requests).",
-    "For dashboard-based restocking of low-stock items, use Reports > View/Run to locate the stock report, then Self-Service > Service Catalog to order the least-available item; no approvals, procurement, request-management, or stockroom modules are required.",
     "Do not change any other configuration while placing the order."
   ],
-  "89439d62": [
-    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
-  ],
-  "927c65a2": [
-    "For offboarding a user, unassign all hardware assets by clearing Assigned to, then delete the user profile and close the task complete.",
-    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
-  ],
-  "95ae824f": [
-    "For offboarding a user, unassign all hardware assets by clearing Assigned to, then delete the user profile and close the task complete.",
-    "For extra device item requests for agents selected from incident-report criteria, use Open Records > Items (Item Requests).",
-    "For dashboard-based restocking of low-stock items, use Reports > View/Run to locate the stock report, then Self-Service > Service Catalog to order the least-available item; no approvals, procurement, request-management, or stockroom modules are required."
-  ],
   "9c24f41e": [
-    "For offboarding a user, unassign all hardware assets by clearing Assigned to, then delete the user profile and close the task complete.",
-    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused.",
     "For rebalancing workload between agents by problem tag, use Reports first, then Problems."
-  ],
-  "9e05978c": [
-    "For allocating investments to maximize returns, use Cost > Expense Lines; returns are in Short description; set selected lines to Closed Complete before Update."
   ],
   "a3a7b079": [
     "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
   ],
-  "a444cec8": [
-    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
-  ],
   "a482c0d9": [
-    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
-  ],
-  "a7edfb7a": [
     "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
   ],
   "aa4a4b7b": [
     "When multiple possible answers exist for mode or most frequent value, consider the highest value."
   ],
   "aca57021": [
-    "For dashboard-based restocking of low-stock items, use Reports > View/Run to locate the stock report, then Self-Service > Service Catalog to order the least-available item; no approvals, procurement, request-management, or stockroom modules are required."
-  ],
-  "adddeaa5": [
-    "To locate an incident-related performance report, use the All filter, type reports, open View/Run, then locate the relevant report.",
-    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
+    "For ordering the same item a user recently requested, use Self-Service > Requested Items to inspect the existing request, then Self-Service > Service Catalog to order the item."
   ],
   "aedd338d": [
     "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
   ],
-  "b54161f8": [
-    "For dashboard-based restocking of low-stock items, use Reports > View/Run to locate the stock report, then Self-Service > Service Catalog to order the least-available item; no approvals, procurement, request-management, or stockroom modules are required."
-  ],
   "b7cc4da2": [
-    "For dashboard-based restocking of low-stock items, use Reports > View/Run to locate the stock report, then Self-Service > Service Catalog to order the least-available item; no approvals, procurement, request-management, or stockroom modules are required."
+    "For ordering the same item a user recently requested, use Self-Service > Requested Items to inspect the existing request, then Self-Service > Service Catalog to order the item."
   ],
   "bfb3bcc4": [
     "For offboarding a user, unassign all hardware assets by clearing Assigned to, then delete the user profile and close the task complete."
@@ -202,15 +112,6 @@
   ],
   "c9c6a06a": [
     "When multiple possible answers exist for mode or most frequent value, consider the highest value."
-  ],
-  "ccf29914": [
-    "For allocating investments to maximize returns, use Cost > Expense Lines; returns are in Short description; set selected lines to Closed Complete before Update."
-  ],
-  "d3d7ec75": [
-    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
-  ],
-  "d63e8a7f": [
-    "For offboarding a user, unassign all hardware assets by clearing Assigned to, then delete the user profile and close the task complete."
   ],
   "e334d5c6": [
     "For allocating investments to maximize returns, use Cost > Expense Lines; returns are in Short description; set selected lines to Closed Complete before Update."
@@ -222,12 +123,6 @@
     "For dashboard-based restocking of low-stock items, use Reports > View/Run to locate the stock report, then Self-Service > Service Catalog to order the least-available item; no approvals, procurement, request-management, or stockroom modules are required."
   ],
   "f0882f6e": [
-    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
-  ],
-  "f1d8a168": [
-    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
-  ],
-  "f35bac4a": [
     "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
   ],
   "ff311d07": [

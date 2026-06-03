@@ -445,9 +445,28 @@ def rank_decision_texts(decision_texts: list[str], question_text: str) -> tuple[
 def oracle_decision_relevant_to_question(decision_text: str, question_text: str) -> bool:
     if decision_relevant_to_question(decision_text, question_text):
         return True
+    if has_special_decision_relevance(decision_text):
+        return False
     return (
         len(keyword_terms(decision_text) & keyword_terms(retrieval_question_text(question_text)))
         >= 3
+    )
+
+
+def has_special_decision_relevance(decision_text: str) -> bool:
+    decision = decision_text.lower()
+    return any(
+        marker in decision
+        for marker in (
+            "extra device item request",
+            "rebalancing workload",
+            "incident-related performance report",
+            "dashboard-based restocking",
+            "ordering the same item a user recently requested",
+            "allocating investments to maximize returns",
+            "offboarding a user",
+            "problem requests created from incident-report results",
+        )
     )
 
 
@@ -645,6 +664,13 @@ def decision_relevant_to_question(decision_text: str, question_text: str) -> boo
             ("restock" in question or ("low" in question and "quantity" in question))
             and ("item" in question or "items" in question)
             and ("module" in question or "workflow" in question or "application" in question)
+        )
+    if "ordering the same item a user recently requested" in decision:
+        return (
+            "order" in question
+            and "item" in question
+            and "requested" in question
+            and ("module" in question or "application" in question)
         )
     if "allocating investments to maximize returns" in decision:
         return (

@@ -146,6 +146,18 @@ def test_structured_workflow_extraction_for_user_offboarding() -> None:
     )
 
 
+def test_structured_workflow_extraction_for_requested_item_reorder() -> None:
+    assert extract(
+        "Tiffany-Angela Coleman-Lee has recently requested an item. You need to order "
+        "the same. Find what it is from the existing request and order it."
+    ) == (
+        "add",
+        "For ordering the same item a user recently requested, use Self-Service > "
+        "Requested Items to inspect the existing request, then Self-Service > "
+        "Service Catalog to order the item.",
+    )
+
+
 def test_state_supported_workflow_extraction_for_problem_requests() -> None:
     texts = state_supported_workflow_texts(
         (

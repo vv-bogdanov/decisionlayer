@@ -89,6 +89,15 @@ def test_decision_relevance_rejects_neighboring_workflows() -> None:
         "What shared application or module family is used by workload balancing and "
         "restocking items that are low in quantity?"
     )
+    requested_item_decision = (
+        "For ordering the same item a user recently requested, use Self-Service > "
+        "Requested Items to inspect the existing request, then Self-Service > "
+        "Service Catalog to order the item."
+    )
+    requested_item_question = (
+        "My boss asked me to order the item Eric requested. What is the application "
+        "and the two modules in it that I have to use in order?"
+    )
 
     assert decision_relevant_to_question(item_request_decision, item_request_question)
     assert not decision_relevant_to_question(item_request_decision, problem_request_question)
@@ -100,6 +109,8 @@ def test_decision_relevance_rejects_neighboring_workflows() -> None:
     assert not decision_relevant_to_question(offboarding_decision, investment_question)
     assert decision_relevant_to_question(restocking_decision, restocking_question)
     assert not decision_relevant_to_question(restocking_decision, investment_question)
+    assert decision_relevant_to_question(requested_item_decision, requested_item_question)
+    assert not decision_relevant_to_question(requested_item_decision, item_request_question)
     assert decision_relevant_to_question(
         (
             "For problem requests created from incident-report results, use Impact, Urgency, "
@@ -287,6 +298,21 @@ def test_oracle_decision_relevance_allows_compact_overlap() -> None:
     assert oracle_decision_relevant_to_question(
         "Use Guest checkout as the default checkout option.",
         "Which checkout option is the default?",
+    )
+
+
+def test_oracle_decision_relevance_does_not_fallback_for_special_routes() -> None:
+    assert not oracle_decision_relevant_to_question(
+        (
+            "For dashboard-based restocking of low-stock items, use Reports > View/Run "
+            "to locate the stock report, then Self-Service > Service Catalog to order "
+            "the least-available item; no approvals, procurement, request-management, "
+            "or stockroom modules are required."
+        ),
+        (
+            "My boss asked me to order the item Eric requested. What is the application "
+            "and the two modules in it that I have to use in order?"
+        ),
     )
 
 
