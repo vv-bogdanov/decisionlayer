@@ -37,16 +37,19 @@ plain environment facts, UI state, answer keys, or transient observations.
   while the benchmark is still running.
 - [x] Keep resume/cache as the default behavior; keep `OVERWRITE=1` /
   `--no-resume` as the explicit clean-rerun path.
-- [ ] Prepare a cheap blind D1 labeling input that hides final `question`,
+- [x] Prepare a cheap blind D1 labeling input that hides final `question`,
   `answer`, and `eval_function`.
-- [ ] Run subagent draft labeling in small chunks with low/medium reasoning.
-- [ ] Extract only commitment-like statements from trajectories: decisions,
+- [x] Run local llama.cpp draft labeling in small chunks with reasoning off.
+- [x] Extract only commitment-like statements from trajectories: decisions,
   requirements, constraints, procedures, stable operating rules, and gotchas as
   rules.
-- [ ] Audit the subagent draft manually: remove facts, answer-like statements,
+- [ ] Audit the draft manually: remove facts, answer-like statements,
   UI state, long observations, weak guesses, and duplicates.
-- [ ] Save the audited blind oracle as
+- [x] Save the cleaned blind oracle draft as
   `configs/longmemeval-v2-full-blind-oracle-decisions.json`.
+- [ ] Improve procedure coverage beyond goal-only labels: inspect trajectory
+  states/protocol text for missing stable workflow rules without using final
+  `answer`.
 - [ ] Run D1-only with the blind oracle and the same local reader/settings.
 - [ ] Compare blind D1 against the existing D0 baseline from
   `/tmp/decision-layer-overnight-20260603212552/full/D0`.

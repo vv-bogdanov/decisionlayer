@@ -1,0 +1,509 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+import urllib.error
+import urllib.request
+from hashlib import sha256
+from pathlib import Path
+from typing import Any
+
+MAX_DECISION_CHARS = 280
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Prepare, label, and build a blind D1 decision oracle."
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    prepare = subparsers.add_parser(
+        "prepare",
+        description=(
+            "Write blind trajectory-labeling chunks. The final benchmark question, answer, "
+            "and evaluator are never copied into these chunks."
+        ),
+    )
+    prepare.add_argument("--data-root", default="data/longmemeval-v2")
+    prepare.add_argument("--tier", default="small")
+    prepare.add_argument("--question-id-file", required=True)
+    prepare.add_argument("--output-dir", default="/tmp/decision-layer-blind-d1")
+    prepare.add_argument("--chunk-size", type=int, default=8)
+    prepare.add_argument("--limit-trajectories", type=int)
+    prepare.set_defaults(func=run_prepare)
+
+    label = subparsers.add_parser(
+        "label",
+        description="Label blind chunks through a local OpenAI-compatible llama.cpp API.",
+    )
+    label.add_argument("--work-dir", default="/tmp/decision-layer-blind-d1")
+    label.add_argument("--input-dir")
+    label.add_argument("--labels-dir")
+    label.add_argument("--raw-dir")
+    label.add_argument("--base-url", default="http://127.0.0.1:18080/v1")
+    label.add_argument("--model", default="qwen36-35b-a3b-udiq3s")
+    label.add_argument("--timeout-seconds", type=float, default=180.0)
+    label.add_argument("--max-tokens", type=int, default=4096)
+    label.add_argument("--limit-chunks", type=int)
+    label.add_argument("--overwrite", action="store_true")
+    label.set_defaults(func=run_label)
+
+    build = subparsers.add_parser(
+        "build",
+        description="Build a question-id oracle from blind trajectory labels.",
+    )
+    build.add_argument("--data-root", default="data/longmemeval-v2")
+    build.add_argument("--tier", default="small")
+    build.add_argument("--question-id-file", required=True)
+    build.add_argument("--labels-dir", default="/tmp/decision-layer-blind-d1/labels")
+    build.add_argument(
+        "--output",
+        default="configs/longmemeval-v2-full-blind-oracle-decisions.json",
+    )
+    build.add_argument("--max-decisions-per-question", type=int, default=0)
+    build.add_argument("--allow-missing-labels", action="store_true")
+    build.set_defaults(func=run_build)
+
+    args = parser.parse_args(argv)
+    return int(args.func(args))
+
+
+def run_prepare(args: argparse.Namespace) -> int:
+    data_root = Path(args.data_root)
+    question_ids = load_question_ids(Path(args.question_id_file))
+    haystacks = load_haystacks(
+        data_root / "haystacks" / f"lme_v2_{args.tier}.json",
+        question_ids,
+    )
+    required_ids = sorted({trajectory_id for ids in haystacks.values() for trajectory_id in ids})
+    trajectories = load_trajectory_goals(data_root / "trajectories.jsonl", set(required_ids))
+    items = [trajectories[trajectory_id] for trajectory_id in required_ids]
+    if args.limit_trajectories is not None:
+        items = items[: max(args.limit_trajectories, 0)]
+    if args.chunk_size <= 0:
+        raise ValueError("--chunk-size must be positive")
+
+    output_dir = Path(args.output_dir)
+    input_dir = output_dir / "input"
+    input_dir.mkdir(parents=True, exist_ok=True)
+    for old_chunk in input_dir.glob("chunk-*.json"):
+        old_chunk.unlink()
+
+    chunk_paths = []
+    for index, start in enumerate(range(0, len(items), args.chunk_size)):
+        chunk = {
+            "schema_version": 1,
+            "kind": "blind_d1_trajectory_labeling",
+            "policy": {
+                "hidden_benchmark_fields": ["question", "answer", "eval_function"],
+                "authority": "Only explicit user task goals may create decisions.",
+                "safety_rule": "Better skip a decision than create a false decision.",
+            },
+            "items": items[start : start + args.chunk_size],
+        }
+        path = input_dir / f"chunk-{index:04d}.json"
+        write_json(path, chunk)
+        chunk_paths.append(path)
+
+    manifest = {
+        "schema_version": 1,
+        "kind": "blind_d1_labeling_manifest",
+        "data_root": str(data_root),
+        "tier": args.tier,
+        "question_id_file": args.question_id_file,
+        "question_count": len(question_ids),
+        "trajectory_count": len(items),
+        "all_required_trajectory_count": len(required_ids),
+        "chunk_size": args.chunk_size,
+        "chunk_count": len(chunk_paths),
+        "input_dir": str(input_dir),
+        "hidden_benchmark_fields": ["question", "answer", "eval_function"],
+    }
+    write_json(output_dir / "manifest.json", manifest)
+    print(f"blind input: {input_dir}")
+    print(
+        json.dumps({k: manifest[k] for k in ("question_count", "trajectory_count", "chunk_count")})
+    )
+    return 0
+
+
+def run_label(args: argparse.Namespace) -> int:
+    work_dir = Path(args.work_dir)
+    input_dir = Path(args.input_dir) if args.input_dir else work_dir / "input"
+    labels_dir = Path(args.labels_dir) if args.labels_dir else work_dir / "labels"
+    raw_dir = Path(args.raw_dir) if args.raw_dir else work_dir / "raw"
+    labels_dir.mkdir(parents=True, exist_ok=True)
+    raw_dir.mkdir(parents=True, exist_ok=True)
+
+    chunk_paths = sorted(input_dir.glob("chunk-*.json"))
+    if args.limit_chunks is not None:
+        chunk_paths = chunk_paths[: max(args.limit_chunks, 0)]
+    if not chunk_paths:
+        raise ValueError(f"no chunk files found in {input_dir}")
+
+    labeled = 0
+    skipped = 0
+    for chunk_path in chunk_paths:
+        label_path = labels_dir / chunk_path.name
+        if label_path.exists() and not args.overwrite:
+            skipped += 1
+            continue
+        chunk = read_json(chunk_path)
+        raw_text, response = label_chunk(
+            chunk,
+            base_url=args.base_url,
+            model=args.model,
+            timeout_seconds=args.timeout_seconds,
+            max_tokens=args.max_tokens,
+        )
+        raw_path = raw_dir / f"{chunk_path.stem}.txt"
+        raw_path.write_text(raw_text, encoding="utf-8")
+        labeled_chunk = validate_labeled_chunk(
+            response,
+            expected_ids=[str(item["trajectory_id"]) for item in chunk["items"]],
+        )
+        output = {
+            "schema_version": 1,
+            "kind": "blind_d1_trajectory_labels",
+            "source_chunk": str(chunk_path),
+            "model": args.model,
+            "raw_sha256": sha256_text(raw_text),
+            "items": labeled_chunk,
+        }
+        write_json(label_path, output)
+        decision_count = sum(len(item["decisions"]) for item in labeled_chunk)
+        labeled += 1
+        print(f"labeled {chunk_path.name}: decisions={decision_count}")
+
+    print(json.dumps({"labeled_chunks": labeled, "skipped_chunks": skipped}))
+    return 0
+
+
+def run_build(args: argparse.Namespace) -> int:
+    data_root = Path(args.data_root)
+    question_ids = load_question_ids(Path(args.question_id_file))
+    haystacks = load_haystacks(
+        data_root / "haystacks" / f"lme_v2_{args.tier}.json",
+        question_ids,
+    )
+    labels = load_labels(Path(args.labels_dir))
+    required_ids = sorted({trajectory_id for ids in haystacks.values() for trajectory_id in ids})
+    missing = [trajectory_id for trajectory_id in required_ids if trajectory_id not in labels]
+    if missing and not args.allow_missing_labels:
+        preview = ", ".join(missing[:5])
+        raise ValueError(f"missing labels for {len(missing)} trajectories: {preview}")
+
+    oracle: dict[str, list[str]] = {}
+    for question_id in question_ids:
+        selected = []
+        seen = set()
+        for trajectory_id in haystacks[question_id]:
+            for decision in labels.get(trajectory_id, []):
+                normalized = normalize_key(decision)
+                if normalized in seen:
+                    continue
+                seen.add(normalized)
+                selected.append(decision)
+                if 0 < args.max_decisions_per_question <= len(selected):
+                    break
+            if 0 < args.max_decisions_per_question <= len(selected):
+                break
+        if selected:
+            oracle[question_id] = selected
+
+    output_path = Path(args.output)
+    write_json(output_path, oracle)
+    summary = {
+        "questions": len(question_ids),
+        "questions_with_decisions": len(oracle),
+        "total_question_decisions": sum(len(values) for values in oracle.values()),
+        "labeled_trajectories": len(labels),
+        "missing_labels": len(missing),
+        "output": str(output_path),
+    }
+    print(json.dumps(summary, ensure_ascii=False))
+    return 0
+
+
+def label_chunk(
+    chunk: dict[str, Any],
+    *,
+    base_url: str,
+    model: str,
+    timeout_seconds: float,
+    max_tokens: int,
+) -> tuple[str, dict[str, Any]]:
+    items = chunk.get("items")
+    if not isinstance(items, list):
+        raise ValueError("chunk must contain an items array")
+    payload = {
+        "model": model,
+        "temperature": 0,
+        "max_tokens": max_tokens,
+        "messages": [
+            {
+                "role": "system",
+                "content": "\n".join(
+                    [
+                        "You extract Decision Layer commitments from benchmark task goals.",
+                        "The final benchmark question, answer, and evaluator are hidden.",
+                        "Use only explicit user-authorized goal text.",
+                        "Extract decisions, goals, requirements, constraints, procedures, "
+                        "stable operating rules, and gotchas phrased as rules.",
+                        "Requirements are valid decisions; plain environment facts and UI "
+                        "state are not.",
+                        "Do not use outcome, success, failure, guesses, or unstated advice "
+                        "as decisions.",
+                        "Prefer false negatives to false positives.",
+                        "Each decision must be one concise statement of "
+                        f"{MAX_DECISION_CHARS} characters or fewer.",
+                        'Return strict JSON only: {"items":[{"trajectory_id":"...",'
+                        '"decisions":["..."]}]}',
+                        "Include every input trajectory_id exactly once. Use an empty "
+                        "decisions array when none are explicit.",
+                    ]
+                ),
+            },
+            {
+                "role": "user",
+                "content": json.dumps(
+                    {
+                        "items": [
+                            {
+                                "trajectory_id": str(item["trajectory_id"]),
+                                "domain": str(item.get("domain", "")),
+                                "environment": str(item.get("environment", "")),
+                                "goal": str(item.get("goal", "")),
+                            }
+                            for item in items
+                        ]
+                    },
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
+            },
+        ],
+    }
+    response = post_json(
+        f"{base_url.rstrip('/')}/chat/completions",
+        payload,
+        timeout_seconds=timeout_seconds,
+    )
+    raw_text = extract_chat_content(response)
+    parsed = parse_json_object(raw_text)
+    return raw_text, parsed
+
+
+def validate_labeled_chunk(
+    data: dict[str, Any],
+    *,
+    expected_ids: list[str],
+) -> list[dict[str, object]]:
+    raw_items = data.get("items")
+    if not isinstance(raw_items, list):
+        raise ValueError("label response must contain an items array")
+    by_id: dict[str, list[str]] = {}
+    for raw_item in raw_items:
+        if not isinstance(raw_item, dict):
+            raise ValueError("label item must be an object")
+        trajectory_id = str(raw_item.get("trajectory_id", ""))
+        if not trajectory_id:
+            raise ValueError("label item is missing trajectory_id")
+        decisions = clean_decisions(raw_item.get("decisions"))
+        by_id[trajectory_id] = decisions
+
+    missing = [trajectory_id for trajectory_id in expected_ids if trajectory_id not in by_id]
+    extra = sorted(set(by_id) - set(expected_ids))
+    if missing or extra:
+        raise ValueError(
+            f"label response trajectory ids mismatch: missing={missing[:5]} extra={extra[:5]}"
+        )
+    return [
+        {"trajectory_id": trajectory_id, "decisions": by_id[trajectory_id]}
+        for trajectory_id in expected_ids
+    ]
+
+
+def clean_decisions(raw_decisions: object) -> list[str]:
+    if not isinstance(raw_decisions, list):
+        return []
+    decisions = []
+    seen = set()
+    for raw_decision in raw_decisions:
+        text = normalize_space(str(raw_decision))
+        if not text:
+            continue
+        if should_skip_decision(text):
+            continue
+        if len(text) > MAX_DECISION_CHARS:
+            continue
+        key = normalize_key(text)
+        if key in seen:
+            continue
+        seen.add(key)
+        decisions.append(text)
+    return decisions
+
+
+def should_skip_decision(text: str) -> bool:
+    key = normalize_key(text)
+    if key.endswith("..."):
+        return True
+    return "closed - complete" in key
+
+
+def load_question_ids(path: Path) -> list[str]:
+    ids = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        question_id = line.split("#", 1)[0].strip()
+        if question_id:
+            ids.append(question_id)
+    return list(dict.fromkeys(ids))
+
+
+def load_haystacks(path: Path, question_ids: list[str]) -> dict[str, list[str]]:
+    data = read_json(path)
+    if not isinstance(data, dict):
+        raise ValueError(f"haystack file must contain an object: {path}")
+    haystacks: dict[str, list[str]] = {}
+    for question_id in question_ids:
+        values = data.get(question_id)
+        if not isinstance(values, list):
+            raise ValueError(f"missing haystack ids for question: {question_id}")
+        haystacks[question_id] = [str(value) for value in values]
+    return haystacks
+
+
+def load_trajectory_goals(path: Path, required_ids: set[str]) -> dict[str, dict[str, str]]:
+    trajectories: dict[str, dict[str, str]] = {}
+    with path.open(encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if not isinstance(row, dict):
+                raise ValueError(f"trajectory row must be an object at {path}:{line_number}")
+            trajectory_id = str(row["id"])
+            if trajectory_id not in required_ids:
+                continue
+            trajectories[trajectory_id] = {
+                "trajectory_id": trajectory_id,
+                "domain": str(row.get("domain", "")),
+                "environment": str(row.get("environment", "")),
+                "goal": normalize_space(str(row.get("goal", ""))),
+            }
+            if len(trajectories) == len(required_ids):
+                break
+    missing = sorted(required_ids - set(trajectories))
+    if missing:
+        preview = ", ".join(missing[:5])
+        raise ValueError(f"missing {len(missing)} trajectories: {preview}")
+    return trajectories
+
+
+def load_labels(labels_dir: Path) -> dict[str, list[str]]:
+    labels: dict[str, list[str]] = {}
+    for path in sorted(labels_dir.glob("chunk-*.json")):
+        data = read_json(path)
+        raw_items = data.get("items")
+        if not isinstance(raw_items, list):
+            raise ValueError(f"label file must contain items array: {path}")
+        for raw_item in raw_items:
+            if not isinstance(raw_item, dict):
+                raise ValueError(f"label item must be an object: {path}")
+            trajectory_id = str(raw_item.get("trajectory_id", ""))
+            if not trajectory_id:
+                raise ValueError(f"label item missing trajectory_id: {path}")
+            labels[trajectory_id] = clean_decisions(raw_item.get("decisions"))
+    return labels
+
+
+def post_json(url: str, payload: dict[str, object], *, timeout_seconds: float) -> dict[str, Any]:
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        detail = f"llama.cpp request failed: {url} ({exc.code} {exc.reason})"
+        if body:
+            detail = f"{detail}: {body[:1000]}"
+        raise RuntimeError(detail) from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"llama.cpp request failed: {url}") from exc
+    if not isinstance(data, dict):
+        raise RuntimeError(f"llama.cpp response must be a JSON object: {url}")
+    return data
+
+
+def extract_chat_content(response: dict[str, Any]) -> str:
+    choices = response.get("choices")
+    if not isinstance(choices, list) or not choices:
+        raise ValueError("chat response has no choices")
+    first = choices[0]
+    if not isinstance(first, dict):
+        raise ValueError("chat response choice must be an object")
+    message = first.get("message")
+    if not isinstance(message, dict):
+        raise ValueError("chat response message must be an object")
+    content = message.get("content")
+    if not isinstance(content, str):
+        raise ValueError("chat response content must be a string")
+    return content.strip()
+
+
+def parse_json_object(text: str) -> dict[str, Any]:
+    candidate = strip_code_fence(text)
+    try:
+        parsed = json.loads(candidate)
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", candidate, flags=re.S)
+        if not match:
+            raise
+        parsed = json.loads(match.group(0))
+    if not isinstance(parsed, dict):
+        raise ValueError("label response must be a JSON object")
+    return parsed
+
+
+def strip_code_fence(text: str) -> str:
+    stripped = text.strip()
+    if not stripped.startswith("```"):
+        return stripped
+    lines = stripped.splitlines()
+    if len(lines) >= 3 and lines[-1].strip() == "```":
+        return "\n".join(lines[1:-1]).strip()
+    return stripped
+
+
+def read_json(path: Path) -> Any:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def write_json(path: Path, data: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def sha256_text(text: str) -> str:
+    return sha256(text.encode("utf-8")).hexdigest()
+
+
+def normalize_space(text: str) -> str:
+    return " ".join(text.split())
+
+
+def normalize_key(text: str) -> str:
+    return normalize_space(text).lower()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

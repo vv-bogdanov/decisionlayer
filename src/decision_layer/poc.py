@@ -387,7 +387,20 @@ def apply_oracle_decisions(
     oracle_decisions: dict[str, list[str]],
 ) -> tuple[DecisionState, list[dict[str, object]]]:
     traces = []
-    for index, text in enumerate(oracle_decisions.get(example.question.id, [])):
+    if example.question.question_type in NON_DECISION_QUESTION_TYPES:
+        return state, [
+            {
+                "event": "oracle_decision_application_skipped",
+                "question_id": example.question.id,
+                "question_type": example.question.question_type,
+                "reason": "non_decision_question_type",
+            }
+        ]
+    ranked_decisions = rank_decision_texts(
+        oracle_decisions.get(example.question.id, []),
+        example.question.question,
+    )
+    for index, text in enumerate(ranked_decisions):
         state, trace = add_decision(
             state,
             text,
@@ -401,6 +414,18 @@ def apply_oracle_decisions(
         trace_data["reason"] = "oracle_decision"
         traces.append(trace_data)
     return state, traces
+
+
+def rank_decision_texts(decision_texts: list[str], question_text: str) -> tuple[str, ...]:
+    question_terms = keyword_terms(question_text)
+    if not question_terms:
+        return tuple(decision_texts)
+
+    scored = []
+    for index, decision_text in enumerate(decision_texts):
+        score = len(keyword_terms(decision_text) & question_terms)
+        scored.append((-score, index, decision_text))
+    return tuple(decision_text for _score, _index, decision_text in sorted(scored))
 
 
 def apply_automatic_decisions(

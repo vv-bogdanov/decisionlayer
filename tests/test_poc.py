@@ -12,8 +12,10 @@ from decision_layer.poc import (
     PocConfig,
     PocSuiteConfig,
     apply_automatic_decisions,
+    apply_oracle_decisions,
     build_reader_context,
     decision_relevant_to_question,
+    rank_decision_texts,
     retrieve_keyword_context,
     run_poc,
     run_poc_suite,
@@ -66,6 +68,19 @@ def test_decision_relevance_rejects_neighboring_workflows() -> None:
     assert not decision_relevant_to_question(item_request_decision, problem_request_question)
     assert decision_relevant_to_question(report_decision, report_question)
     assert not decision_relevant_to_question(report_decision, item_request_question)
+
+
+def test_rank_decision_texts_prefers_question_overlap() -> None:
+    ranked = rank_decision_texts(
+        [
+            "Set Vendor to Apple for the hardware asset.",
+            "Search for the report titled #INC049950288 and extract incidents per agent.",
+            "Cancel order 301.",
+        ],
+        "Which report title should be used to find incidents assigned to agents?",
+    )
+
+    assert ranked[0].startswith("Search for the report")
 
 
 def test_retrieve_keyword_context_respects_max_chars() -> None:
@@ -145,6 +160,40 @@ def test_automatic_decisions_skip_real_factual_question_types() -> None:
     assert traces == [
         {
             "event": "automatic_decision_extraction_skipped",
+            "question_id": "q_static_real_type",
+            "question_type": "static-environment",
+            "reason": "non_decision_question_type",
+        }
+    ]
+
+
+def test_oracle_decisions_skip_real_factual_question_types() -> None:
+    question = LongMemEvalV2Question(
+        id="q_static_real_type",
+        domain="enterprise",
+        environment="servicenow",
+        question_type="static-environment",
+        question="When ordering a Dell XPS, what is the extra dollar amount?",
+        image=None,
+        answer="300",
+        eval_function="exact_match",
+    )
+    example = LongMemEvalV2Example(
+        question=question,
+        trajectory_ids=(),
+        trajectories=(),
+    )
+
+    state, traces = apply_oracle_decisions(
+        DecisionState(),
+        example,
+        {"q_static_real_type": ["Set Vendor to Apple."]},
+    )
+
+    assert state.decisions == ()
+    assert traces == [
+        {
+            "event": "oracle_decision_application_skipped",
             "question_id": "q_static_real_type",
             "question_type": "static-environment",
             "reason": "non_decision_question_type",
