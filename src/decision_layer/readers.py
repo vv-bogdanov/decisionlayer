@@ -91,8 +91,9 @@ class OpenAIChatReader:
                     "role": "system",
                     "content": (
                         "Answer the question using only the provided context. "
-                        "Return only the short answer. If the context is insufficient, "
-                        "return UNKNOWN."
+                        "Return only the final short answer, option letter, boolean, "
+                        "number, or phrase requested by the question. Do not explain. "
+                        "If the context is insufficient, return UNKNOWN."
                     ),
                 },
                 {

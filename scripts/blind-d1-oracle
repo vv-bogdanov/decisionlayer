@@ -440,7 +440,11 @@ def extract_rule_based_goal_decisions(path: Path, required_ids: set[str]) -> dic
     if str(src_root) not in sys.path:
         sys.path.insert(0, str(src_root))
 
-    from decision_layer.extraction import RuleBasedDecisionExtractor, SourceMessage
+    from decision_layer.extraction import (
+        RuleBasedDecisionExtractor,
+        SourceMessage,
+        state_supported_workflow_texts,
+    )
 
     extractor = RuleBasedDecisionExtractor()
     decisions: dict[str, list[str]] = {}
@@ -454,19 +458,41 @@ def extract_rule_based_goal_decisions(path: Path, required_ids: set[str]) -> dic
             trajectory_id = str(row["id"])
             if trajectory_id not in required_ids:
                 continue
+            goal = str(row.get("goal", ""))
             commands = extractor.extract(
                 SourceMessage(
                     id=f"{trajectory_id}:goal",
                     role="user",
-                    content=str(row.get("goal", "")),
+                    content=goal,
                     source_kind="chat",
                 )
             )
             texts = [command.text for command in commands if command.action == "add"]
+            texts.extend(
+                state_supported_workflow_texts(
+                    goal,
+                    state_snippet_texts(row.get("states")),
+                )
+            )
             cleaned = clean_decisions(texts)
             if cleaned:
                 decisions[trajectory_id] = cleaned
     return decisions
+
+
+def state_snippet_texts(raw_states: object) -> list[str]:
+    if not isinstance(raw_states, list):
+        return []
+    texts = []
+    for raw_state in raw_states:
+        if not isinstance(raw_state, dict):
+            continue
+        texts.append(
+            " ".join(
+                str(raw_state.get(key, "")) for key in ("thought", "action", "accessibility_tree")
+            )
+        )
+    return texts
 
 
 def merge_decisions(*decision_lists: list[str]) -> list[str]:

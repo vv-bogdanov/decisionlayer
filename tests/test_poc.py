@@ -65,17 +65,26 @@ def test_decision_relevance_rejects_neighboring_workflows() -> None:
     )
     investment_decision = (
         "For allocating investments to maximize returns, use Cost > Expense Lines; "
-        "returns are stored in Short description."
+        "returns are in Short description; set selected lines to Closed Complete before Update."
     )
     investment_question = (
         "If I am told to allocate investments to maximize returns, which module "
         "should I work in first?"
     )
     offboarding_decision = (
-        "For offboarding a user, edit the user's hardware asset and clear Assigned to."
+        "For offboarding a user, unassign all hardware assets by clearing Assigned to, "
+        "then delete the user profile and close the task complete."
     )
     offboarding_question = (
         "I need to offboard a user. What should I do on that user's hardware asset record?"
+    )
+    restocking_decision = (
+        "For dashboard-based restocking of low-stock items, use Reports to locate the "
+        "stock report before ordering."
+    )
+    restocking_question = (
+        "What shared application or module family is used by workload balancing and "
+        "restocking items that are low in quantity?"
     )
 
     assert decision_relevant_to_question(item_request_decision, item_request_question)
@@ -86,6 +95,19 @@ def test_decision_relevance_rejects_neighboring_workflows() -> None:
     assert not decision_relevant_to_question(investment_decision, report_question)
     assert decision_relevant_to_question(offboarding_decision, offboarding_question)
     assert not decision_relevant_to_question(offboarding_decision, investment_question)
+    assert decision_relevant_to_question(restocking_decision, restocking_question)
+    assert not decision_relevant_to_question(restocking_decision, investment_question)
+    assert decision_relevant_to_question(
+        (
+            "For problem requests created from incident-report results, use Impact, Urgency, "
+            "Problem statement, and Assigned to; Subcategory, Assignment Group, and State "
+            "are present but unused."
+        ),
+        (
+            "For the task of navigating and creating problem requests from incident-report "
+            "results, which fields are present but unimportant in our typical workflow?"
+        ),
+    )
 
 
 def test_rank_decision_texts_prefers_question_overlap() -> None:
@@ -217,6 +239,64 @@ def test_oracle_decisions_skip_real_factual_question_types() -> None:
             "reason": "non_decision_question_type",
         }
     ]
+
+
+def test_automatic_decisions_extract_state_supported_problem_request_rule() -> None:
+    question = LongMemEvalV2Question(
+        id="q_problem_request_fields",
+        domain="enterprise",
+        environment="servicenow",
+        question_type="procedure",
+        question=(
+            "For creating problem requests from incident-report results, which fields "
+            "are present but unimportant in our typical workflow?"
+        ),
+        image=None,
+        answer="Subcategory, Assignment Group, State",
+        eval_function="norm_phrase_set_match",
+    )
+    trajectory = LongMemEvalV2Trajectory(
+        id="traj_problem_request_fields",
+        domain="enterprise",
+        environment="servicenow",
+        goal=(
+            "Given the title of the report, search for it. The report shows incidents "
+            "assigned to an agent. You have to create new 'problems' for all the agents. "
+            "Only fill the following fields when creating a new problem: Impact, "
+            "Urgency, Problem statement and assign them to each agent."
+        ),
+        outcome="success",
+        start_url="https://enterprise.example.test",
+        states=(
+            {
+                "thought": "The new Problem form has extra fields.",
+                "action": "observe",
+                "accessibility_tree": (
+                    "State, Subcategory, Assignment group, Assigned to, Problem statement"
+                ),
+            },
+        ),
+    )
+    example = LongMemEvalV2Example(
+        question=question,
+        trajectory_ids=(trajectory.id,),
+        trajectories=(trajectory,),
+    )
+
+    state, traces = apply_automatic_decisions(
+        DecisionState(),
+        example,
+        RuleBasedDecisionExtractor(),
+    )
+
+    assert [decision.text for decision in state.decisions] == [
+        (
+            "For problem requests created from incident-report results, use Impact, Urgency, "
+            "Problem statement, and Assigned to; Subcategory, Assignment Group, and State "
+            "are present but unused."
+        )
+    ]
+    assert any(trace.get("reason") == "state_supported_workflow_signal" for trace in traces)
 
 
 def test_run_poc_writes_required_artifacts_for_all_modes(tmp_path: Path) -> None:

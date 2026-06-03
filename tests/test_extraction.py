@@ -1,4 +1,8 @@
-from decision_layer.extraction import RuleBasedDecisionExtractor, SourceMessage
+from decision_layer.extraction import (
+    RuleBasedDecisionExtractor,
+    SourceMessage,
+    state_supported_workflow_texts,
+)
 
 
 def extract(
@@ -112,7 +116,19 @@ def test_structured_workflow_extraction_for_investment_allocation() -> None:
     ) == (
         "add",
         "For allocating investments to maximize returns, use Cost > Expense Lines; "
-        "returns are stored in Short description.",
+        "returns are in Short description; set selected lines to Closed Complete before Update.",
+    )
+
+
+def test_structured_workflow_extraction_for_stock_restocking_report() -> None:
+    assert extract(
+        "You have to retrieve information from a dashboard chart. The chart presents "
+        "the number of hardware items available in stock. Title of the report: "
+        "#CAT001314192. Place an order for the least available item in stock."
+    ) == (
+        "add",
+        "For dashboard-based restocking of low-stock items, use Reports to locate the "
+        "stock report before ordering.",
     )
 
 
@@ -123,7 +139,31 @@ def test_structured_workflow_extraction_for_user_offboarding() -> None:
         'replacing "Assigned to" with "".'
     ) == (
         "add",
-        "For offboarding a user, edit the user's hardware asset and clear Assigned to.",
+        "For offboarding a user, unassign all hardware assets by clearing Assigned to, "
+        "then delete the user profile and close the task complete.",
+    )
+
+
+def test_state_supported_workflow_extraction_for_problem_requests() -> None:
+    texts = state_supported_workflow_texts(
+        (
+            "Given the title of the report, search for it. The report shows incidents "
+            "assigned to an agent. You have to create new 'problems' for all the agents. "
+            "Only fill the following fields when creating a new problem: Impact, "
+            "Urgency, Problem statement and assign them to each agent."
+        ),
+        [
+            (
+                "Problem form fields include State, Assignment group, Assigned to, "
+                "Problem statement, and Subcategory."
+            )
+        ],
+    )
+
+    assert texts == (
+        "For problem requests created from incident-report results, use Impact, Urgency, "
+        "Problem statement, and Assigned to; Subcategory, Assignment Group, and State "
+        "are present but unused.",
     )
 
 

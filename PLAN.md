@@ -45,6 +45,12 @@ New D2 improves old D2 from `25/295` to `29/295` and matches blind D1 on
 the broad blind oracle has `false_decision_rate=0.0`, but recall is not useful
 yet because the draft oracle contains about 70k question-level requirements.
 
+Targeted D2 smoke after enriching problem-request, investment, offboarding, and
+stock-restocking decisions: `7/7` correct on `07ffeedf`, `25b00876`,
+`4df5e6b4`, `52dd33bb`, `75816b26`, `bfb3bcc4`, and `e334d5c6`, with
+`false_decision_rate=0.0`. Full D2 metrics still need a fresh run after these
+targeted fixes.
+
 Blind D1 canary after goal labels + rule-based goal augmentation:
 
 | Mode | Correct | Procedure Correct |
@@ -78,7 +84,7 @@ plain environment facts, UI state, answer keys, or transient observations.
   `configs/longmemeval-v2-full-blind-oracle-decisions.json`.
 - [x] Improve procedure coverage beyond goal-only labels with deterministic
   rule-based goal augmentation, without using final `answer`.
-- [ ] Inspect remaining procedure miss `07ffeedf`: use trajectory
+- [x] Inspect remaining procedure miss `07ffeedf`: use trajectory
   states/protocol text to extract the missing stable workflow rule without
   using final `answer`.
 - [x] Run D1-only with the blind oracle and the same local reader/settings.
@@ -100,12 +106,15 @@ plain environment facts, UI state, answer keys, or transient observations.
   meaningful metric.
 - [x] Inspect new D2 failed decision cases with non-empty briefs:
   `4df5e6b4`, `52dd33bb`, and `bfb3bcc4`.
-- [ ] Enrich ambiguous workflow decisions where D2 has a relevant but
+- [x] Enrich ambiguous workflow decisions where D2 has a relevant but
   insufficient brief: investment final action (`52dd33bb`) and offboarding full
   step order (`bfb3bcc4`).
-- [ ] Consider stricter short-answer reader prompting for cases like
+- [x] Consider stricter short-answer reader prompting for cases like
   `4df5e6b4`, where the brief contains the right module but the reader does not
   return the required short phrase.
+- [x] Add a stock-restocking report decision so `4df5e6b4` has both compared
+  workflows grounded in Decision Briefs.
+- [ ] Re-run full D2 after targeted fixes and refresh the metrics table.
 - [ ] Improve decision retrieval/ranking to reduce D1 noise, especially
   `767e4106`.
 

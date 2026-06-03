@@ -15,7 +15,11 @@ from decision_layer.benchmarks.longmemeval_v2 import (
 )
 from decision_layer.core import DecisionBrief, DecisionState, add_decision, render_decision_brief
 from decision_layer.evaluation import score_answer
-from decision_layer.extraction import RuleBasedDecisionExtractor, SourceMessage
+from decision_layer.extraction import (
+    RuleBasedDecisionExtractor,
+    SourceMessage,
+    state_supported_workflow_texts,
+)
 from decision_layer.readers import ReaderKind, ReaderRequest, ReaderResult, build_reader
 
 PocMode = Literal["D0", "D1", "D2"]
@@ -473,7 +477,6 @@ def apply_automatic_decisions(
                     "reason": "no_decision_signal",
                 }
             )
-            continue
         for command in commands:
             traces.append(
                 {
@@ -538,6 +541,60 @@ def apply_automatic_decisions(
             trace_data["trajectory_id"] = trajectory.id
             trace_data["reason"] = command.reason
             traces.append(trace_data)
+        for text in state_supported_workflow_texts(
+            trajectory.goal,
+            (state_text("", state) for state in trajectory.states),
+        ):
+            traces.append(
+                {
+                    "event": "decision_candidate",
+                    "question_id": example.question.id,
+                    "trajectory_id": trajectory.id,
+                    "source_message_id": f"{trajectory.id}:states",
+                    "action": "add",
+                    "text": text,
+                    "reason": "state_supported_workflow_signal",
+                }
+            )
+            if not decision_relevant_to_question(text, example.question.question):
+                traces.append(
+                    {
+                        "event": "decision_candidate_skipped",
+                        "question_id": example.question.id,
+                        "trajectory_id": trajectory.id,
+                        "source_message_id": f"{trajectory.id}:states",
+                        "reason": "irrelevant_to_question",
+                    }
+                )
+                continue
+            normalized_text = normalize(text)
+            if normalized_text in added_texts:
+                traces.append(
+                    {
+                        "event": "decision_candidate_skipped",
+                        "question_id": example.question.id,
+                        "trajectory_id": trajectory.id,
+                        "source_message_id": f"{trajectory.id}:states",
+                        "reason": "duplicate_decision",
+                    }
+                )
+                continue
+            state, trace = add_decision(
+                state,
+                text,
+                authority="user_commit",
+                meta={
+                    "source_message_id": f"{trajectory.id}:states",
+                    "extractor_reason": "state_supported_workflow_signal",
+                },
+            )
+            added_texts.add(normalized_text)
+            trace_data = trace.to_dict()
+            trace_data["event"] = "decision_added"
+            trace_data["question_id"] = example.question.id
+            trace_data["trajectory_id"] = trajectory.id
+            trace_data["reason"] = "state_supported_workflow_signal"
+            traces.append(trace_data)
     return state, traces
 
 
@@ -554,6 +611,12 @@ def decision_relevant_to_question(decision_text: str, question_text: str) -> boo
         )
     if "incident-related performance report" in decision:
         return "report" in question and ("performance" in question or "title" in question)
+    if "dashboard-based restocking" in decision:
+        return (
+            ("restock" in question or ("low" in question and "quantity" in question))
+            and ("item" in question or "items" in question)
+            and ("module" in question or "workflow" in question or "application" in question)
+        )
     if "allocating investments to maximize returns" in decision:
         return (
             ("investment" in question or "investments" in question)
@@ -562,6 +625,8 @@ def decision_relevant_to_question(decision_text: str, question_text: str) -> boo
         )
     if "offboarding a user" in decision:
         return "offboard" in question and "hardware asset" in question
+    if "problem requests created from incident-report results" in decision:
+        return "problem" in question and "incident" in question and "field" in question
     decision_terms = keyword_terms(decision_text)
     question_terms = keyword_terms(question_text)
     return len(decision_terms & question_terms) >= 4

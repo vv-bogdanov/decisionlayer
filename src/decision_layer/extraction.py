@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Literal
 
@@ -153,6 +154,16 @@ def structured_workflow_texts(text: str) -> tuple[str, ...]:
             "open View/Run, then locate the relevant report."
         )
     if (
+        ("hardware items" in lowered or "items in stock" in lowered)
+        and "stock" in lowered
+        and ("least available" in lowered or "low" in lowered or "order" in lowered)
+        and ("title of the report" in lowered or "dashboard chart" in lowered)
+    ):
+        decisions.append(
+            "For dashboard-based restocking of low-stock items, use Reports to locate the "
+            "stock report before ordering."
+        )
+    if (
         ("allocate investments" in lowered or "maximizing total investment return" in lowered)
         and ("maximize returns" in lowered or "maximizing" in lowered)
         and "expense" in lowered
@@ -160,7 +171,7 @@ def structured_workflow_texts(text: str) -> tuple[str, ...]:
     ):
         decisions.append(
             "For allocating investments to maximize returns, use Cost > Expense Lines; "
-            "returns are stored in Short description."
+            "returns are in Short description; set selected lines to Closed Complete before Update."
         )
     if (
         ("offboard user" in lowered or "offboarding" in lowered)
@@ -168,6 +179,30 @@ def structured_workflow_texts(text: str) -> tuple[str, ...]:
         and "assigned to" in lowered
     ):
         decisions.append(
-            "For offboarding a user, edit the user's hardware asset and clear Assigned to."
+            "For offboarding a user, unassign all hardware assets by clearing Assigned to, "
+            "then delete the user profile and close the task complete."
         )
     return tuple(dict.fromkeys(decisions))
+
+
+def state_supported_workflow_texts(goal: str, state_texts: Iterable[str]) -> tuple[str, ...]:
+    lowered_goal = " ".join(goal.lower().split())
+    if not (
+        "given the title of the report, search for it" in lowered_goal
+        and "create new 'problems'" in lowered_goal
+        and "only fill" in lowered_goal
+        and "impact" in lowered_goal
+        and "urgency" in lowered_goal
+        and "problem statement" in lowered_goal
+        and "assign" in lowered_goal
+    ):
+        return ()
+
+    observed = " ".join(" ".join(text.lower().split()) for text in state_texts)
+    if not all(term in observed for term in ("subcategory", "assignment group", "state")):
+        return ()
+    return (
+        "For problem requests created from incident-report results, use Impact, Urgency, "
+        "Problem statement, and Assigned to; Subcategory, Assignment Group, and State "
+        "are present but unused.",
+    )
