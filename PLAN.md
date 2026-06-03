@@ -63,9 +63,9 @@ Use this as the short working queue. The broader proof checklist remains below.
 - [x] Add baseline/ablation and cost/latency Pareto sections to the proof
   index.
 - [x] Commit current proof-reporting and sweep-metrics changes.
-- [ ] Rerun LongMemEval sweep after sweep-level `metrics.json` support is
+- [x] Rerun LongMemEval sweep after sweep-level `metrics.json` support is
   committed.
-- [ ] Regenerate `reports/proof/index.md` from the latest clean checkout.
+- [x] Regenerate `reports/proof/index.md` from the latest clean checkout.
 - [ ] Audit a small sample of LongMemEval labels and scoring decisions.
 - [ ] Start MemoryAgentBench proof run.
 
@@ -476,7 +476,7 @@ cost reduction.
 ## Next Checkpoint
 
 - [x] Commit the current proof-reporting diff.
-- [ ] Rerun the LongMemEval sweep so the sweep root also has `metrics.json`.
-- [ ] Regenerate `reports/proof/index.md`.
-- [ ] Update this checklist after the regenerated report is verified.
+- [x] Rerun the LongMemEval sweep so the sweep root also has `metrics.json`.
+- [x] Regenerate `reports/proof/index.md`.
+- [x] Update this checklist after the regenerated report is verified.
 - [ ] Continue with `M3: MemoryAgentBench Proof Run`.
