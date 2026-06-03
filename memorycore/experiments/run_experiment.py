@@ -138,8 +138,13 @@ def run_single(merged: dict[str, Any], memory: str) -> dict[str, Any]:
     for example in benchmark.iter_examples():
         result = runner.run(example)
         expected_answers = expected_answer_options(example)
+        scoring_policy = str(example.meta.get("scoring_policy") or "substring_exact_match")
         exact_match, substring_match = score_prediction(result.answer, expected_answers)
-        correct = exact_match or substring_match
+        correct = correct_for_scoring_policy(
+            exact_match=exact_match,
+            substring_match=substring_match,
+            scoring_policy=scoring_policy,
+        )
         memory_brief = result.brief.render() if result.brief else ""
         predictions.append(
             {
@@ -151,6 +156,7 @@ def run_single(merged: dict[str, Any], memory: str) -> dict[str, Any]:
                 "correct": correct,
                 "exact_match": exact_match,
                 "substring_match": substring_match,
+                "scoring_policy": scoring_policy,
                 "memory": runner.name,
                 "memory_brief": memory_brief,
                 "question_type": example.meta.get("question_type"),
@@ -208,6 +214,19 @@ def score_prediction(prediction: str, expected_answers: list[str]) -> tuple[bool
     exact_match = any(exact_match_score(prediction, expected) for expected in expected_answers)
     substring_match = any(substring_match_score(prediction, expected) for expected in expected_answers)
     return exact_match, substring_match
+
+
+def correct_for_scoring_policy(
+    *,
+    exact_match: bool,
+    substring_match: bool,
+    scoring_policy: str,
+) -> bool:
+    if scoring_policy == "exact_match":
+        return exact_match
+    if scoring_policy == "llm_judge_required":
+        return False
+    return exact_match or substring_match
 
 
 def expected_answer_options(example: Any) -> list[str]:
@@ -281,6 +300,8 @@ def apply_judge(predictions: list[dict[str, Any]], config: dict[str, Any]) -> No
         )
         prediction["judge_label"] = label
         prediction["judge_score"] = 1.0 if label == "correct" else 0.0
+        if prediction.get("scoring_policy") == "llm_judge_required":
+            prediction["correct"] = label == "correct"
 
 
 def llm_judge_prediction(
@@ -375,6 +396,9 @@ def compute_metrics(
     type_metrics = grouped_metrics(predictions, "question_type")
     if type_metrics:
         metrics["question_type_metrics"] = type_metrics
+    scoring_policy_metrics = grouped_metrics(predictions, "scoring_policy")
+    if scoring_policy_metrics:
+        metrics["scoring_policy_metrics"] = scoring_policy_metrics
     failure_cause_metrics = grouped_failure_cause_metrics(predictions)
     if failure_cause_metrics:
         metrics["failure_cause_metrics"] = failure_cause_metrics

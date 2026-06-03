@@ -59,7 +59,7 @@ def render_markdown_report(
         "| --- | ---: |",
     ]
     for key in sorted(metrics):
-        if key in {"baseline_metrics", "question_type_metrics", "failure_cause_metrics"}:
+        if key in {"baseline_metrics", "question_type_metrics", "scoring_policy_metrics", "failure_cause_metrics"}:
             continue
         lines.append(f"| {key} | {metrics[key]} |")
     question_type_metrics = metrics.get("question_type_metrics")
@@ -77,6 +77,27 @@ def render_markdown_report(
             lines.append(
                 "| {question_type} | {accuracy} | {exact_match} | {substring_match} | {examples} |".format(
                     question_type=question_type,
+                    accuracy=row.get("accuracy"),
+                    exact_match=row.get("exact_match"),
+                    substring_match=row.get("substring_match"),
+                    examples=row.get("examples"),
+                )
+            )
+    scoring_policy_metrics = metrics.get("scoring_policy_metrics")
+    if isinstance(scoring_policy_metrics, dict) and scoring_policy_metrics:
+        lines.extend(
+            [
+                "",
+                "## Scoring Policy Metrics",
+                "",
+                "| Scoring Policy | Accuracy | Exact Match | Substring Match | Examples |",
+                "| --- | ---: | ---: | ---: | ---: |",
+            ]
+        )
+        for scoring_policy, row in sorted(scoring_policy_metrics.items()):
+            lines.append(
+                "| {scoring_policy} | {accuracy} | {exact_match} | {substring_match} | {examples} |".format(
+                    scoring_policy=scoring_policy,
                     accuracy=row.get("accuracy"),
                     exact_match=row.get("exact_match"),
                     substring_match=row.get("substring_match"),

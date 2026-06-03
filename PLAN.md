@@ -71,6 +71,7 @@ Use this as the short working queue. The broader proof checklist remains below.
 - [x] Download official MemoryAgentBench parquet files to
   `/tmp/memoryagentbench`.
 - [x] Fix MemoryAgentBench answer alias scoring for parquet array answers.
+- [x] Add official MemoryAgentBench deterministic scoring policy mapping.
 - [x] Enforce `max_memory_brief_tokens` with oversized fact truncation.
 - [x] Run MemoryAgentBench smoke on all four official splits.
 - [x] Run MemoryAgentBench dev baseline table on all four official splits.
@@ -218,8 +219,10 @@ Work:
 - [x] Run a dev subset for each split.
 - [ ] Run a held-out test subset for each split.
 - [x] Normalize official answer alias arrays before scoring.
-- [ ] Add split-specific semantic scoring instead of relying only on substring
-  matching.
+- [x] Add split-specific deterministic scoring policy instead of applying
+  substring matching to every split.
+- [ ] Add LLM judge or semantic scoring for MemoryAgentBench summarization and
+  LongMemEval-style tasks.
 - [x] Report metrics by MemoryAgentBench competency.
 - [x] Add budget-aware comparison because some rows have huge contexts.
 
@@ -413,7 +416,10 @@ The proof must show which component helps.
 
 - [x] Freeze split manifests.
 - [x] Normalize official answer alias arrays before scoring.
-- [ ] Add split-specific semantic scoring where needed.
+- [x] Add split-specific deterministic scoring policy where official scoring is
+  deterministic.
+- [ ] Add LLM judge or semantic scoring for judge-required MemoryAgentBench
+  tasks.
 - [x] Run smoke for every split.
 - [x] Run dev baseline table for every split.
 - [ ] Run held-out test table for every split.

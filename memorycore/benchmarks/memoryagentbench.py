@@ -63,6 +63,7 @@ def record_to_memoryagentbench_examples(record: dict[str, Any], *, row_index: in
         expected_answers = answer_options_at(answers, question_index)
         expected = expected_answers[0] if expected_answers else ""
         qa_pair_id = str(value_at(qa_pair_ids, question_index, f"row_{row_index}_q_{question_index}"))
+        question_type = value_at(question_types, question_index, metadata.get("source"))
         examples.append(
             BenchmarkExample(
                 id=qa_pair_id,
@@ -75,10 +76,14 @@ def record_to_memoryagentbench_examples(record: dict[str, Any], *, row_index: in
                     "row_index": row_index,
                     "qa_pair_id": qa_pair_id,
                     "question_id": value_at(question_ids, question_index),
-                    "question_type": value_at(question_types, question_index, metadata.get("source")),
+                    "question_type": question_type,
                     "question_date": value_at(question_dates, question_index),
                     "keypoint": value_at(keypoints, question_index),
                     "expected_answers": expected_answers,
+                    "scoring_policy": scoring_policy_for_memoryagentbench(
+                        source=metadata.get("source"),
+                        question_type=question_type,
+                    ),
                     "source": metadata.get("source"),
                 },
             )
@@ -229,3 +234,12 @@ def flatten_answer_values(value: object) -> list[Any]:
 def metadata_dict(record: dict[str, Any]) -> dict[str, Any]:
     value = record.get("metadata")
     return value if isinstance(value, dict) else {}
+
+
+def scoring_policy_for_memoryagentbench(*, source: object, question_type: object) -> str:
+    text = f"{source or ''} {question_type or ''}".lower()
+    if any(name in text for name in ("infbench_sum", "longmemeval")):
+        return "llm_judge_required"
+    if any(name in text for name in ("icl_", "recsys_", "detective_qa")):
+        return "exact_match"
+    return "substring_exact_match"

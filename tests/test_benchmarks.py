@@ -3,8 +3,16 @@ from pathlib import Path
 import pytest
 
 from memorycore.benchmarks import get_benchmark
-from memorycore.benchmarks.memoryagentbench import record_to_memoryagentbench_examples
-from memorycore.experiments.run_experiment import run_experiment, score_prediction, substring_match_score
+from memorycore.benchmarks.memoryagentbench import (
+    record_to_memoryagentbench_examples,
+    scoring_policy_for_memoryagentbench,
+)
+from memorycore.experiments.run_experiment import (
+    correct_for_scoring_policy,
+    run_experiment,
+    score_prediction,
+    substring_match_score,
+)
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 LONGMEMEVAL_FIXTURE = FIXTURE_DIR / "longmemeval_oracle_sample.json"
@@ -204,6 +212,21 @@ def test_memoryagentbench_schema_fixture_expands_question_arrays() -> None:
     assert example.expected_answer == "Huaxin Consulting"
     assert example.meta["source"] == "Accurate_Retrieval"
     assert example.messages[0].meta["has_answer"] is True
+    assert example.meta["scoring_policy"] == "substring_exact_match"
+
+
+def test_memoryagentbench_report_includes_scoring_policy_metrics(tmp_path: Path) -> None:
+    run_experiment(
+        {
+            "benchmark": "memoryagentbench",
+            "data_path": str(MEMORYAGENTBENCH_FIXTURE),
+            "memory": "decisions_facts",
+            "output_dir": str(tmp_path),
+        }
+    )
+
+    report = (tmp_path / "report.md").read_text(encoding="utf-8")
+    assert "Scoring Policy Metrics" in report
 
 
 def test_memoryagentbench_array_answers_are_kept_as_aliases() -> None:
@@ -228,6 +251,41 @@ def test_score_prediction_accepts_expected_answer_aliases() -> None:
 
     assert exact_match is True
     assert substring_match is True
+
+
+def test_memoryagentbench_scoring_policy_mapping() -> None:
+    assert (
+        scoring_policy_for_memoryagentbench(source="factconsolidation_mh_6k", question_type=None)
+        == "substring_exact_match"
+    )
+    assert scoring_policy_for_memoryagentbench(source="recsys_redial_full", question_type=None) == "exact_match"
+    assert (
+        scoring_policy_for_memoryagentbench(source="icl_banking77_5900shot_balance", question_type=None)
+        == "exact_match"
+    )
+    assert (
+        scoring_policy_for_memoryagentbench(source="infbench_sum_eng_shots2", question_type=None)
+        == "llm_judge_required"
+    )
+
+
+def test_exact_scoring_policy_does_not_accept_substring_only_matches() -> None:
+    assert (
+        correct_for_scoring_policy(
+            exact_match=False,
+            substring_match=True,
+            scoring_policy="substring_exact_match",
+        )
+        is True
+    )
+    assert (
+        correct_for_scoring_policy(
+            exact_match=False,
+            substring_match=True,
+            scoring_policy="exact_match",
+        )
+        is False
+    )
 
 
 def test_real_schema_smoke_runs_for_additional_benchmarks(tmp_path: Path) -> None:
