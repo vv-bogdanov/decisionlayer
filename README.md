@@ -5,8 +5,12 @@ improves the same long-horizon benchmark backend.
 
 ```text
 Memory remembers facts.
-Decision Layer remembers commitments.
+Decision Layer remembers accepted commitments.
 ```
+
+Accepted commitments include explicit decisions, requirements, constraints, and
+procedures. Environment facts and UI state remain normal memory/backend data,
+not Decision Layer data.
 
 ## Development
 

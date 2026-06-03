@@ -22,6 +22,16 @@ def test_norm_phrase_set_match_ordered_requires_order() -> None:
     assert score_answer("Problems; Reports", "Reports;Problems", eval_function).correct is False
 
 
+def test_norm_phrase_set_match_accepts_boxed_phrase() -> None:
+    result = score_answer(
+        "\\boxed{5 - Planning}",
+        "5 - Planning",
+        "norm_phrase_set_match|lower=true|normalize_hyphen=true|strip_punct=true|separators=,;|require_non_empty=true",
+    )
+
+    assert result.correct is True
+
+
 def test_mc_choice_match_accepts_boxed_choice() -> None:
     result = score_answer(
         "Final answer: \\boxed{B}.",

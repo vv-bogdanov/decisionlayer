@@ -33,6 +33,25 @@ def test_goal_signal_adds_decision() -> None:
     )
 
 
+def test_explicit_requirement_signal_adds_decision() -> None:
+    assert extract("Requirement: return responses as JSON") == (
+        "add",
+        "return responses as JSON",
+    )
+    assert extract("Constraint: do not use custom benchmarks for proof") == (
+        "add",
+        "do not use custom benchmarks for proof",
+    )
+    assert extract("Требование: не сохранять факты как решения") == (
+        "add",
+        "не сохранять факты как решения",
+    )
+
+
+def test_one_off_need_statement_is_not_a_decision() -> None:
+    assert extract("I need to find the current ticket status") is None
+
+
 def test_replace_signal_replaces_decision() -> None:
     assert extract("Change the decision: use PostgreSQL for the MVP") == (
         "replace",

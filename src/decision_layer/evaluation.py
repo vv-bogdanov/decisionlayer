@@ -69,7 +69,7 @@ def parse_eval_value(key: str, value: str) -> object:
 
 
 def norm_phrase_set_match(prediction: str, answer: str, options: dict[str, object]) -> bool:
-    normalized_prediction = normalize_phrase(prediction, options)
+    normalized_prediction = normalize_phrase(boxed_or_full_answer(prediction), options)
     answer_phrases = split_phrases(answer, options)
     if require_non_empty(options) and (not normalized_prediction or not answer_phrases):
         return False
@@ -77,7 +77,7 @@ def norm_phrase_set_match(prediction: str, answer: str, options: dict[str, objec
 
 
 def norm_phrase_set_match_ordered(prediction: str, answer: str, options: dict[str, object]) -> bool:
-    normalized_prediction = normalize_phrase(prediction, options)
+    normalized_prediction = normalize_phrase(boxed_or_full_answer(prediction), options)
     answer_phrases = split_phrases(answer, options)
     if require_non_empty(options) and (not normalized_prediction or not answer_phrases):
         return False

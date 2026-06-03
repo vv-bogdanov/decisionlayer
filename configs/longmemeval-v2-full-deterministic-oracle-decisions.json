@@ -2,6 +2,9 @@
   "025db8ef": [
     "For rebalancing workload between agents by problem tag, use Reports first, then Problems."
   ],
+  "07ffeedf": [
+    "For problem requests created from incident-report results, Subcategory, Assignment Group, and State are present on the Problem table but unimportant in the workflow."
+  ],
   "0b50ca0d": [
     "For extra device item requests for agents selected from incident-report criteria, use Open Records > Items (Item Requests)."
   ],

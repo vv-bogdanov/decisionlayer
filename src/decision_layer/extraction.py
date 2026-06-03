@@ -26,8 +26,17 @@ ADD_PATTERNS = (
         r"^\s*(?:let'?s\s+commit|commit|decide|we choose|choose)\s*:?\s*(?P<text>.+)$",
         re.I,
     ),
+    re.compile(
+        r"^\s*(?:requirement|constraint|accepted\s+requirement|accepted\s+constraint)"
+        r"\s*:?\s*(?P<text>.+)$",
+        re.I,
+    ),
     re.compile(r"^\s*goal\s*:?\s*(?P<text>.+)$", re.I),
-    re.compile(r"^\s*(?:фиксируем|решаем|выбираем|бер[её]м|цель)\s*:?\s*(?P<text>.+)$", re.I),
+    re.compile(
+        r"^\s*(?:фиксируем|решаем|выбираем|бер[её]м|цель|требование|ограничение)"
+        r"\s*:?\s*(?P<text>.+)$",
+        re.I,
+    ),
 )
 REPLACE_PATTERNS = (
     re.compile(

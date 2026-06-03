@@ -11,6 +11,10 @@ The run should compare the same local reader in three modes:
 - `D1`: baseline context plus audited oracle Decision Briefs.
 - `D2`: baseline context plus automatic Decision Briefs.
 
+Decision Briefs can contain accepted decisions, explicit requirements,
+constraints, and procedures. They should not contain plain environment facts or
+UI state.
+
 ## Scope
 
 - [x] Use LongMemEval-V2 only; do not introduce a custom proof benchmark.
@@ -52,10 +56,14 @@ The run should compare the same local reader in three modes:
   environment facts, weak guesses, or long action-count answers.
 - [x] Allow an empty D1 entry for questions where the evidence is factual memory,
   not a decision, commitment, constraint, or procedure.
+- [x] Treat explicit requirements and constraints as accepted commitments, while
+  still rejecting plain facts, UI state, and one-off information needs.
 - [x] Write accepted oracle decisions to
   `configs/longmemeval-v2-full-deterministic-oracle-decisions.json`.
 - [x] Write an initial D2 audit allowlist to
   `configs/longmemeval-v2-full-deterministic-accepted-d2-decisions.json`.
+- [x] Add the canary D1 requirement label for `07ffeedf` so D1 measures the
+  useful upper bound and D2 exposes the extractor gap.
 
 ## Canary Gate
 
@@ -114,7 +122,9 @@ Measured all-topic canary:
 
 - [x] 12 question canary: about 9.1 minutes for `D0` + `D1` + `D2`.
 - [x] Canary evidence:
-  `/tmp/decision-layer-overnight-canary-clean/canary/canary_gate.json`.
+  `/tmp/decision-layer-overnight-canary-d1-expanded/canary/canary_gate.json`.
+- [x] Latest canary result: `D0=0.083333`, `D1=0.416667`,
+  `D2=0.333333`, `D2_false_decision_rate=0.0`, `D2_decision_recall=0.75`.
 
 Approximate wall-clock estimates:
 
