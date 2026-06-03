@@ -20,6 +20,12 @@ New D2 full run artifacts after adding investment/offboarding extraction:
 /tmp/decision-layer-d2-blind-full
 ```
 
+Latest D2 full run artifacts after targeted workflow enrichment:
+
+```text
+/tmp/decision-layer-d2-blind-full-v2
+```
+
 Current result is useful as a pipeline and baseline check, but not as a full
 Decision Layer proof. The current D1 oracle contains only a few accepted
 commitments, so D1 is not yet a real upper bound.
@@ -33,6 +39,7 @@ Key current metrics:
 | D2 | 25/295 | 0.084746 | 6 |
 | Blind D1 | 30/295 | 0.101695 | 74 |
 | New D2 | 29/295 | 0.098305 | 11 |
+| D2 v2 | 36/295 | 0.122034 | 14 |
 
 Main signal: `procedure` improved from `1/74` in D0 to `6/74` in D2, but this
 is based on sparse commitment coverage.
@@ -48,8 +55,12 @@ yet because the draft oracle contains about 70k question-level requirements.
 Targeted D2 smoke after enriching problem-request, investment, offboarding, and
 stock-restocking decisions: `7/7` correct on `07ffeedf`, `25b00876`,
 `4df5e6b4`, `52dd33bb`, `75816b26`, `bfb3bcc4`, and `e334d5c6`, with
-`false_decision_rate=0.0`. Full D2 metrics still need a fresh run after these
-targeted fixes.
+`false_decision_rate=0.0`.
+
+D2 v2 full improves old D2 from `25/295` to `36/295` and improves `procedure`
+from `6/74` to `13/74`, using only 14 non-empty Decision Briefs. Audit
+false-decision rate remains `0.0`. Recall is still not meaningful against the
+broad draft oracle.
 
 Blind D1 canary after goal labels + rule-based goal augmentation:
 
@@ -114,7 +125,9 @@ plain environment facts, UI state, answer keys, or transient observations.
   return the required short phrase.
 - [x] Add a stock-restocking report decision so `4df5e6b4` has both compared
   workflows grounded in Decision Briefs.
-- [ ] Re-run full D2 after targeted fixes and refresh the metrics table.
+- [x] Re-run full D2 after targeted fixes and refresh the metrics table.
+- [ ] Inspect new D2 v2 failed decision cases with non-empty briefs:
+  `3a2e9368` and `eb3cfd03`.
 - [ ] Improve decision retrieval/ranking to reduce D1 noise, especially
   `767e4106`.
 
