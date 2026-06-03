@@ -79,7 +79,8 @@ Use this as the short working queue. The broader proof checklist remains below.
 - [x] Run MemoryAgentBench dev baseline table on all four official splits.
 - [x] Add MemoryAgentBench competency summary table.
 - [x] Run MemoryAgentBench held-out baseline table on all four official splits.
-- [ ] Inspect MemoryAgentBench TTL exact-format failures.
+- [x] Inspect MemoryAgentBench TTL exact-format failures.
+- [x] Split oversized rule-based facts into atomic facts.
 - [ ] Run judge-required MemoryAgentBench tasks with local llama.cpp beyond the
   smoke test.
 
@@ -232,6 +233,8 @@ Work:
   LongMemEval-style tasks.
 - [x] Report metrics by MemoryAgentBench competency.
 - [x] Add budget-aware comparison because some rows have huge contexts.
+- [x] Fix oversized rule-based facts by splitting labelled examples and long
+  plain text into atomic facts.
 
 Current held-out result:
 
@@ -239,9 +242,9 @@ Current held-out result:
   accuracy with `substring_exact_match`.
 - [x] Conflict_Resolution held-out: 100 examples, all current baselines at 0.26
   accuracy with `substring_exact_match`.
-- [x] Test_Time_Learning held-out: 100 examples, exact accuracy 0.0 while
-  substring match is 1.0, so the next useful task is answer-format extraction
-  rather than another identical baseline run.
+- [x] Test_Time_Learning held-out after atomic fact extraction: 100 examples,
+  all current baselines at 0.76 exact accuracy, average memory brief around 73
+  tokens instead of the previous oversized 2000-token fact.
 - [x] Long_Range_Understanding held-out: 71 detectiveQA examples, all current
   baselines at 0.0 exact accuracy.
 - [ ] MemoryAgentBench currently does not prove a quality win for
@@ -448,6 +451,8 @@ The proof must show which component helps.
 - [x] Run dev baseline table for every split.
 - [x] Run held-out test table for every split.
 - [x] Summarize by competency.
+- [x] Inspect TTL exact-format failures and fix the root cause: rule-based
+  extraction was storing a whole labelled-example block as one fact.
 
 ### M4: HaluMem Safety Proof
 
@@ -525,8 +530,10 @@ cost reduction.
 - [x] Decide held-out subset size for MemoryAgentBench after dev latency review.
 - [x] Run MemoryAgentBench held-out baseline tables for all four official
   splits.
-- [ ] Inspect TTL exact-format failures and decide whether to add a
+- [x] Inspect TTL exact-format failures and decide whether to add a
   task-specific answer extractor.
+- [x] Avoid a task-specific extractor for TTL; fix rule-based fact granularity
+  instead.
 - [ ] Run a non-smoke llama.cpp judge subset for MemoryAgentBench
   judge-required tasks.
 - [ ] Continue with `M4: HaluMem Safety Proof` after the MemoryAgentBench
