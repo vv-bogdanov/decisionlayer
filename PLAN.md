@@ -24,6 +24,9 @@ and a clear answer about whether the memory model is actually better.
 - [x] Grid, Optuna, and Hydra entrypoints exist.
 - [x] Reports, predictions, traces, metrics, and sweep outputs exist.
 - [x] Ruff, mypy, and pytest are configured.
+- [x] Architecture direction is recorded in `ARCHITECTURE.md`: pure core,
+  plugin-owned IO/storage/extraction/indexing, and external benchmarks for
+  proof.
 
 ## Master Checklist
 
@@ -75,6 +78,8 @@ Use this as the short working queue. The broader proof checklist remains below.
 - [x] Add local llama.cpp judge support through `judge_policy=llama_cpp`.
 - [x] Run MemoryAgentBench LRU llama.cpp judge smoke.
 - [x] Enforce `max_memory_brief_tokens` with oversized fact truncation.
+- [x] Record architecture constraints: pure core, plugin boundary, external
+  benchmark proof only.
 - [x] Run MemoryAgentBench smoke on all four official splits.
 - [x] Run MemoryAgentBench dev baseline table on all four official splits.
 - [x] Add MemoryAgentBench competency summary table.
