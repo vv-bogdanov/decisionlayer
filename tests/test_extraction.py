@@ -65,7 +65,10 @@ def test_structured_workflow_extraction_for_agent_workload_balancing() -> None:
     assert extract(
         'Referring to company protocol "Agent Workload Balancing" re-distribute the '
         "problems with hashtag=#PRB052840832."
-    ) == ("add", "For Agent Workload Balancing, use Reports first, then Problems.")
+    ) == (
+        "add",
+        "For rebalancing workload between agents by problem tag, use Reports first, then Problems.",
+    )
 
 
 def test_structured_workflow_extraction_can_emit_multiple_decisions() -> None:
@@ -75,7 +78,10 @@ def test_structured_workflow_extraction_can_emit_multiple_decisions() -> None:
         "the agents based on the above criteria."
     )
 
-    assert "For incident-report criteria tasks that create item requests" in texts[0]
+    assert (
+        "For extra device item requests for agents selected from incident-report criteria"
+        in texts[0]
+    )
     assert "To locate an incident-related performance report" in texts[1]
 
 

@@ -1,0 +1,39 @@
+# LongMemEval-V2 deterministic all-topic canary subset.
+# Run this before the full overnight subset.
+# Total: 12
+
+# dynamic-environment / norm_phrase_set_match
+01307e07
+
+# procedure / norm_phrase_set_match_ordered; verified POC sanity
+025db8ef
+
+# static-environment / norm_phrase_set_match
+057a2d4d
+
+# procedure / mc_choice_match
+07ffeedf
+
+# static-environment / norm_phrase_set_match
+080b0218
+
+# procedure / mc_choice_match; verified POC sanity
+0b50ca0d
+
+# static-environment / norm_phrase_set_match
+0cf979c4
+
+# dynamic-environment / norm_phrase_set_match
+0d07143c
+
+# static-environment / norm_phrase_set_match
+0f8c85a6
+
+# procedure / mc_choice_match; verified POC sanity
+100ff132
+
+# dynamic-environment / norm_phrase_set_match
+14a823df
+
+# errors-gotchas / norm_phrase_set_match
+626e401e

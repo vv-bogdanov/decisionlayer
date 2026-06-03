@@ -1,9 +1,116 @@
 import json
 from pathlib import Path
 
-from decision_layer.poc import PocConfig, PocSuiteConfig, run_poc, run_poc_suite
+from decision_layer.benchmarks.longmemeval_v2 import (
+    LongMemEvalV2Example,
+    LongMemEvalV2Question,
+    LongMemEvalV2Trajectory,
+)
+from decision_layer.core import DecisionState, add_decision, render_decision_brief
+from decision_layer.extraction import RuleBasedDecisionExtractor
+from decision_layer.poc import (
+    PocConfig,
+    PocSuiteConfig,
+    apply_automatic_decisions,
+    build_reader_context,
+    decision_relevant_to_question,
+    run_poc,
+    run_poc_suite,
+)
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures" / "longmemeval_v2"
+
+
+def test_build_reader_context_skips_empty_decision_brief() -> None:
+    context = "Baseline retrieved context."
+    empty_brief = render_decision_brief(DecisionState())
+
+    assert build_reader_context("D1", empty_brief, context) == context
+    assert build_reader_context("D2", empty_brief, context) == context
+
+    state, _trace = add_decision(
+        DecisionState(),
+        "Use the verified workflow.",
+        authority="manual_api_commit",
+    )
+    decision_brief = render_decision_brief(state)
+
+    assert build_reader_context("D0", decision_brief, context) == context
+    assert build_reader_context("D1", decision_brief, context).startswith("Decision Brief")
+
+
+def test_decision_relevance_rejects_neighboring_workflows() -> None:
+    item_request_decision = (
+        "For extra device item requests for agents selected from incident-report criteria, "
+        "use Open Records > Items (Item Requests)."
+    )
+    item_request_question = (
+        "In our company's typical workflow, if I am told to create extra device item "
+        "requests for agents selected from incident-report criteria, which form should I go to?"
+    )
+    problem_request_question = (
+        "For the task of navigating and creating problem requests from incident-report "
+        "results, which fields are unimportant in our typical workflow?"
+    )
+    report_decision = (
+        "To locate an incident-related performance report, use the All filter, type reports, "
+        "open View/Run, then locate the relevant report."
+    )
+    report_question = (
+        "My boss asks me to find a report with a specific title that shows agents' "
+        "performance and then create and assign problems based on it."
+    )
+
+    assert decision_relevant_to_question(item_request_decision, item_request_question)
+    assert not decision_relevant_to_question(item_request_decision, problem_request_question)
+    assert decision_relevant_to_question(report_decision, report_question)
+    assert not decision_relevant_to_question(report_decision, item_request_question)
+
+
+def test_automatic_decisions_skip_real_factual_question_types() -> None:
+    question = LongMemEvalV2Question(
+        id="q_static_real_type",
+        domain="enterprise",
+        environment="servicenow",
+        question_type="static-environment",
+        question="When ordering a Dell XPS, what is the extra dollar amount?",
+        image=None,
+        answer="300",
+        eval_function="exact_match",
+    )
+    trajectory = LongMemEvalV2Trajectory(
+        id="traj_workflow",
+        domain="enterprise",
+        environment="servicenow",
+        goal=(
+            'Referring to company protocol "Agent Workload Balancing" re-distribute '
+            "the problems with hashtag=#PRB052840832."
+        ),
+        outcome="success",
+        start_url="https://enterprise.example.test",
+        states=(),
+    )
+    example = LongMemEvalV2Example(
+        question=question,
+        trajectory_ids=(trajectory.id,),
+        trajectories=(trajectory,),
+    )
+
+    state, traces = apply_automatic_decisions(
+        DecisionState(),
+        example,
+        RuleBasedDecisionExtractor(),
+    )
+
+    assert state.decisions == ()
+    assert traces == [
+        {
+            "event": "automatic_decision_extraction_skipped",
+            "question_id": "q_static_real_type",
+            "question_type": "static-environment",
+            "reason": "non_decision_question_type",
+        }
+    ]
 
 
 def test_run_poc_writes_required_artifacts_for_all_modes(tmp_path: Path) -> None:

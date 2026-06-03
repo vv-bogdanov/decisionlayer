@@ -118,15 +118,18 @@ def structured_workflow_texts(text: str) -> tuple[str, ...]:
         and "problem" in lowered
         and ("hashtag" in lowered or "tag" in lowered)
     ):
-        decisions.append("For Agent Workload Balancing, use Reports first, then Problems.")
+        decisions.append(
+            "For rebalancing workload between agents by problem tag, use Reports first, "
+            "then Problems."
+        )
     if (
         ("item request" in lowered or "item requests" in lowered)
         and "incident" in lowered
         and ("report" in lowered or "chart" in lowered)
     ):
         decisions.append(
-            "For incident-report criteria tasks that create item requests, use Open Records > "
-            "Items (Item Requests)."
+            "For extra device item requests for agents selected from incident-report criteria, "
+            "use Open Records > Items (Item Requests)."
         )
     if (
         (

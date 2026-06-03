@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
@@ -11,12 +12,44 @@ from decision_layer.benchmarks.longmemeval_v2 import (
     LongMemEvalV2Example,
     load_longmemeval_v2_examples,
 )
-from decision_layer.core import DecisionState, add_decision, render_decision_brief
+from decision_layer.core import DecisionBrief, DecisionState, add_decision, render_decision_brief
 from decision_layer.evaluation import score_answer
 from decision_layer.extraction import RuleBasedDecisionExtractor, SourceMessage
 from decision_layer.readers import ReaderKind, ReaderRequest, build_reader
 
 PocMode = Literal["D0", "D1", "D2"]
+NON_DECISION_QUESTION_TYPES = frozenset(
+    {"static-environment", "dynamic-environment", "errors-gotchas"}
+)
+KEYWORD_STOPWORDS = frozenset(
+    {
+        "and",
+        "are",
+        "based",
+        "before",
+        "between",
+        "company",
+        "criteria",
+        "current",
+        "from",
+        "have",
+        "into",
+        "our",
+        "portal",
+        "selected",
+        "service",
+        "should",
+        "snow",
+        "that",
+        "the",
+        "then",
+        "these",
+        "this",
+        "use",
+        "with",
+        "workflow",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,7 +132,7 @@ def run_poc(config: PocConfig) -> PocResult:
 
         brief = render_decision_brief(state)
         context = retrieve_keyword_context(example)
-        augmented_context = context if config.mode == "D0" else f"{brief.text}\n\n{context}"
+        augmented_context = build_reader_context(config.mode, brief, context)
         reader_result = reader.answer(
             ReaderRequest(
                 question=example.question.question,
@@ -152,6 +185,12 @@ def run_poc(config: PocConfig) -> PocResult:
     result = PocResult(metrics, predictions, decision_trace, brief_trace)
     write_artifacts(config, examples, result)
     return result
+
+
+def build_reader_context(mode: PocMode, brief: DecisionBrief, context: str) -> str:
+    if mode == "D0" or not brief.decisions:
+        return context
+    return f"{brief.text}\n\n{context}"
 
 
 def run_poc_suite(config: PocSuiteConfig) -> PocSuiteResult:
@@ -212,6 +251,15 @@ def apply_automatic_decisions(
     extractor: RuleBasedDecisionExtractor,
 ) -> tuple[DecisionState, list[dict[str, object]]]:
     traces = []
+    if example.question.question_type in NON_DECISION_QUESTION_TYPES:
+        return state, [
+            {
+                "event": "automatic_decision_extraction_skipped",
+                "question_id": example.question.id,
+                "question_type": example.question.question_type,
+                "reason": "non_decision_question_type",
+            }
+        ]
     added_texts: set[str] = set()
     for trajectory in example.trajectories:
         message = SourceMessage(
@@ -266,6 +314,19 @@ def apply_automatic_decisions(
                     }
                 )
                 continue
+            if command.reason == "structured_workflow_signal" and not decision_relevant_to_question(
+                command.text, example.question.question
+            ):
+                traces.append(
+                    {
+                        "event": "decision_candidate_skipped",
+                        "question_id": example.question.id,
+                        "trajectory_id": trajectory.id,
+                        "source_message_id": command.source_message_id,
+                        "reason": "irrelevant_to_question",
+                    }
+                )
+                continue
             normalized_command_text = normalize(command.text)
             if normalized_command_text in added_texts:
                 traces.append(
@@ -295,6 +356,36 @@ def apply_automatic_decisions(
             trace_data["reason"] = command.reason
             traces.append(trace_data)
     return state, traces
+
+
+def decision_relevant_to_question(decision_text: str, question_text: str) -> bool:
+    decision = decision_text.lower()
+    question = question_text.lower()
+    if "extra device item request" in decision:
+        return "device" in question and "item request" in question and "incident" in question
+    if "rebalancing workload" in decision:
+        return (
+            "workload" in question
+            and "problem" in question
+            and ("tag" in question or "hashtag" in question)
+        )
+    if "incident-related performance report" in decision:
+        return "report" in question and ("performance" in question or "title" in question)
+    decision_terms = keyword_terms(decision_text)
+    question_terms = keyword_terms(question_text)
+    return len(decision_terms & question_terms) >= 4
+
+
+def keyword_terms(text: str) -> set[str]:
+    terms = set()
+    for raw_term in re.findall(r"[a-z0-9]+", text.lower()):
+        if len(raw_term) <= 2 or raw_term in KEYWORD_STOPWORDS:
+            continue
+        term = raw_term
+        if len(term) > 4 and term.endswith("s"):
+            term = term[:-1]
+        terms.add(term)
+    return terms
 
 
 def retrieve_keyword_context(example: LongMemEvalV2Example, *, max_items: int = 4) -> str:

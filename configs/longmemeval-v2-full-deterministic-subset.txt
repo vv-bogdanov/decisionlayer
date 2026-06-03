@@ -1,0 +1,494 @@
+# LongMemEval-V2 deterministic all-topic overnight subset.
+# Excludes llm_abstention_checker and llm_gotchas_checker questions.
+# Total: 295
+# dynamic-environment: 86
+# errors-gotchas: 1
+# procedure: 74
+# static-environment: 134
+
+# dynamic-environment
+01307e07
+# procedure
+025db8ef
+# static-environment
+057a2d4d
+# procedure
+07ffeedf
+# static-environment
+080b0218
+# procedure
+0b50ca0d
+# static-environment
+0cf979c4
+# dynamic-environment
+0d07143c
+# static-environment
+0f8c85a6
+0f970f01
+# procedure
+100ff132
+# static-environment
+106c321b
+# dynamic-environment
+14a823df
+# static-environment
+17a03f9b
+19367bc7
+1bfd2eac
+# procedure
+1cf04706
+# static-environment
+229675cd
+# dynamic-environment
+233f9f09
+# static-environment
+237d2cc5
+23c3e290
+# procedure
+25b00876
+# dynamic-environment
+2721ca7f
+# static-environment
+2975030d
+2b96f402
+# dynamic-environment
+2d4e08b9
+# static-environment
+2e90de97
+# procedure
+32909aa1
+# dynamic-environment
+32d04f31
+# static-environment
+32e719c2
+38726e61
+3a131a42
+# procedure
+3a2e9368
+# static-environment
+3b375e30
+# dynamic-environment
+3fd81278
+41a18e5c
+# static-environment
+42a55762
+4755f316
+# dynamic-environment
+4c6d1eb7
+# procedure
+4df5e6b4
+# dynamic-environment
+4dffe641
+# static-environment
+4ed01379
+# dynamic-environment
+50711c52
+# procedure
+507a0fe8
+52dd33bb
+58c34839
+# static-environment
+5aaf0f61
+5b249b5c
+# dynamic-environment
+5edd2533
+# static-environment
+5f100f22
+# procedure
+616c238d
+# static-environment
+634973c3
+# dynamic-environment
+658fa827
+# static-environment
+668f7b74
+679111c6
+68107cba
+6a7808c5
+# dynamic-environment
+6cb8ce37
+# static-environment
+71e61e15
+73b6738b
+# procedure
+73cbefdc
+756a7434
+75816b26
+767e4106
+# dynamic-environment
+78686f4e
+# static-environment
+7a07e9a0
+# procedure
+7e32e4a2
+# dynamic-environment
+7ea13f14
+82cdfcc3
+# static-environment
+83c35034
+85251f36
+# dynamic-environment
+85fc5722
+876c720a
+87711b62
+882965b7
+# static-environment
+89439d62
+8b09f378
+8b2a9dd3
+8e320e42
+8f752563
+# dynamic-environment
+901b7d17
+# static-environment
+90df8253
+927c65a2
+# procedure
+95ae824f
+# static-environment
+9680f077
+# dynamic-environment
+984022b1
+# static-environment
+9c074855
+# dynamic-environment
+9c24f41e
+# static-environment
+9c32bca6
+# procedure
+9e05978c
+# static-environment
+a3a7b079
+a444cec8
+a45edf3e
+a482c0d9
+a7edfb7a
+aa4a4b7b
+# dynamic-environment
+aa64a8bd
+# procedure
+aca57021
+# static-environment
+ad903be2
+adddeaa5
+aedd338d
+aef57896
+# dynamic-environment
+b54161f8
+# procedure
+b7cc4da2
+# dynamic-environment
+b8cabd09
+bdb825a3
+# static-environment
+bf98bb38
+# procedure
+bfb3bcc4
+# static-environment
+c0593d69
+# dynamic-environment
+c0696888
+# static-environment
+c1c000eb
+c3dbec17
+# procedure
+c60f4681
+# static-environment
+c80ca967
+# procedure
+c9568c9b
+# static-environment
+c9c6a06a
+ca8e070b
+# procedure
+ccf29914
+cdd0e687
+# static-environment
+cf62efad
+# dynamic-environment
+d0d61088
+# static-environment
+d3d7ec75
+# procedure
+d63e8a7f
+# dynamic-environment
+d83c4bf7
+dd53ab77
+e033e796
+# procedure
+e334d5c6
+# static-environment
+e7292dab
+e823a94a
+e9fde9fe
+# procedure
+eb3cfd03
+ecdb7d5e
+# static-environment
+f0882f6e
+f1d8a168
+f1f9de44
+f3496ca5
+# dynamic-environment
+f35bac4a
+# static-environment
+f4b2b1fb
+# procedure
+f9c65fe6
+# static-environment
+fe41b553
+ff311d07
+# dynamic-environment
+00aa905a
+# static-environment
+05cce9b3
+# dynamic-environment
+06a5a25f
+# static-environment
+06e965cf
+0738c1ac
+# procedure
+07ab3723
+07b49858
+# dynamic-environment
+07d86be1
+# procedure
+07fff330
+# static-environment
+0a4a47e6
+0c0fdcd7
+0c6b0c60
+# procedure
+0fe2c676
+# static-environment
+10003186
+10466872
+# dynamic-environment
+11dac74b
+# static-environment
+15e5efa6
+# dynamic-environment
+17d63ad8
+# procedure
+18f9d965
+19c641bd
+1b43f7df
+# dynamic-environment
+1defc293
+# procedure
+1e011eb5
+238c3621
+23aecb38
+# static-environment
+26a038ce
+# procedure
+289aea4a
+2b1a8fc6
+# static-environment
+2c45ecbb
+# procedure
+2ca2d443
+# static-environment
+2e67d04f
+# dynamic-environment
+2ee130d2
+# procedure
+30fab98c
+31f146ba
+3269a3c5
+# static-environment
+36fe48ef
+# procedure
+3c0c1b19
+# static-environment
+3f366e15
+# procedure
+401566e6
+# static-environment
+40758d8b
+41bb40df
+4252cc1c
+4266cb67
+# dynamic-environment
+4329b535
+# static-environment
+436c58d5
+44c05e59
+48ab5c3d
+499488a6
+4ca9f7d7
+# procedure
+4d7dda89
+4f92aa38
+# static-environment
+521b124f
+# dynamic-environment
+5387d23d
+# procedure
+597645be
+# static-environment
+597ca614
+# dynamic-environment
+5a85ca0f
+5c826b28
+5cb7289b
+# static-environment
+5d6b993a
+5db4899c
+# dynamic-environment
+609acb91
+# procedure
+60c7ca22
+# static-environment
+60f2b293
+# errors-gotchas
+626e401e
+# static-environment
+631667c9
+# dynamic-environment
+63a1b94b
+65fbcbdf
+6652c337
+# procedure
+674a6972
+# dynamic-environment
+691cd1da
+6a23675f
+# static-environment
+6a2e74de
+# dynamic-environment
+6a5bbcdb
+6a73e32b
+# static-environment
+6cb662d7
+6d975a08
+# dynamic-environment
+6f9cb5fc
+# static-environment
+70e79657
+# procedure
+73297783
+# dynamic-environment
+744dbdad
+# static-environment
+762d34b8
+77db204d
+7bfbd5f1
+7c8efee5
+# dynamic-environment
+820d56e2
+# procedure
+86fa86eb
+# dynamic-environment
+8955b988
+# procedure
+8957a127
+# static-environment
+896017e0
+8c55d6bc
+# dynamic-environment
+8cb3280c
+# static-environment
+8f70bc0e
+# dynamic-environment
+90dc7e66
+91d0775e
+# procedure
+92642fe7
+# dynamic-environment
+96497069
+# procedure
+97d5309a
+# static-environment
+98b62f3d
+# procedure
+99ae54d1
+99b6e22f
+99fa7c96
+9cae869c
+# dynamic-environment
+a12b7094
+# static-environment
+a42071db
+# procedure
+a59d50f7
+# static-environment
+a62de1f1
+a7da9ab3
+# procedure
+a92dff92
+# static-environment
+abadf765
+# dynamic-environment
+b2595523
+# procedure
+b4dcf650
+# dynamic-environment
+b5a25676
+b828a6b2
+# static-environment
+b8d56b89
+ba047686
+# dynamic-environment
+bdf0e84b
+# static-environment
+be541aa6
+# dynamic-environment
+c36b0d68
+# static-environment
+c39f6edf
+c56e69ca
+# procedure
+c6124506
+# dynamic-environment
+c738b934
+# static-environment
+c7e367e2
+# dynamic-environment
+c843c4ec
+# procedure
+d16a18fe
+# static-environment
+d1d8cf9f
+# dynamic-environment
+d3300354
+# static-environment
+d5b9fda4
+d6da3938
+# procedure
+d886b018
+# dynamic-environment
+dae9f7e9
+dea446d0
+deb008ed
+# static-environment
+e3a1d7f3
+e4d36b58
+# dynamic-environment
+e71f7c92
+# static-environment
+e77d1287
+# dynamic-environment
+e83245c5
+e9bb843a
+eab07e81
+edb69441
+edea0219
+ee68431d
+# procedure
+eef545a0
+f13eb38d
+f23807ed
+# static-environment
+f61a096f
+f928c075
+# dynamic-environment
+f93031d2
+f9f9cd61
+fe18a443
+# procedure
+fec652a9
+# static-environment
+ff8f3a22
+# dynamic-environment
+ffa4e57e

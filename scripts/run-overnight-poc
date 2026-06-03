@@ -1,0 +1,178 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+data_root="${DATA_ROOT:-data/longmemeval-v2}"
+output_dir="${OUTPUT_DIR:-/tmp/decision-layer-overnight-$(date +%Y%m%d%H%M%S)}"
+reader="${READER:-openai-chat}"
+reader_base_url="${READER_BASE_URL:-http://127.0.0.1:18080/v1}"
+reader_model="${READER_MODEL:-qwen36-35b-a3b-udiq3s}"
+reader_max_tokens="${READER_MAX_TOKENS:-128}"
+reader_timeout_seconds="${READER_TIMEOUT_SECONDS:-60}"
+tier="${TIER:-small}"
+canary_subset="${CANARY_SUBSET:-configs/longmemeval-v2-canary-deterministic-subset.txt}"
+full_subset="${FULL_SUBSET:-configs/longmemeval-v2-full-deterministic-subset.txt}"
+oracle_decisions="${ORACLE_DECISIONS:-configs/longmemeval-v2-full-deterministic-oracle-decisions.json}"
+accepted_decisions="${ACCEPTED_DECISIONS:-configs/longmemeval-v2-full-deterministic-accepted-d2-decisions.json}"
+canary_only="${CANARY_ONLY:-0}"
+
+mkdir -p "$output_dir"
+run_log="$output_dir/run.log"
+exec > >(tee -a "$run_log") 2>&1
+
+printf 'Decision Layer overnight run\n'
+printf 'output_dir=%s\n' "$output_dir"
+printf 'data_root=%s\n' "$data_root"
+printf 'reader=%s\n' "$reader"
+printf 'reader_base_url=%s\n' "$reader_base_url"
+printf 'reader_model=%s\n' "$reader_model"
+printf 'tier=%s\n' "$tier"
+
+require_file() {
+  local path="$1"
+  if [[ ! -f "$path" ]]; then
+    printf 'missing required file: %s\n' "$path" >&2
+    exit 2
+  fi
+}
+
+require_file "$data_root/questions.jsonl"
+require_file "$data_root/trajectories.jsonl"
+require_file "$data_root/haystacks/lme_v2_${tier}.json"
+require_file "$canary_subset"
+require_file "$full_subset"
+require_file "$oracle_decisions"
+require_file "$accepted_decisions"
+
+if [[ "$reader" == "openai-chat" ]]; then
+  if [[ -z "$reader_model" ]]; then
+    printf 'READER_MODEL is required when READER=openai-chat\n' >&2
+    exit 2
+  fi
+  curl -fsS "$reader_base_url/models" >/dev/null
+fi
+
+uv sync --extra dev
+
+uv run python scripts/draft-d1-decisions \
+  --data-root "$data_root" \
+  --tier "$tier" \
+  --question-id-file "$full_subset" \
+  --output "$output_dir/d1-draft.json"
+
+run_suite() {
+  local subset="$1"
+  local suite_output="$2"
+  uv run decision-layer run-suite \
+    --data-root "$data_root" \
+    --output-dir "$suite_output" \
+    --tier "$tier" \
+    --question-id-file "$subset" \
+    --reader "$reader" \
+    --reader-base-url "$reader_base_url" \
+    --reader-model "$reader_model" \
+    --reader-timeout-seconds "$reader_timeout_seconds" \
+    --reader-max-tokens "$reader_max_tokens" \
+    --oracle-decisions "$oracle_decisions" \
+    --accepted-decisions "$accepted_decisions"
+}
+
+printf '\nRunning canary suite...\n'
+run_suite "$canary_subset" "$output_dir/canary"
+
+uv run python - "$output_dir/canary" "$oracle_decisions" <<'PY'
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+suite_dir = Path(sys.argv[1])
+oracle_path = Path(sys.argv[2])
+
+required = [
+    suite_dir / "suite_metrics.json",
+    suite_dir / "report.md",
+    suite_dir / "D0" / "predictions.jsonl",
+    suite_dir / "D0" / "brief_trace.jsonl",
+    suite_dir / "D1" / "predictions.jsonl",
+    suite_dir / "D1" / "brief_trace.jsonl",
+    suite_dir / "D2" / "predictions.jsonl",
+    suite_dir / "D2" / "brief_trace.jsonl",
+    suite_dir / "D2" / "decision_trace.jsonl",
+]
+missing = [str(path) for path in required if not path.exists()]
+if missing:
+    raise SystemExit(f"canary missing artifacts: {missing}")
+
+metrics = json.loads((suite_dir / "suite_metrics.json").read_text(encoding="utf-8"))
+oracle = json.loads(oracle_path.read_text(encoding="utf-8"))
+
+def read_jsonl(path: Path) -> list[dict[str, object]]:
+    return [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+d0 = {str(row["id"]): row for row in read_jsonl(suite_dir / "D0" / "predictions.jsonl")}
+d1 = {str(row["id"]): row for row in read_jsonl(suite_dir / "D1" / "predictions.jsonl")}
+d2 = {str(row["id"]): row for row in read_jsonl(suite_dir / "D2" / "predictions.jsonl")}
+d1_briefs = {str(row["id"]): row for row in read_jsonl(suite_dir / "D1" / "brief_trace.jsonl")}
+
+accepted_canary_ids = sorted(set(d1_briefs) & {key for key, value in oracle.items() if value})
+missing_d1_briefs = [
+    question_id
+    for question_id in accepted_canary_ids
+    if not d1_briefs[question_id].get("final_decisions")
+]
+if missing_d1_briefs:
+    raise SystemExit(f"D1 canary brief is empty for accepted oracle ids: {missing_d1_briefs}")
+
+regressions = []
+no_brief_regressions = []
+for mode_name, rows in (("D1", d1), ("D2", d2)):
+    for question_id, d0_row in d0.items():
+        row = rows.get(question_id)
+        if d0_row.get("correct") is True and row and row.get("correct") is not True:
+            regression = {"mode": mode_name, "question_id": question_id}
+            if int(row.get("decision_count", 0)) > 0:
+                regressions.append(regression)
+            else:
+                no_brief_regressions.append(regression)
+if regressions:
+    raise SystemExit(f"canary regressions against D0: {regressions}")
+
+d2_metrics = metrics["D2"]
+if isinstance(d2_metrics, dict) and d2_metrics.get("false_decisions", 0):
+    raise SystemExit(f"D2 canary false decisions: {d2_metrics['false_decisions']}")
+
+summary = {
+    "D0_accuracy": metrics["D0"]["accuracy"],
+    "D1_accuracy": metrics["D1"]["accuracy"],
+    "D2_accuracy": metrics["D2"]["accuracy"],
+    "delta_D1_minus_D0": metrics["delta_D1_minus_D0"],
+    "delta_D2_minus_D0": metrics["delta_D2_minus_D0"],
+    "D2_false_decision_rate": d2_metrics.get("false_decision_rate")
+    if isinstance(d2_metrics, dict)
+    else None,
+    "no_brief_regressions": no_brief_regressions,
+}
+(suite_dir / "canary_gate.json").write_text(
+    json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
+    encoding="utf-8",
+)
+print("canary gate passed")
+print(json.dumps(summary, ensure_ascii=False))
+PY
+
+if [[ "$canary_only" == "1" ]]; then
+  printf '\nCANARY_ONLY=1, stopping before full run.\n'
+  printf 'canary artifacts: %s\n' "$output_dir/canary"
+  exit 0
+fi
+
+printf '\nRunning full deterministic suite...\n'
+run_suite "$full_subset" "$output_dir/full"
+
+printf '\nOvernight artifacts: %s\n' "$output_dir"
+printf 'Run log: %s\n' "$run_log"

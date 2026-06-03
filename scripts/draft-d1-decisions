@@ -1,0 +1,227 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import re
+from collections import Counter
+from pathlib import Path
+from typing import Any
+
+
+JUDGE_PREFIXES = ("llm_abstention_checker", "llm_gotchas_checker")
+OPTION_PATTERN = re.compile(
+    r"(?ms)^([A-Z])\.\s+(.*?)(?=\n[A-Z]\.\s+|\n\n(?:Put|Mark|Your final|Tell|Say)|\Z)"
+)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Draft conservative D1 decision candidates for manual review."
+    )
+    parser.add_argument("--data-root", default="data/longmemeval-v2")
+    parser.add_argument("--tier", default="small")
+    parser.add_argument("--question-id-file", required=True)
+    parser.add_argument("--output", default="/tmp/decision-layer-d1-draft.json")
+    parser.add_argument("--evidence-goals", type=int, default=3)
+    args = parser.parse_args()
+
+    data_root = Path(args.data_root)
+    question_ids = load_question_ids(Path(args.question_id_file))
+    questions = load_questions(data_root / "questions.jsonl", question_ids)
+    haystacks = load_haystacks(data_root / "haystacks" / f"lme_v2_{args.tier}.json", question_ids)
+    evidence_goals = load_evidence_goals(
+        data_root / "trajectories.jsonl",
+        {
+            trajectory_id
+            for ids in haystacks.values()
+            for trajectory_id in ids[: max(args.evidence_goals, 0)]
+        },
+    )
+
+    rows = []
+    candidate_count = 0
+    for question_id in question_ids:
+        question = questions[question_id]
+        trajectory_ids = haystacks[question_id]
+        candidates, risk, notes = draft_candidates(question)
+        candidate_count += len(candidates)
+        answer_text = selected_answer_text(question)
+        rows.append(
+            {
+                "question_id": question_id,
+                "question_type": question["question_type"],
+                "domain": question["domain"],
+                "environment": question["environment"],
+                "eval_function": question["eval_function"],
+                "candidate_decisions": candidates,
+                "risk": risk,
+                "notes": notes,
+                "evidence": {
+                    "question": normalize_space(str(question["question"])),
+                    "answer": question["answer"],
+                    "selected_option_text": answer_text if answer_text != question["answer"] else None,
+                },
+                "sample_trajectory_ids": trajectory_ids[: max(args.evidence_goals, 0)],
+                "sample_trajectory_goals": [
+                    evidence_goals[trajectory_id]
+                    for trajectory_id in trajectory_ids[: max(args.evidence_goals, 0)]
+                    if trajectory_id in evidence_goals
+                ],
+            }
+        )
+
+    summary_counts = Counter(str(row["question_type"]) for row in rows)
+    output = {
+        "source": {
+            "benchmark": "longmemeval_v2",
+            "data_root": str(data_root),
+            "tier": args.tier,
+            "question_id_file": args.question_id_file,
+        },
+        "policy": {
+            "status": "draft_only",
+            "acceptance_rule": (
+                "A human reviewer must accept each decision before it is copied into "
+                "the oracle decisions config."
+            ),
+            "safety_rule": "Better miss a decision than create a false decision.",
+        },
+        "summary": {
+            "examples": len(rows),
+            "candidate_decisions": candidate_count,
+            "question_type_counts": dict(sorted(summary_counts.items())),
+        },
+        "items": rows,
+    }
+    output_path = Path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"D1 draft: {output_path}")
+    print(json.dumps(output["summary"], ensure_ascii=False))
+    return 0
+
+
+def load_question_ids(path: Path) -> list[str]:
+    ids = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        question_id = line.split("#", 1)[0].strip()
+        if question_id:
+            ids.append(question_id)
+    return list(dict.fromkeys(ids))
+
+
+def load_questions(path: Path, question_ids: list[str]) -> dict[str, dict[str, Any]]:
+    selected = set(question_ids)
+    questions = {}
+    with path.open(encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if not isinstance(row, dict):
+                raise ValueError(f"question row must be an object at {path}:{line_number}")
+            question_id = str(row["id"])
+            if question_id in selected:
+                questions[question_id] = row
+    missing = sorted(selected - set(questions))
+    if missing:
+        raise ValueError(f"missing questions: {', '.join(missing[:5])}")
+    return questions
+
+
+def load_haystacks(path: Path, question_ids: list[str]) -> dict[str, list[str]]:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError(f"haystack file must contain an object: {path}")
+    haystacks: dict[str, list[str]] = {}
+    for question_id in question_ids:
+        values = data.get(question_id)
+        if not isinstance(values, list):
+            raise ValueError(f"missing haystack ids for question: {question_id}")
+        haystacks[question_id] = [str(value) for value in values]
+    return haystacks
+
+
+def load_evidence_goals(path: Path, required_ids: set[str]) -> dict[str, str]:
+    if not required_ids:
+        return {}
+    goals: dict[str, str] = {}
+    with path.open(encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if not isinstance(row, dict):
+                raise ValueError(f"trajectory row must be an object at {path}:{line_number}")
+            trajectory_id = str(row["id"])
+            if trajectory_id not in required_ids:
+                continue
+            goals[trajectory_id] = normalize_space(str(row.get("goal", "")))
+            if len(goals) == len(required_ids):
+                break
+    return goals
+
+
+def draft_candidates(question: dict[str, Any]) -> tuple[list[str], str, str]:
+    question_type = str(question["question_type"])
+    eval_function = str(question["eval_function"])
+    if eval_function.startswith(JUDGE_PREFIXES):
+        return [], "high", "Judge-only question; excluded from deterministic overnight proof."
+    if question_type != "procedure":
+        return (
+            [],
+            "empty",
+            "This looks like factual/environment memory, not a Decision Layer commitment.",
+        )
+
+    answer_text = selected_answer_text(question)
+    task = task_phrase(str(question["question"]))
+    candidate = normalize_space(f"Workflow memory: {task} -> {answer_text}.")
+    if len(candidate) > 260:
+        candidate = normalize_space(
+            f"Workflow memory: {truncate(task, 110)} -> {truncate(answer_text, 120)}."
+        )
+    return [candidate], "medium", "Procedure candidate; requires manual audit before acceptance."
+
+
+def selected_answer_text(question: dict[str, Any]) -> str:
+    answer = str(question["answer"])
+    options = parse_options(str(question["question"]))
+    return options.get(answer.strip().upper(), answer)
+
+
+def parse_options(question: str) -> dict[str, str]:
+    return {
+        match.group(1): normalize_space(match.group(2))
+        for match in OPTION_PATTERN.finditer(question)
+    }
+
+
+def task_phrase(question: str) -> str:
+    text = question.split("\n\nA.", 1)[0]
+    text = re.sub(r"(?is)\b(?:Put|Mark|Your final answer|Tell me|Say the number).*$", "", text)
+    text = re.sub(r"(?i)^I am (?:working|using)[^.]*\.\s*", "", text)
+    text = normalize_space(text)
+    text = text.rstrip(" ?.")
+    if not text:
+        return "this workflow"
+    return truncate(text, 150).rstrip(" ?.")
+
+
+def truncate(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    clipped = text[: max(limit - 1, 0)].rstrip(" ,;:-")
+    word_boundary = clipped.rfind(" ")
+    if word_boundary >= max(20, limit // 2):
+        clipped = clipped[:word_boundary].rstrip(" ,;:-")
+    return clipped + "..."
+
+
+def normalize_space(text: str) -> str:
+    return " ".join(text.split())
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

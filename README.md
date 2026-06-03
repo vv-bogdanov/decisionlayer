@@ -52,6 +52,10 @@ scripts/prepare-longmemeval-v2 data/longmemeval-v2
 The first real-data POC subset is pinned in
 `configs/longmemeval-v2-poc-subset.txt`.
 
+The full deterministic all-topic overnight subset is pinned in
+`configs/longmemeval-v2-full-deterministic-subset.txt`. It contains 295
+questions and excludes judge-only eval functions.
+
 ## Local Reader
 
 Use an OpenAI-compatible local reader such as llama.cpp router:
@@ -67,3 +71,21 @@ uv run decision-layer run-suite \
   --oracle-decisions configs/longmemeval-v2-poc-oracle-decisions.json \
   --accepted-decisions configs/longmemeval-v2-poc-accepted-d2-decisions.json
 ```
+
+## Overnight Run
+
+Prepare and run the full deterministic all-topic suite with a canary gate first:
+
+```bash
+scripts/run-overnight-poc
+```
+
+To run only the canary gate:
+
+```bash
+CANARY_ONLY=1 scripts/run-overnight-poc
+```
+
+Artifacts are written to `/tmp/decision-layer-overnight-*` by default. Override
+`OUTPUT_DIR`, `DATA_ROOT`, `READER_BASE_URL`, `READER_MODEL`, or
+`READER_MAX_TOKENS` when needed.
