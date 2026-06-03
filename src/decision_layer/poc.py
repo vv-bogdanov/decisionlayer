@@ -13,6 +13,7 @@ from decision_layer.benchmarks.longmemeval_v2 import (
 )
 from decision_layer.core import DecisionState, add_decision, render_decision_brief
 from decision_layer.extraction import RuleBasedDecisionExtractor, SourceMessage
+from decision_layer.readers import ReaderKind, ReaderRequest, build_reader
 
 PocMode = Literal["D0", "D1", "D2"]
 
@@ -25,6 +26,11 @@ class PocConfig:
     tier: str = "small"
     limit: int | None = None
     question_ids: tuple[str, ...] = ()
+    reader: ReaderKind = "smoke"
+    reader_base_url: str = "http://127.0.0.1:18080/v1"
+    reader_model: str | None = None
+    reader_timeout_seconds: float = 60.0
+    reader_max_tokens: int = 64
     oracle_decisions_path: Path | None = None
 
 
@@ -43,6 +49,11 @@ class PocSuiteConfig:
     tier: str = "small"
     limit: int | None = None
     question_ids: tuple[str, ...] = ()
+    reader: ReaderKind = "smoke"
+    reader_base_url: str = "http://127.0.0.1:18080/v1"
+    reader_model: str | None = None
+    reader_timeout_seconds: float = 60.0
+    reader_max_tokens: int = 64
     oracle_decisions_path: Path | None = None
 
 
@@ -62,6 +73,13 @@ def run_poc(config: PocConfig) -> PocResult:
     )
     oracle_decisions = load_oracle_decisions(config.oracle_decisions_path)
     extractor = RuleBasedDecisionExtractor()
+    reader = build_reader(
+        config.reader,
+        base_url=config.reader_base_url,
+        model=config.reader_model,
+        timeout_seconds=config.reader_timeout_seconds,
+        max_tokens=config.reader_max_tokens,
+    )
     predictions: list[dict[str, object]] = []
     decision_trace: list[dict[str, object]] = []
     brief_trace: list[dict[str, object]] = []
@@ -78,7 +96,14 @@ def run_poc(config: PocConfig) -> PocResult:
         brief = render_decision_brief(state)
         context = retrieve_keyword_context(example)
         augmented_context = context if config.mode == "D0" else f"{brief.text}\n\n{context}"
-        prediction = smoke_oracle_substring_reader(augmented_context, example.question.answer)
+        reader_result = reader.answer(
+            ReaderRequest(
+                question=example.question.question,
+                context=augmented_context,
+                expected_answer=example.question.answer,
+            )
+        )
+        prediction = reader_result.answer
         correct = normalize(prediction) == normalize(example.question.answer)
 
         predictions.append(
@@ -92,7 +117,12 @@ def run_poc(config: PocConfig) -> PocResult:
                 "correct": correct,
                 "decision_count": len(brief.decisions),
                 "brief_tokens": brief.token_count,
-                "reader_policy": "smoke_oracle_substring_reader",
+                "reader_policy": reader_result.reader_policy,
+                "reader_model": config.reader_model,
+                "reader_latency_seconds": reader_result.latency_seconds,
+                "prompt_tokens": reader_result.prompt_tokens,
+                "completion_tokens": reader_result.completion_tokens,
+                "total_tokens": reader_result.total_tokens,
             }
         )
         brief_trace.append(
@@ -122,6 +152,11 @@ def run_poc_suite(config: PocSuiteConfig) -> PocSuiteResult:
                 tier=config.tier,
                 limit=config.limit,
                 question_ids=config.question_ids,
+                reader=config.reader,
+                reader_base_url=config.reader_base_url,
+                reader_model=config.reader_model,
+                reader_timeout_seconds=config.reader_timeout_seconds,
+                reader_max_tokens=config.reader_max_tokens,
                 oracle_decisions_path=config.oracle_decisions_path,
             )
         )
@@ -202,17 +237,21 @@ def state_text(goal: str, state: dict[str, object]) -> str:
     return "\n".join(part for part in parts if part.strip())
 
 
-def smoke_oracle_substring_reader(context: str, expected_answer: str) -> str:
-    if normalize(expected_answer) in normalize(context):
-        return expected_answer
-    return ""
-
-
 def compute_metrics(predictions: list[dict[str, object]], start: float) -> dict[str, object]:
     total = len(predictions)
     correct = sum(1 for prediction in predictions if prediction.get("correct") is True)
     non_empty_briefs = sum(
         1 for prediction in predictions if int_prediction_value(prediction, "decision_count") > 0
+    )
+    reader_policies = sorted(
+        {str(prediction.get("reader_policy", "")) for prediction in predictions}
+    )
+    reader_models = sorted(
+        {
+            str(prediction["reader_model"])
+            for prediction in predictions
+            if prediction["reader_model"]
+        }
     )
     return {
         "examples": total,
@@ -226,8 +265,29 @@ def compute_metrics(predictions: list[dict[str, object]], start: float) -> dict[
         )
         if total
         else 0.0,
+        "prompt_tokens": sum(
+            optional_int_prediction_value(prediction, "prompt_tokens") for prediction in predictions
+        ),
+        "completion_tokens": sum(
+            optional_int_prediction_value(prediction, "completion_tokens")
+            for prediction in predictions
+        ),
+        "total_tokens": sum(
+            optional_int_prediction_value(prediction, "total_tokens") for prediction in predictions
+        ),
+        "avg_reader_latency_seconds": round(
+            sum(
+                float_prediction_value(prediction, "reader_latency_seconds")
+                for prediction in predictions
+            )
+            / total,
+            6,
+        )
+        if total
+        else 0.0,
         "latency_seconds": round(perf_counter() - start, 6),
-        "reader_policy": "smoke_oracle_substring_reader",
+        "reader_policy": reader_policies[0] if len(reader_policies) == 1 else reader_policies,
+        "reader_model": reader_models[0] if len(reader_models) == 1 else None,
     }
 
 
@@ -241,7 +301,8 @@ def compute_suite_metrics(mode_results: dict[PocMode, PocResult]) -> dict[str, o
         "D2": mode_results["D2"].metrics,
         "delta_D1_minus_D0": round(d1_accuracy - d0_accuracy, 6),
         "delta_D2_minus_D0": round(d2_accuracy - d0_accuracy, 6),
-        "reader_policy": "smoke_oracle_substring_reader",
+        "reader_policy": mode_results["D0"].metrics["reader_policy"],
+        "reader_model": mode_results["D0"].metrics["reader_model"],
     }
 
 
@@ -257,6 +318,18 @@ def int_prediction_value(prediction: dict[str, object], key: str) -> int:
     if not isinstance(value, int):
         raise TypeError(f"prediction field must be an int: {key}")
     return value
+
+
+def optional_int_prediction_value(prediction: dict[str, object], key: str) -> int:
+    value = prediction.get(key)
+    return value if isinstance(value, int) else 0
+
+
+def float_prediction_value(prediction: dict[str, object], key: str) -> float:
+    value = prediction.get(key)
+    if not isinstance(value, int | float):
+        raise TypeError(f"prediction field must be numeric: {key}")
+    return float(value)
 
 
 def write_artifacts(
@@ -282,6 +355,11 @@ def config_to_dict(config: PocConfig) -> dict[str, object]:
         "tier": config.tier,
         "limit": config.limit,
         "question_ids": list(config.question_ids),
+        "reader": config.reader,
+        "reader_base_url": config.reader_base_url,
+        "reader_model": config.reader_model,
+        "reader_timeout_seconds": config.reader_timeout_seconds,
+        "reader_max_tokens": config.reader_max_tokens,
         "oracle_decisions_path": str(config.oracle_decisions_path)
         if config.oracle_decisions_path
         else None,
@@ -327,8 +405,11 @@ def render_report(config: PocConfig, result: PocResult) -> str:
         f"- non_empty_decision_briefs: `{result.metrics['non_empty_decision_briefs']}`",
         f"- avg_brief_tokens: `{result.metrics['avg_brief_tokens']}`",
         f"- reader_policy: `{result.metrics['reader_policy']}`",
+        f"- reader_model: `{result.metrics['reader_model']}`",
+        f"- prompt_tokens: `{result.metrics['prompt_tokens']}`",
+        f"- total_tokens: `{result.metrics['total_tokens']}`",
         "",
-        "This report is produced by the deterministic smoke runner. It is not a proof run.",
+        report_note(str(result.metrics["reader_policy"])),
     ]
     return "\n".join(lines) + "\n"
 
@@ -346,6 +427,7 @@ def render_suite_report(config: PocSuiteConfig, metrics: dict[str, object]) -> s
         f"- tier: `{config.tier}`",
         f"- limit: `{config.limit}`",
         f"- reader_policy: `{metrics['reader_policy']}`",
+        f"- reader_model: `{metrics['reader_model']}`",
         "",
         "| Mode | Accuracy | Non-empty Briefs | Avg Brief Tokens |",
         "| --- | ---: | ---: | ---: |",
@@ -356,7 +438,7 @@ def render_suite_report(config: PocSuiteConfig, metrics: dict[str, object]) -> s
         f"- delta_D1_minus_D0: `{metrics['delta_D1_minus_D0']}`",
         f"- delta_D2_minus_D0: `{metrics['delta_D2_minus_D0']}`",
         "",
-        "This suite uses the deterministic smoke reader and is not a proof run.",
+        report_note(str(metrics["reader_policy"])),
     ]
     return "\n".join(lines) + "\n"
 
@@ -365,6 +447,15 @@ def format_suite_row(mode: str, metrics: dict[str, object]) -> str:
     return (
         f"| {mode} | {metrics['accuracy']} | {metrics['non_empty_decision_briefs']} | "
         f"{metrics['avg_brief_tokens']} |"
+    )
+
+
+def report_note(reader_policy: str) -> str:
+    if reader_policy == "smoke_oracle_substring_reader":
+        return "This report is produced by the deterministic smoke runner. It is not a proof run."
+    return (
+        "This report uses an external reader backend. "
+        "Validate dataset and scoring before treating it as proof."
     )
 
 

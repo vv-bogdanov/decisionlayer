@@ -14,6 +14,7 @@ from decision_layer.core import (
     replace_decision,
 )
 from decision_layer.poc import PocConfig, PocMode, PocSuiteConfig, run_poc, run_poc_suite
+from decision_layer.readers import ReaderKind
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -41,6 +42,7 @@ def main(argv: list[str] | None = None) -> int:
     run_poc_parser.add_argument("--tier", default="small")
     run_poc_parser.add_argument("--limit", type=int)
     run_poc_parser.add_argument("--question-id", action="append", default=[])
+    add_reader_arguments(run_poc_parser)
     run_poc_parser.add_argument("--oracle-decisions")
 
     run_suite_parser = subparsers.add_parser("run-suite")
@@ -49,6 +51,7 @@ def main(argv: list[str] | None = None) -> int:
     run_suite_parser.add_argument("--tier", default="small")
     run_suite_parser.add_argument("--limit", type=int)
     run_suite_parser.add_argument("--question-id", action="append", default=[])
+    add_reader_arguments(run_suite_parser)
     run_suite_parser.add_argument("--oracle-decisions")
 
     args = parser.parse_args(argv)
@@ -95,6 +98,11 @@ def main(argv: list[str] | None = None) -> int:
                 tier=args.tier,
                 limit=args.limit,
                 question_ids=tuple(args.question_id),
+                reader=cast(ReaderKind, args.reader),
+                reader_base_url=args.reader_base_url,
+                reader_model=args.reader_model,
+                reader_timeout_seconds=args.reader_timeout_seconds,
+                reader_max_tokens=args.reader_max_tokens,
                 oracle_decisions_path=Path(args.oracle_decisions)
                 if args.oracle_decisions
                 else None,
@@ -110,6 +118,11 @@ def main(argv: list[str] | None = None) -> int:
                 tier=args.tier,
                 limit=args.limit,
                 question_ids=tuple(args.question_id),
+                reader=cast(ReaderKind, args.reader),
+                reader_base_url=args.reader_base_url,
+                reader_model=args.reader_model,
+                reader_timeout_seconds=args.reader_timeout_seconds,
+                reader_max_tokens=args.reader_max_tokens,
                 oracle_decisions_path=Path(args.oracle_decisions)
                 if args.oracle_decisions
                 else None,
@@ -118,6 +131,14 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(suite_result.metrics, ensure_ascii=False))
         return 0
     raise AssertionError(f"unhandled command: {args.command}")
+
+
+def add_reader_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--reader", choices=["smoke", "openai-chat"], default="smoke")
+    parser.add_argument("--reader-base-url", default="http://127.0.0.1:18080/v1")
+    parser.add_argument("--reader-model")
+    parser.add_argument("--reader-timeout-seconds", type=float, default=60.0)
+    parser.add_argument("--reader-max-tokens", type=int, default=64)
 
 
 def load_state(path: Path) -> DecisionState:

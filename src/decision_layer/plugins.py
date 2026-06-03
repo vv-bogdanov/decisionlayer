@@ -4,6 +4,7 @@ from typing import Protocol
 
 from decision_layer.core import DecisionBrief, DecisionState
 from decision_layer.extraction import DecisionCommand, SourceMessage
+from decision_layer.readers import ReaderPlugin
 
 
 class ExtractorPlugin(Protocol):
@@ -22,3 +23,11 @@ class StorePlugin(Protocol):
 class BriefPlugin(Protocol):
     def build(self, state: DecisionState, task_context: str) -> DecisionBrief:
         """Build prompt enrichment from active decisions."""
+
+
+__all__ = [
+    "BriefPlugin",
+    "ExtractorPlugin",
+    "ReaderPlugin",
+    "StorePlugin",
+]

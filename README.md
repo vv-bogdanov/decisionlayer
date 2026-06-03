@@ -34,3 +34,18 @@ uv run decision-layer run-suite \
   --question-id q_static \
   --oracle-decisions tests/fixtures/longmemeval_v2/oracle_decisions.json
 ```
+
+## Local Reader
+
+Use an OpenAI-compatible local reader such as llama.cpp router:
+
+```bash
+uv run decision-layer run-suite \
+  --data-root tests/fixtures/longmemeval_v2 \
+  --output-dir /tmp/decision-layer-llama \
+  --question-id q_static \
+  --reader openai-chat \
+  --reader-base-url http://127.0.0.1:18080/v1 \
+  --reader-model qwen36-35b-a3b-udiq3s \
+  --oracle-decisions tests/fixtures/longmemeval_v2/oracle_decisions.json
+```

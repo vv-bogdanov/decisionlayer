@@ -195,8 +195,8 @@ Benchmark metrics:
 
 - [ ] Accuracy / QA score.
 - [ ] Evidence quality if available.
-- [ ] Prompt tokens.
-- [ ] Latency.
+- [x] Prompt tokens.
+- [x] Latency.
 - [ ] Cost estimate if model pricing is known.
 
 Decision Layer metrics:
