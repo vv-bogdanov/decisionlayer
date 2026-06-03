@@ -86,7 +86,15 @@ class RuleBasedDecisionExtractor:
                         reason=f"{action}_commit_signal",
                     ),
                 )
-        return ()
+        return tuple(
+            DecisionCommand(
+                action="add",
+                text=text,
+                source_message_id=message.id,
+                reason="structured_workflow_signal",
+            )
+            for text in structured_workflow_texts(content)
+        )
 
 
 def contains_weak_marker(text: str) -> bool:
@@ -100,3 +108,36 @@ def first_pattern_text(text: str, patterns: tuple[re.Pattern[str], ...]) -> str 
         if match:
             return match.group("text").strip()
     return None
+
+
+def structured_workflow_texts(text: str) -> tuple[str, ...]:
+    lowered = text.lower()
+    decisions = []
+    if (
+        "agent workload balancing" in lowered
+        and "problem" in lowered
+        and ("hashtag" in lowered or "tag" in lowered)
+    ):
+        decisions.append("For Agent Workload Balancing, use Reports first, then Problems.")
+    if (
+        ("item request" in lowered or "item requests" in lowered)
+        and "incident" in lowered
+        and ("report" in lowered or "chart" in lowered)
+    ):
+        decisions.append(
+            "For incident-report criteria tasks that create item requests, use Open Records > "
+            "Items (Item Requests)."
+        )
+    if (
+        (
+            "given the title of the report, search for it" in lowered
+            or "title of the report:" in lowered
+        )
+        and "incident" in lowered
+        and "agent" in lowered
+    ):
+        decisions.append(
+            "To locate an incident-related performance report, use the All filter, type reports, "
+            "open View/Run, then locate the relevant report."
+        )
+    return tuple(dict.fromkeys(decisions))

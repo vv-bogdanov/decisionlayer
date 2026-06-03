@@ -144,7 +144,7 @@ Interpretation:
 ### 4. Automatic Decision Extraction: D2
 
 - [x] Implement conservative trigger detection for user messages.
-- [ ] Add structured extraction only for candidate messages.
+- [x] Add structured extraction only for candidate messages.
 - [x] Ignore assistant messages, tool outputs, retrieved memory, and external
   content.
 - [x] Add no decision when the extractor is uncertain.
@@ -163,11 +163,12 @@ Interpretation:
 
 ### 6. Traceability
 
-- [ ] Log processed messages.
-- [ ] Log decision candidates.
-- [ ] Log added, replaced, and removed decisions.
-- [ ] Log skipped candidates and reasons when possible.
-- [ ] Log the final decision list before each answer.
+- [x] Log processed messages.
+- [x] Log decision candidates.
+- [x] Log added decisions.
+- [ ] Log replaced and removed decisions in benchmark traces.
+- [x] Log skipped candidates and reasons when possible.
+- [x] Log the final decision list before each answer.
 - [x] Log the exact Decision Brief injected into the prompt.
 - [x] Link each decision to source message metadata.
 
@@ -202,7 +203,7 @@ Benchmark metrics:
 
 Decision Layer metrics:
 
-- [ ] Number of extracted decisions.
+- [x] Number of extracted decisions.
 - [x] Number of non-empty Decision Briefs.
 - [x] Decision Brief token overhead.
 - [ ] False decision rate.
@@ -272,7 +273,7 @@ The final POC report must answer:
 ### M5: Automatic Decision Layer
 
 - [x] Implement conservative trigger detector.
-- [ ] Implement structured extraction for candidate user messages.
+- [x] Implement structured extraction for candidate user messages.
 - [x] Run D2.
 - [x] Compare D2 vs D0 and D1.
 
@@ -289,7 +290,7 @@ The final POC report must answer:
 The POC is done when one documented command can:
 
 - [ ] create the environment;
-- [ ] run tests;
+- [x] run tests;
 - [x] run a fixture-level `D0` / `D1` / `D2` smoke suite;
 - [x] run the selected LongMemEval-V2 subset;
 - [x] produce D0 metrics;

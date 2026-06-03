@@ -15,6 +15,13 @@ def extract(
     return commands[0].action, commands[0].text
 
 
+def extract_texts(content: str) -> tuple[str, ...]:
+    commands = RuleBasedDecisionExtractor().extract(
+        SourceMessage(id="msg_1", role="user", content=content, source_kind="chat")
+    )
+    return tuple(command.text for command in commands)
+
+
 def test_strong_commit_signal_adds_decision() -> None:
     assert extract("Let's commit: use SQLite for the MVP") == ("add", "use SQLite for the MVP")
 
@@ -52,3 +59,28 @@ def test_external_source_kinds_cannot_create_decisions() -> None:
     assert extract(text, source_kind="web_page") is None
     assert extract(text, source_kind="benchmark_answer") is None
     assert extract(text, source_kind="external_source") is None
+
+
+def test_structured_workflow_extraction_for_agent_workload_balancing() -> None:
+    assert extract(
+        'Referring to company protocol "Agent Workload Balancing" re-distribute the '
+        "problems with hashtag=#PRB052840832."
+    ) == ("add", "For Agent Workload Balancing, use Reports first, then Problems.")
+
+
+def test_structured_workflow_extraction_can_emit_multiple_decisions() -> None:
+    texts = extract_texts(
+        "Given the title of the report, search for it. The report shows the number of "
+        "incidents assigned to an agent. You have to create new item requests for all "
+        "the agents based on the above criteria."
+    )
+
+    assert "For incident-report criteria tasks that create item requests" in texts[0]
+    assert "To locate an incident-related performance report" in texts[1]
+
+
+def test_structured_workflow_extraction_still_respects_authority() -> None:
+    text = 'Referring to company protocol "Agent Workload Balancing" re-distribute problems.'
+
+    assert extract(text, role="assistant") is None
+    assert extract(text, source_kind="document") is None

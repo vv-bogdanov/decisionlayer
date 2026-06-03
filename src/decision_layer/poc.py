@@ -139,12 +139,13 @@ def run_poc(config: PocConfig) -> PocResult:
                 "id": example.question.id,
                 "mode": config.mode,
                 "decision_ids": [decision.id for decision in brief.decisions],
+                "final_decisions": [decision.to_dict() for decision in brief.decisions],
                 "brief": brief.text,
                 "brief_tokens": brief.token_count,
             }
         )
 
-    metrics = compute_metrics(predictions, start)
+    metrics = compute_metrics(predictions, decision_trace, start)
     result = PocResult(metrics, predictions, decision_trace, brief_trace)
     write_artifacts(config, examples, result)
     return result
@@ -193,7 +194,11 @@ def apply_oracle_decisions(
             decision_id=f"{example.question.id}_oracle_{index}",
             meta={"source_message_id": f"{example.question.id}:oracle:{index}"},
         )
-        traces.append(trace.to_dict())
+        trace_data = trace.to_dict()
+        trace_data["event"] = "decision_added"
+        trace_data["question_id"] = example.question.id
+        trace_data["reason"] = "oracle_decision"
+        traces.append(trace_data)
     return state, traces
 
 
@@ -203,6 +208,7 @@ def apply_automatic_decisions(
     extractor: RuleBasedDecisionExtractor,
 ) -> tuple[DecisionState, list[dict[str, object]]]:
     traces = []
+    added_texts: set[str] = set()
     for trajectory in example.trajectories:
         message = SourceMessage(
             id=f"{trajectory.id}:goal",
@@ -210,16 +216,80 @@ def apply_automatic_decisions(
             content=trajectory.goal,
             source_kind="chat",
         )
-        for command in extractor.extract(message):
+        traces.append(
+            {
+                "event": "message_processed",
+                "question_id": example.question.id,
+                "trajectory_id": trajectory.id,
+                "source_message_id": message.id,
+                "role": message.role,
+                "source_kind": message.source_kind,
+                "content_chars": len(message.content),
+            }
+        )
+        commands = extractor.extract(message)
+        if not commands:
+            traces.append(
+                {
+                    "event": "decision_candidate_skipped",
+                    "question_id": example.question.id,
+                    "trajectory_id": trajectory.id,
+                    "source_message_id": message.id,
+                    "reason": "no_decision_signal",
+                }
+            )
+            continue
+        for command in commands:
+            traces.append(
+                {
+                    "event": "decision_candidate",
+                    "question_id": example.question.id,
+                    "trajectory_id": trajectory.id,
+                    "source_message_id": command.source_message_id,
+                    "action": command.action,
+                    "text": command.text,
+                    "reason": command.reason,
+                }
+            )
             if command.action != "add":
+                traces.append(
+                    {
+                        "event": "decision_candidate_skipped",
+                        "question_id": example.question.id,
+                        "trajectory_id": trajectory.id,
+                        "source_message_id": command.source_message_id,
+                        "reason": f"unsupported_action:{command.action}",
+                    }
+                )
+                continue
+            normalized_command_text = normalize(command.text)
+            if normalized_command_text in added_texts:
+                traces.append(
+                    {
+                        "event": "decision_candidate_skipped",
+                        "question_id": example.question.id,
+                        "trajectory_id": trajectory.id,
+                        "source_message_id": command.source_message_id,
+                        "reason": "duplicate_decision",
+                    }
+                )
                 continue
             state, trace = add_decision(
                 state,
                 command.text,
                 authority="user_commit",
-                meta={"source_message_id": command.source_message_id},
+                meta={
+                    "source_message_id": command.source_message_id,
+                    "extractor_reason": command.reason,
+                },
             )
-            traces.append(trace.to_dict())
+            added_texts.add(normalized_command_text)
+            trace_data = trace.to_dict()
+            trace_data["event"] = "decision_added"
+            trace_data["question_id"] = example.question.id
+            trace_data["trajectory_id"] = trajectory.id
+            trace_data["reason"] = command.reason
+            traces.append(trace_data)
     return state, traces
 
 
@@ -246,7 +316,11 @@ def state_text(goal: str, state: dict[str, object]) -> str:
     return "\n".join(part for part in parts if part.strip())
 
 
-def compute_metrics(predictions: list[dict[str, object]], start: float) -> dict[str, object]:
+def compute_metrics(
+    predictions: list[dict[str, object]],
+    decision_trace: list[dict[str, object]],
+    start: float,
+) -> dict[str, object]:
     total = len(predictions)
     scorable = [
         prediction for prediction in predictions if prediction.get("score_supported") is True
@@ -272,6 +346,18 @@ def compute_metrics(predictions: list[dict[str, object]], start: float) -> dict[
         "unsupported_examples": total - scorable_total,
         "accuracy": round(correct / scorable_total, 6) if scorable_total else 0.0,
         "correct": correct,
+        "decision_add_events": sum(
+            1 for trace in decision_trace if trace.get("event") == "decision_added"
+        ),
+        "decision_candidates": sum(
+            1 for trace in decision_trace if trace.get("event") == "decision_candidate"
+        ),
+        "processed_messages": sum(
+            1 for trace in decision_trace if trace.get("event") == "message_processed"
+        ),
+        "skipped_candidates": sum(
+            1 for trace in decision_trace if trace.get("event") == "decision_candidate_skipped"
+        ),
         "non_empty_decision_briefs": non_empty_briefs,
         "avg_brief_tokens": round(
             sum(int_prediction_value(prediction, "brief_tokens") for prediction in predictions)

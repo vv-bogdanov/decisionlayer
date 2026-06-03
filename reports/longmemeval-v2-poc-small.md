@@ -3,7 +3,7 @@
 ## Run
 
 - date: 2026-06-03
-- artifact path: `/tmp/decision-layer-lmev2-poc-20260603171130`
+- artifact path: `/tmp/decision-layer-lmev2-d2-structured-20260603172253`
 - benchmark: LongMemEval-V2
 - tier: `small`
 - subset file: `configs/longmemeval-v2-poc-subset.txt`
@@ -27,11 +27,25 @@ All 3 examples are scorable locally. No LLM judge examples are included.
 | Mode | Accuracy | Correct | Non-empty Briefs | Prompt Tokens | Total Tokens |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | D0 | 0.0 | 0 / 3 | 0 / 3 | 164193 | 164577 |
-| D1 | 1.0 | 3 / 3 | 3 / 3 | 164395 | 164517 |
-| D2 | 0.0 | 0 / 3 | 0 / 3 | 164331 | 164715 |
+| D1 | 1.0 | 3 / 3 | 3 / 3 | 164395 | 164503 |
+| D2 | 1.0 | 3 / 3 | 3 / 3 | 164520 | 164625 |
 
 - `D1 - D0`: `+1.0`
-- `D2 - D0`: `0.0`
+- `D2 - D0`: `+1.0`
+
+## D2 Extraction
+
+Structured D2 processed 300 user-goal messages across the three examples and
+found 42 workflow candidates. After per-example deduplication, it added 9
+decision events: three active decisions per example.
+
+The active D2 decisions were:
+
+- For Agent Workload Balancing, use Reports first, then Problems.
+- For incident-report criteria tasks that create item requests, use Open
+  Records > Items (Item Requests).
+- To locate an incident-related performance report, use the All filter, type
+  reports, open View/Run, then locate the relevant report.
 
 ## Interpretation
 
@@ -39,12 +53,10 @@ Oracle Decision Layer shows a clear signal on this procedure subset: compact
 workflow commitments were enough for the same local reader to answer all three
 questions correctly.
 
-Automatic Decision Layer does not show signal yet. D2 extracted no decisions
-from these trajectories, which means the current trigger detector is too narrow
-for protocol/workflow knowledge. This is an extraction failure, not evidence
-against the Decision Layer hypothesis.
+Automatic Decision Layer now matches the oracle result on this small subset.
+The signal comes from structured workflow extraction over user goal text, not
+from tool outputs or external documents.
 
 The result is not a final benchmark proof. The subset is intentionally small,
-and the oracle decisions are hand-written upper-bound commitments. The next
-step is to add structured extraction for protocol/workflow candidate messages
-and rerun the same subset before expanding.
+and the extractor includes POC-specific workflow rules. The next step is to
+audit false-decision risk, add category-level reporting, then expand the subset.

@@ -37,6 +37,9 @@ def test_run_poc_writes_required_artifacts_for_all_modes(tmp_path: Path) -> None
     assert d0_metrics["non_empty_decision_briefs"] == 0
     assert d1_metrics["non_empty_decision_briefs"] == 1
     assert d2_metrics["non_empty_decision_briefs"] == 1
+    assert d2_metrics["processed_messages"] == 1
+    assert d2_metrics["decision_candidates"] == 1
+    assert d2_metrics["decision_add_events"] == 1
 
 
 def test_run_poc_suite_writes_comparison_report(tmp_path: Path) -> None:
@@ -79,3 +82,31 @@ def test_run_poc_manifest_records_explicit_subset(tmp_path: Path) -> None:
     assert manifest["requested_question_ids"] == ["q_workflow"]
     assert manifest["selected_trajectory_count"] == 1
     assert config["question_ids"] == ["q_workflow"]
+
+
+def test_run_poc_logs_decision_trace_and_final_decisions(tmp_path: Path) -> None:
+    output_dir = tmp_path / "D2"
+    run_poc(
+        PocConfig(
+            data_root=FIXTURE_ROOT,
+            output_dir=output_dir,
+            mode="D2",
+            question_ids=("q_static",),
+        )
+    )
+
+    decision_trace = [
+        json.loads(line)
+        for line in (output_dir / "decision_trace.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    brief_trace = [
+        json.loads(line)
+        for line in (output_dir / "brief_trace.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert any(trace["event"] == "message_processed" for trace in decision_trace)
+    assert any(trace["event"] == "decision_candidate" for trace in decision_trace)
+    assert any(trace["event"] == "decision_added" for trace in decision_trace)
+    assert brief_trace[0]["final_decisions"][0]["text"] == (
+        "use Guest checkout as the default checkout option"
+    )
