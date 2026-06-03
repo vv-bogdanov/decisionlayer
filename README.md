@@ -43,17 +43,20 @@ Prepare the text-only LongMemEval-V2 files outside the runner:
 scripts/prepare-longmemeval-v2 data/longmemeval-v2
 ```
 
+The first real-data POC subset is pinned in
+`configs/longmemeval-v2-poc-subset.txt`.
+
 ## Local Reader
 
 Use an OpenAI-compatible local reader such as llama.cpp router:
 
 ```bash
 uv run decision-layer run-suite \
-  --data-root tests/fixtures/longmemeval_v2 \
+  --data-root data/longmemeval-v2 \
   --output-dir /tmp/decision-layer-llama \
-  --question-id q_static \
+  --question-id-file configs/longmemeval-v2-poc-subset.txt \
   --reader openai-chat \
   --reader-base-url http://127.0.0.1:18080/v1 \
   --reader-model qwen36-35b-a3b-udiq3s \
-  --oracle-decisions tests/fixtures/longmemeval_v2/oracle_decisions.json
+  --oracle-decisions configs/longmemeval-v2-poc-oracle-decisions.json
 ```

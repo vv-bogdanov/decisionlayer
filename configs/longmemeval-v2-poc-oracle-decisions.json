@@ -1,0 +1,11 @@
+{
+  "025db8ef": [
+    "For rebalancing workload between agents by problem tag, use Reports first, then Problems."
+  ],
+  "0b50ca0d": [
+    "For extra device item requests for agents selected from incident-report criteria, use Open Records > Items (Item Requests)."
+  ],
+  "100ff132": [
+    "To locate an incident-related performance report, use the All filter, type reports, open View/Run, then locate the relevant report."
+  ]
+}

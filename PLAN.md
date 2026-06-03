@@ -100,16 +100,16 @@ It is better to miss a decision than to create a false decision.
 
 Run the same benchmark subset in three modes:
 
-- [ ] `D0`: baseline backend without Decision Layer.
-- [ ] `D1`: baseline backend + oracle/manual Decision Layer.
-- [ ] `D2`: baseline backend + automatic Decision Layer.
+- [x] `D0`: baseline backend without Decision Layer.
+- [x] `D1`: baseline backend + oracle/manual Decision Layer.
+- [x] `D2`: baseline backend + automatic Decision Layer.
 - [x] Fixture smoke suite can run `D0`, `D1`, and `D2` with one command and
   write comparison artifacts.
 
 Interpretation:
 
-- [ ] `D1` measures the upper bound: does a good Decision Brief help at all?
-- [ ] `D2` measures the practical system: can automatic extraction recover
+- [x] `D1` measures the upper bound: does a good Decision Brief help at all?
+- [x] `D2` measures the practical system: can automatic extraction recover
   enough useful decisions without adding false commitments?
 - [ ] If `D1` does not help, do not overbuild extraction. Analyze whether
   LongMemEval-V2 is the wrong proof surface for this hypothesis.
@@ -122,22 +122,22 @@ Interpretation:
 - [x] Confirm license and dataset accessibility.
 - [x] Download or prepare the dataset outside the runner.
 - [x] Inspect schema and task categories.
-- [ ] Select a small reproducible subset.
+- [x] Select a small reproducible subset.
 - [x] Save dataset path, row count, subset IDs, and hash in a manifest.
 
 ### 2. Baseline Run: D0
 
 - [x] Implement the simplest compatible benchmark adapter.
-- [ ] Run baseline on the selected subset.
+- [x] Run baseline on the selected subset.
 - [x] Save predictions, metrics, trace logs, and report.
 - [x] Record prompt tokens, latency, and score.
 
 ### 3. Oracle Decision Layer: D1
 
-- [ ] Create a manual/oracle decision file for the same subset.
-- [ ] Build `Decision Brief` from oracle decisions.
-- [ ] Run the same backend with the same subset and same scoring.
-- [ ] Compare `D1` against `D0`.
+- [x] Create a manual/oracle decision file for the same subset.
+- [x] Build `Decision Brief` from oracle decisions.
+- [x] Run the same backend with the same subset and same scoring.
+- [x] Compare `D1` against `D0`.
 - [ ] Inspect targeted categories: updates, conflicts, instruction following,
   goal adherence, workflow state, and long-horizon consistency.
 
@@ -148,8 +148,8 @@ Interpretation:
 - [x] Ignore assistant messages, tool outputs, retrieved memory, and external
   content.
 - [x] Add no decision when the extractor is uncertain.
-- [ ] Run `D2` on the same subset.
-- [ ] Compare `D2` against `D0` and `D1`.
+- [x] Run `D2` on the same subset.
+- [x] Compare `D2` against `D0` and `D1`.
 
 ### 5. Decision Brief
 
@@ -168,8 +168,8 @@ Interpretation:
 - [ ] Log added, replaced, and removed decisions.
 - [ ] Log skipped candidates and reasons when possible.
 - [ ] Log the final decision list before each answer.
-- [ ] Log the exact Decision Brief injected into the prompt.
-- [ ] Link each decision to source message metadata.
+- [x] Log the exact Decision Brief injected into the prompt.
+- [x] Link each decision to source message metadata.
 
 ### 7. Tests
 
@@ -203,8 +203,8 @@ Benchmark metrics:
 Decision Layer metrics:
 
 - [ ] Number of extracted decisions.
-- [ ] Number of non-empty Decision Briefs.
-- [ ] Decision Brief token overhead.
+- [x] Number of non-empty Decision Briefs.
+- [x] Decision Brief token overhead.
 - [ ] False decision rate.
 - [ ] Decision update correctness.
 - [ ] Decision persistence across examples or turns.
@@ -225,16 +225,16 @@ Every run should write:
 
 The final POC report must answer:
 
-- [ ] Which LongMemEval-V2 subset was used?
-- [ ] Which backend/model was used?
-- [ ] What is the `D0` score?
-- [ ] What is the `D1` score?
-- [ ] What is the `D2` score?
-- [ ] What is the delta?
-- [ ] How many decisions were used?
-- [ ] How often was Decision Brief non-empty?
-- [ ] Did Decision Layer show a measurable signal?
-- [ ] If not, do traces suggest the issue is benchmark fit, extractor quality,
+- [x] Which LongMemEval-V2 subset was used?
+- [x] Which backend/model was used?
+- [x] What is the `D0` score?
+- [x] What is the `D1` score?
+- [x] What is the `D2` score?
+- [x] What is the delta?
+- [x] How many decisions were used?
+- [x] How often was Decision Brief non-empty?
+- [x] Did Decision Layer show a measurable signal?
+- [x] If not, do traces suggest the issue is benchmark fit, extractor quality,
   brief construction, or the hypothesis itself?
 
 ## Milestones
@@ -259,30 +259,30 @@ The final POC report must answer:
 
 - [x] Locate and document official dataset source.
 - [x] Implement adapter for a small subset.
-- [ ] Run D0 baseline.
-- [ ] Save metrics and report.
+- [x] Run D0 baseline.
+- [x] Save metrics and report.
 
 ### M4: Oracle Decision Layer
 
-- [ ] Create oracle decisions for the subset.
-- [ ] Run D1.
-- [ ] Compare D1 vs D0.
-- [ ] Decide whether the benchmark has enough Decision Layer signal.
+- [x] Create oracle decisions for the subset.
+- [x] Run D1.
+- [x] Compare D1 vs D0.
+- [x] Decide whether the benchmark has enough Decision Layer signal.
 
 ### M5: Automatic Decision Layer
 
-- [ ] Implement conservative trigger detector.
+- [x] Implement conservative trigger detector.
 - [ ] Implement structured extraction for candidate user messages.
-- [ ] Run D2.
-- [ ] Compare D2 vs D0 and D1.
+- [x] Run D2.
+- [x] Compare D2 vs D0 and D1.
 
 ### M6: POC Report
 
-- [ ] Aggregate all artifacts.
-- [ ] Write final `report.md`.
-- [ ] State whether the hypothesis is supported, partially supported, or not
+- [x] Aggregate all artifacts.
+- [x] Write final `report.md`.
+- [x] State whether the hypothesis is supported, partially supported, or not
   supported on the selected subset.
-- [ ] Recommend the next step based on evidence.
+- [x] Recommend the next step based on evidence.
 
 ## Definition Of Done
 
@@ -291,12 +291,12 @@ The POC is done when one documented command can:
 - [ ] create the environment;
 - [ ] run tests;
 - [x] run a fixture-level `D0` / `D1` / `D2` smoke suite;
-- [ ] run the selected LongMemEval-V2 subset;
-- [ ] produce D0 metrics;
-- [ ] produce D1 metrics;
-- [ ] produce D2 metrics;
-- [ ] save trace logs;
-- [ ] save a final report.
+- [x] run the selected LongMemEval-V2 subset;
+- [x] produce D0 metrics;
+- [x] produce D1 metrics;
+- [x] produce D2 metrics;
+- [x] save trace logs;
+- [x] save a final report.
 
 The decision question is:
 

@@ -42,6 +42,7 @@ def main(argv: list[str] | None = None) -> int:
     run_poc_parser.add_argument("--tier", default="small")
     run_poc_parser.add_argument("--limit", type=int)
     run_poc_parser.add_argument("--question-id", action="append", default=[])
+    run_poc_parser.add_argument("--question-id-file", action="append", default=[])
     add_reader_arguments(run_poc_parser)
     run_poc_parser.add_argument("--oracle-decisions")
 
@@ -51,6 +52,7 @@ def main(argv: list[str] | None = None) -> int:
     run_suite_parser.add_argument("--tier", default="small")
     run_suite_parser.add_argument("--limit", type=int)
     run_suite_parser.add_argument("--question-id", action="append", default=[])
+    run_suite_parser.add_argument("--question-id-file", action="append", default=[])
     add_reader_arguments(run_suite_parser)
     run_suite_parser.add_argument("--oracle-decisions")
 
@@ -97,7 +99,7 @@ def main(argv: list[str] | None = None) -> int:
                 mode=cast(PocMode, args.mode),
                 tier=args.tier,
                 limit=args.limit,
-                question_ids=tuple(args.question_id),
+                question_ids=load_question_ids(args.question_id, args.question_id_file),
                 reader=cast(ReaderKind, args.reader),
                 reader_base_url=args.reader_base_url,
                 reader_model=args.reader_model,
@@ -117,7 +119,7 @@ def main(argv: list[str] | None = None) -> int:
                 output_dir=Path(args.output_dir),
                 tier=args.tier,
                 limit=args.limit,
-                question_ids=tuple(args.question_id),
+                question_ids=load_question_ids(args.question_id, args.question_id_file),
                 reader=cast(ReaderKind, args.reader),
                 reader_base_url=args.reader_base_url,
                 reader_model=args.reader_model,
@@ -139,6 +141,16 @@ def add_reader_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--reader-model")
     parser.add_argument("--reader-timeout-seconds", type=float, default=60.0)
     parser.add_argument("--reader-max-tokens", type=int, default=64)
+
+
+def load_question_ids(inline_ids: list[str], file_paths: list[str]) -> tuple[str, ...]:
+    ids = list(inline_ids)
+    for file_path in file_paths:
+        for line in Path(file_path).read_text(encoding="utf-8").splitlines():
+            question_id = line.split("#", 1)[0].strip()
+            if question_id:
+                ids.append(question_id)
+    return tuple(dict.fromkeys(ids))
 
 
 def load_state(path: Path) -> DecisionState:

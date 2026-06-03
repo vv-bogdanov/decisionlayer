@@ -1,0 +1,11 @@
+# LongMemEval-V2 text-only POC subset.
+# Keep this small until D0/D1/D2 traces show a real Decision Layer signal.
+
+# enterprise / procedure / norm_phrase_set_match_ordered
+025db8ef
+
+# enterprise / procedure / mc_choice_match
+0b50ca0d
+
+# enterprise / procedure / mc_choice_match
+100ff132
