@@ -4,6 +4,35 @@ from memorycore.core.models import Ref
 from memorycore.policies.extraction import get_extractor, parse_llm_extraction_payload
 
 
+def test_rule_based_extractor_splits_labelled_examples_into_atomic_facts() -> None:
+    extractor = get_extractor("rule_based")
+
+    result = extractor.extract(
+        "My disposable virtual card isn't working. label: 28 "
+        "A transfer to my account shows as still pending. label: 18",
+        scope="memoryagentbench:test",
+        raw_input_id="raw_1",
+    )
+
+    assert [fact["text"] for fact in result.facts] == [
+        "My disposable virtual card isn't working. label: 28",
+        "A transfer to my account shows as still pending. label: 18",
+    ]
+    assert result.facts[0]["tags"] == ["observation", "labelled_example"]
+    assert result.facts[0]["refs"] == [Ref("raw_1", "source")]
+
+
+def test_rule_based_extractor_splits_long_plain_text() -> None:
+    extractor = get_extractor("rule_based")
+    text = " ".join(f"word{i}" for i in range(90))
+
+    result = extractor.extract(text, scope="project:test")
+
+    assert len(result.facts) == 2
+    assert len(str(result.facts[0]["text"]).split()) == 80
+    assert len(str(result.facts[1]["text"]).split()) == 10
+
+
 def test_llm_extractor_requires_explicit_policy_and_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     extractor = get_extractor("llm")

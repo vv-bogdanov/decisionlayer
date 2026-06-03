@@ -13,8 +13,14 @@ DECISION_RE = re.compile(
     r"^(?P<commit>COMMIT\s+)?DECISION:\s*(?P<key>[A-Za-z0-9_.:-]+)\s*=\s*(?P<value>.+)$",
     re.IGNORECASE,
 )
+LABELLED_EXAMPLE_RE = re.compile(
+    r"(?P<text>.*?)(?:\s+label:\s*(?P<label>[A-Za-z0-9_.-]+))(?=\s|$)",
+    re.IGNORECASE | re.DOTALL,
+)
+SENTENCE_SPLIT_RE = re.compile(r"(?:\n+|(?<=[.!?])\s+)")
 DEFAULT_LLM_MODEL = "gpt-4o-mini"
 DEFAULT_LLM_URL = "https://api.openai.com/v1/responses"
+MAX_RULE_FACT_WORDS = 80
 
 
 @dataclass(slots=True)
@@ -55,12 +61,12 @@ class RuleBasedExtractor:
                 fact_text = stripped[len(prefix) :].strip()
                 tag = candidate_tag
                 break
-        if fact_text:
+        for fact_text, tags in split_rule_based_facts(fact_text, tag):
             result.facts.append(
                 {
                     "text": fact_text,
                     "scope": scope,
-                    "tags": [tag],
+                    "tags": tags,
                     "refs": source_refs,
                 }
             )
@@ -182,6 +188,45 @@ def parse_json_object(payload: str) -> dict[str, Any]:
 
 def list_value(value: object) -> list[Any]:
     return value if isinstance(value, list) else []
+
+
+def split_rule_based_facts(text: str, tag: str) -> list[tuple[str, list[str]]]:
+    stripped = text.strip()
+    if not stripped:
+        return []
+    labelled_examples = split_labelled_examples(stripped)
+    if labelled_examples:
+        return [
+            (f"{example_text} label: {label}", [tag, "labelled_example"]) for example_text, label in labelled_examples
+        ]
+    return [(chunk, [tag]) for chunk in split_plain_fact_text(stripped)]
+
+
+def split_labelled_examples(text: str) -> list[tuple[str, str]]:
+    examples: list[tuple[str, str]] = []
+    for match in LABELLED_EXAMPLE_RE.finditer(text):
+        example_text = match.group("text").strip()
+        label = match.group("label").strip()
+        if example_text and label:
+            examples.append((example_text, label))
+    return examples
+
+
+def split_plain_fact_text(text: str) -> list[str]:
+    parts = [part.strip() for part in SENTENCE_SPLIT_RE.split(text) if part.strip()]
+    if not parts:
+        return []
+    chunks: list[str] = []
+    for part in parts:
+        chunks.extend(split_long_fact(part))
+    return chunks
+
+
+def split_long_fact(text: str) -> list[str]:
+    words = text.split()
+    if len(words) <= MAX_RULE_FACT_WORDS:
+        return [text]
+    return [" ".join(words[index : index + MAX_RULE_FACT_WORDS]) for index in range(0, len(words), MAX_RULE_FACT_WORDS)]
 
 
 def has_explicit_commit_signal(text: str) -> bool:

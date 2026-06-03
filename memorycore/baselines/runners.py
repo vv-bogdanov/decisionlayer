@@ -6,7 +6,7 @@ from typing import Any, cast
 from memorycore.benchmarks.base import BenchmarkExample
 from memorycore.core.models import MemoryBrief, Ref
 from memorycore.core.runtime import MemoryRuntime
-from memorycore.policies.extraction import get_extractor
+from memorycore.policies.extraction import get_extractor, split_labelled_examples
 
 
 @dataclass(slots=True)
@@ -242,8 +242,20 @@ def synthesize_answer(question: str, brief: MemoryBrief) -> str:
         key = decision.key.lower()
         if any(part and part in query for part in key.split(".")):
             return decision.value
+    label_answer = synthesize_label_answer(question, brief)
+    if label_answer is not None:
+        return label_answer
     if brief.decisions:
         return brief.decisions[0].value
     if brief.facts:
         return brief.facts[0].text
     return ""
+
+
+def synthesize_label_answer(question: str, brief: MemoryBrief) -> str | None:
+    del question
+    for fact in brief.facts:
+        examples = split_labelled_examples(fact.text)
+        if len(examples) == 1:
+            return examples[0][1]
+    return None
