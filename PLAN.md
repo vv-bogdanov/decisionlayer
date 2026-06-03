@@ -98,8 +98,14 @@ plain environment facts, UI state, answer keys, or transient observations.
   and `procedure D2-D0`.
 - [ ] Narrow/audit the broad blind oracle before treating `decision_recall` as a
   meaningful metric.
-- [ ] Inspect new D2 failed decision cases with non-empty briefs:
+- [x] Inspect new D2 failed decision cases with non-empty briefs:
   `4df5e6b4`, `52dd33bb`, and `bfb3bcc4`.
+- [ ] Enrich ambiguous workflow decisions where D2 has a relevant but
+  insufficient brief: investment final action (`52dd33bb`) and offboarding full
+  step order (`bfb3bcc4`).
+- [ ] Consider stricter short-answer reader prompting for cases like
+  `4df5e6b4`, where the brief contains the right module but the reader does not
+  return the required short phrase.
 - [ ] Improve decision retrieval/ranking to reduce D1 noise, especially
   `767e4106`.
 
