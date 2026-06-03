@@ -19,13 +19,19 @@ mkdir -p "$output_dir"
 run_log="$output_dir/run.log"
 exec > >(tee -a "$run_log") 2>&1
 
-printf 'Decision Layer overnight run\n'
+if [[ "$canary_only" == "1" ]]; then
+  printf 'Decision Layer canary-only run\n'
+else
+  printf 'Decision Layer full overnight run\n'
+  printf 'The script will run the canary gate first, then the full deterministic suite.\n'
+fi
 printf 'output_dir=%s\n' "$output_dir"
 printf 'data_root=%s\n' "$data_root"
 printf 'reader=%s\n' "$reader"
 printf 'reader_base_url=%s\n' "$reader_base_url"
 printf 'reader_model=%s\n' "$reader_model"
 printf 'tier=%s\n' "$tier"
+printf 'canary_only=%s\n' "$canary_only"
 
 require_file() {
   local path="$1"
@@ -76,7 +82,11 @@ run_suite() {
     --accepted-decisions "$accepted_decisions"
 }
 
-printf '\nRunning canary suite...\n'
+if [[ "$canary_only" == "1" ]]; then
+  printf '\nRunning canary suite only...\n'
+else
+  printf '\nRunning canary gate before full deterministic suite...\n'
+fi
 run_suite "$canary_subset" "$output_dir/canary"
 
 uv run python - "$output_dir/canary" "$oracle_decisions" <<'PY'
@@ -171,7 +181,7 @@ if [[ "$canary_only" == "1" ]]; then
   exit 0
 fi
 
-printf '\nRunning full deterministic suite...\n'
+printf '\nCanary gate passed. Running full deterministic suite...\n'
 run_suite "$full_subset" "$output_dir/full"
 
 printf '\nOvernight artifacts: %s\n' "$output_dir"
