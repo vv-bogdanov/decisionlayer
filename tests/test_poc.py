@@ -14,6 +14,7 @@ from decision_layer.poc import (
     apply_automatic_decisions,
     build_reader_context,
     decision_relevant_to_question,
+    retrieve_keyword_context,
     run_poc,
     run_poc_suite,
 )
@@ -65,6 +66,44 @@ def test_decision_relevance_rejects_neighboring_workflows() -> None:
     assert not decision_relevant_to_question(item_request_decision, problem_request_question)
     assert decision_relevant_to_question(report_decision, report_question)
     assert not decision_relevant_to_question(report_decision, item_request_question)
+
+
+def test_retrieve_keyword_context_respects_max_chars() -> None:
+    question = LongMemEvalV2Question(
+        id="q_large_context",
+        domain="web",
+        environment="forum",
+        question_type="dynamic-environment",
+        question="Does the alpha page have a textbox?",
+        image=None,
+        answer="false",
+        eval_function="mc_choice_match|require_non_empty=true",
+    )
+    trajectory = LongMemEvalV2Trajectory(
+        id="traj_large_context",
+        domain="web",
+        environment="forum",
+        goal="Inspect the alpha page.",
+        outcome="success",
+        start_url="https://example.test",
+        states=(
+            {
+                "thought": "alpha page",
+                "action": "observe",
+                "accessibility_tree": "alpha " + ("x" * 500),
+            },
+        ),
+    )
+    example = LongMemEvalV2Example(
+        question=question,
+        trajectory_ids=(trajectory.id,),
+        trajectories=(trajectory,),
+    )
+
+    context = retrieve_keyword_context(example, max_items=1, max_chars=80)
+
+    assert 0 < len(context) <= 80
+    assert "alpha" in context
 
 
 def test_automatic_decisions_skip_real_factual_question_types() -> None:

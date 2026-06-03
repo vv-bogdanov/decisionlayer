@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
@@ -50,6 +51,7 @@ KEYWORD_STOPWORDS = frozenset(
         "workflow",
     }
 )
+DEFAULT_CONTEXT_MAX_CHARS = 96_000
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,6 +67,7 @@ class PocConfig:
     reader_model: str | None = None
     reader_timeout_seconds: float = 60.0
     reader_max_tokens: int = 64
+    context_max_chars: int = DEFAULT_CONTEXT_MAX_CHARS
     oracle_decisions_path: Path | None = None
     accepted_decisions_path: Path | None = None
 
@@ -89,6 +92,7 @@ class PocSuiteConfig:
     reader_model: str | None = None
     reader_timeout_seconds: float = 60.0
     reader_max_tokens: int = 64
+    context_max_chars: int = DEFAULT_CONTEXT_MAX_CHARS
     oracle_decisions_path: Path | None = None
     accepted_decisions_path: Path | None = None
 
@@ -131,7 +135,7 @@ def run_poc(config: PocConfig) -> PocResult:
             decision_trace.extend(traces)
 
         brief = render_decision_brief(state)
-        context = retrieve_keyword_context(example)
+        context = retrieve_keyword_context(example, max_chars=config.context_max_chars)
         augmented_context = build_reader_context(config.mode, brief, context)
         reader_result = reader.answer(
             ReaderRequest(
@@ -209,6 +213,7 @@ def run_poc_suite(config: PocSuiteConfig) -> PocSuiteResult:
                 reader_model=config.reader_model,
                 reader_timeout_seconds=config.reader_timeout_seconds,
                 reader_max_tokens=config.reader_max_tokens,
+                context_max_chars=config.context_max_chars,
                 oracle_decisions_path=config.oracle_decisions_path,
                 accepted_decisions_path=config.accepted_decisions_path,
             )
@@ -388,7 +393,12 @@ def keyword_terms(text: str) -> set[str]:
     return terms
 
 
-def retrieve_keyword_context(example: LongMemEvalV2Example, *, max_items: int = 4) -> str:
+def retrieve_keyword_context(
+    example: LongMemEvalV2Example,
+    *,
+    max_items: int = 4,
+    max_chars: int = DEFAULT_CONTEXT_MAX_CHARS,
+) -> str:
     query_terms = set(normalize(example.question.question).split())
     scored = []
     for trajectory in example.trajectories:
@@ -398,7 +408,27 @@ def retrieve_keyword_context(example: LongMemEvalV2Example, *, max_items: int = 
             score = len(query_terms & terms)
             scored.append((score, text))
     selected = sorted(scored, key=lambda item: item[0], reverse=True)[:max_items]
-    return "\n".join(text for _score, text in selected if text)
+    return join_with_char_budget((text for _score, text in selected if text), max_chars=max_chars)
+
+
+def join_with_char_budget(texts: Iterable[str], *, max_chars: int) -> str:
+    if max_chars <= 0:
+        return ""
+    parts: list[str] = []
+    remaining = max_chars
+    for text in texts:
+        if not text:
+            continue
+        separator_chars = 1 if parts else 0
+        available = remaining - separator_chars
+        if available <= 0:
+            break
+        if len(text) > available:
+            parts.append(text[:available])
+            break
+        parts.append(text)
+        remaining -= len(text) + separator_chars
+    return "\n".join(parts)
 
 
 def state_text(goal: str, state: dict[str, object]) -> str:
@@ -692,6 +722,7 @@ def config_to_dict(config: PocConfig) -> dict[str, object]:
         "reader_model": config.reader_model,
         "reader_timeout_seconds": config.reader_timeout_seconds,
         "reader_max_tokens": config.reader_max_tokens,
+        "context_max_chars": config.context_max_chars,
         "oracle_decisions_path": str(config.oracle_decisions_path)
         if config.oracle_decisions_path
         else None,
@@ -744,6 +775,7 @@ def render_report(config: PocConfig, result: PocResult) -> str:
         f"- avg_brief_tokens: `{result.metrics['avg_brief_tokens']}`",
         f"- reader_policy: `{result.metrics['reader_policy']}`",
         f"- reader_model: `{result.metrics['reader_model']}`",
+        f"- context_max_chars: `{config.context_max_chars}`",
         f"- prompt_tokens: `{result.metrics['prompt_tokens']}`",
         f"- total_tokens: `{result.metrics['total_tokens']}`",
         f"- false_decision_rate: `{result.metrics['false_decision_rate']}`",
@@ -768,6 +800,7 @@ def render_suite_report(config: PocSuiteConfig, metrics: dict[str, object]) -> s
         f"- limit: `{config.limit}`",
         f"- reader_policy: `{metrics['reader_policy']}`",
         f"- reader_model: `{metrics['reader_model']}`",
+        f"- context_max_chars: `{config.context_max_chars}`",
         f"- D2 false_decision_rate: `{d2['false_decision_rate']}`",
         f"- D2 decision_recall: `{d2['decision_recall']}`",
         f"- D2 decision_persistence_rate: `{d2['decision_persistence_rate']}`",

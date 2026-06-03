@@ -92,4 +92,5 @@ CANARY_ONLY=1 scripts/run-overnight-poc
 
 Artifacts are written to `/tmp/decision-layer-overnight-*` by default. Override
 `OUTPUT_DIR`, `DATA_ROOT`, `READER_BASE_URL`, `READER_MODEL`, or
-`READER_MAX_TOKENS` when needed.
+`READER_MAX_TOKENS` when needed. Override `CONTEXT_MAX_CHARS` if the local
+reader has a larger or smaller context window.

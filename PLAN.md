@@ -67,7 +67,7 @@ UI state.
 
 ## Canary Gate
 
-- [x] Create a canary subset with 8-12 IDs from the full deterministic subset.
+- [x] Create a canary subset with 13 IDs from the full deterministic subset.
 - [x] Run the canary through `D0`, `D1`, and `D2` using the local llama.cpp
   reader.
 - [x] Confirm the run writes `suite_metrics.json`, `report.md`,
@@ -78,6 +78,8 @@ UI state.
 - [x] Check cases where `D1` or `D2` is worse than `D0` before starting the full
   deterministic overnight run.
 - [x] Estimate overnight wall-clock time from the measured canary runtime.
+- [x] Include an oversized-context canary case so the gate catches local reader
+  context-window failures before the full run.
 
 ## Full Overnight Run
 
@@ -88,6 +90,8 @@ UI state.
 - [x] Tee stdout/stderr to a log file in the same output directory.
 - [x] Make the script run all 295 deterministic scorable questions in `D0`,
   `D1`, and `D2`.
+- [x] Cap retrieved context with `CONTEXT_MAX_CHARS` so full runs stay inside the
+  local reader context window.
 - [x] Save all traces and reports for morning audit.
 
 ## Manual Launch

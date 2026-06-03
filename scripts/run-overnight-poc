@@ -8,6 +8,7 @@ reader_base_url="${READER_BASE_URL:-http://127.0.0.1:18080/v1}"
 reader_model="${READER_MODEL:-qwen36-35b-a3b-udiq3s}"
 reader_max_tokens="${READER_MAX_TOKENS:-128}"
 reader_timeout_seconds="${READER_TIMEOUT_SECONDS:-60}"
+context_max_chars="${CONTEXT_MAX_CHARS:-96000}"
 tier="${TIER:-small}"
 canary_subset="${CANARY_SUBSET:-configs/longmemeval-v2-canary-deterministic-subset.txt}"
 full_subset="${FULL_SUBSET:-configs/longmemeval-v2-full-deterministic-subset.txt}"
@@ -30,6 +31,7 @@ printf 'data_root=%s\n' "$data_root"
 printf 'reader=%s\n' "$reader"
 printf 'reader_base_url=%s\n' "$reader_base_url"
 printf 'reader_model=%s\n' "$reader_model"
+printf 'context_max_chars=%s\n' "$context_max_chars"
 printf 'tier=%s\n' "$tier"
 printf 'canary_only=%s\n' "$canary_only"
 
@@ -78,6 +80,7 @@ run_suite() {
     --reader-model "$reader_model" \
     --reader-timeout-seconds "$reader_timeout_seconds" \
     --reader-max-tokens "$reader_max_tokens" \
+    --context-max-chars "$context_max_chars" \
     --oracle-decisions "$oracle_decisions" \
     --accepted-decisions "$accepted_decisions"
 }

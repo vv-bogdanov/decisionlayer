@@ -129,6 +129,12 @@ def post_json(url: str, payload: dict[str, object], *, timeout_seconds: float) -
     try:
         with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
             data = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        detail = f"reader request failed: {url} ({exc.code} {exc.reason})"
+        if body:
+            detail = f"{detail}: {body[:1000]}"
+        raise RuntimeError(detail) from exc
     except urllib.error.URLError as exc:
         raise RuntimeError(f"reader request failed: {url}") from exc
     if not isinstance(data, dict):

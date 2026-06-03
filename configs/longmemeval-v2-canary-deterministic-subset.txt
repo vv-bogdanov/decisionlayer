@@ -1,6 +1,9 @@
 # LongMemEval-V2 deterministic all-topic canary subset.
 # Run this before the full overnight subset.
-# Total: 12
+# Total: 13
+
+# dynamic-environment / mc_choice_match; oversized context guard
+00aa905a
 
 # dynamic-environment / norm_phrase_set_match
 01307e07
