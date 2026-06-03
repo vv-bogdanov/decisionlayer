@@ -1,240 +1,113 @@
-# Implementation Plan
+# Proof Plan: Long-Horizon Memory Evaluation
 
-## Status Snapshot
+## Main Goal
 
-- [x] MVP Python package and `uv` project setup.
-- [x] Core Decision + Fact memory runtime.
-- [x] Deterministic extraction, recall, forgetting, and safety policies.
-- [x] Toy benchmark fixture and runner.
-- [x] LongMemEval-compatible smoke adapter with explicit `data_path` support.
-- [x] Baseline comparison report for smoke fixtures.
-- [x] Optuna/grid sweep runner.
-- [x] Report outputs: `metrics.json`, `predictions.jsonl`, `trace.jsonl`,
-  `report.md`, `best_config.yaml`, `trials.csv`, `sweep_report.md`.
-- [x] Pytest coverage for core, recall, benchmark, and sweep behavior.
-- [x] Real LongMemEval dataset schema validation and subset run.
-- [x] Benchmark-specific LongMemEval scoring, initial deterministic version.
-- [x] Better retrieval beyond keyword overlap.
-- [x] Dataset-aware extraction without artificial `FACT:` prefixes.
-- [x] Ruff lint/format tooling.
-
-## Context
-
-The repository now contains the first Python research prototype milestone:
-package skeleton, core runtime, deterministic policies, benchmark harness,
-baseline comparison, reports, sweeps, and tests.
-
-The target from the current technical brief is a Python research prototype for:
+Prove or disprove this claim with reproducible experiments:
 
 ```text
-Agent Memory = Decisions + Facts
+Decision + Fact memory gives a better quality/cost trade-off on long-horizon
+agent tasks than recent context, full context, simple RAG, sparse retrieval,
+and facts-only memory.
 ```
 
-The goal is not a production SDK, REST API, UI, database product, or framework
-adapter. The goal is a reproducible experiment pipeline that can compare memory
-variants on existing memory benchmarks.
+The output of this work is not another implementation checklist. The output is
+an evidence package: commands, datasets, reports, ablations, failure analysis,
+and a clear answer about whether the memory model is actually better.
 
-## Practical Direction
+## Current Starting Point
 
-Start with the cheapest verifiable implementation:
+- [x] Python research harness exists.
+- [x] Core memory model exists: Decisions + Facts + refs + recall_count.
+- [x] Deterministic extraction, recall, forgetting, and safety policies exist.
+- [x] Toy, LongMemEval, LoCoMo, HaluMem, and MemoryAgentBench adapters exist.
+- [x] Baseline runner exists.
+- [x] Grid, Optuna, and Hydra entrypoints exist.
+- [x] Reports, predictions, traces, metrics, and sweep outputs exist.
+- [x] Ruff, mypy, and pytest are configured.
 
-- [x] Minimal Python core.
-- [x] Deterministic in-memory storage.
-- [x] Small local tests and fixtures.
-- [x] One benchmark adapter.
-- [x] Shared runner and metrics output.
-- [x] Sweeps.
-- [x] Real benchmark validation, LongMemEval oracle subset.
-- [x] Heavier retrieval.
+## Master Checklist
 
-Do not start with SQLite, vector DBs, LLM extraction, graph storage, REST, or SDK
-interfaces. They may be useful later, but they add cost before the hypothesis is
-measurable.
+Use this section as the top-level progress tracker. Detailed checklists live in
+the sections below.
 
-## Proposed Project Structure
+- [ ] M1: Proof harness hardening is complete.
+- [ ] M2: LongMemEval proof run is complete.
+- [ ] M3: MemoryAgentBench proof run is complete.
+- [ ] M4: HaluMem safety proof is complete.
+- [ ] M5: LoCoMo secondary validation is complete.
+- [ ] M6: Strong retrieval challenge is complete or intentionally skipped.
+- [ ] M7: Final proof report is complete.
+- [ ] B1: LongMemEval has a reproducible dev and held-out result.
+- [ ] B2: MemoryAgentBench has reproducible results by competency.
+- [ ] B3: HaluMem has hallucination/safety results.
+- [ ] B4: LoCoMo has raw and audited secondary validation results.
+- [ ] B5: 2026 watchlist benchmarks have been inspected.
+- [ ] Baseline matrix has been run on every primary benchmark.
+- [ ] Ablation matrix has been run on every primary benchmark.
+- [ ] Final decision is recorded: supported, partially supported, or not
+  supported.
 
-```text
-memorycore/
-  __init__.py
-  core/
-    models.py
-    store.py
-    runtime.py
-    trace.py
-  policies/
-    extraction.py
-    recall.py
-    forgetting.py
-    safety.py
-  benchmarks/
-    base.py
-    longmemeval.py
-    locomo.py
-    halumem.py
-    memoryagentbench.py
-  baselines/
-    runners.py
-  experiments/
-    run_experiment.py
-    run_sweep.py
-  reporting/
-    reports.py
+## Evidence Standard
 
-configs/
-  experiment.yaml
-  benchmark/
-  memory/
-  recall/
-  sweep/
+The proof is credible only if the comparisons are fair and reproducible.
 
-tests/
-  test_core_memory.py
-  test_recall.py
-  test_benchmarks.py
+- [ ] Pin exact dataset versions and local paths in a run manifest.
+- [ ] Pin model, extractor, judge, embedding model, and prompt versions.
+- [ ] Separate tuning/dev runs from final held-out test runs.
+- [ ] Use the same token budget and context budget for competing systems.
+- [ ] Run deterministic baselines once and LLM-dependent variants at least 3
+  times.
+- [ ] Report confidence intervals or bootstrap intervals for key metrics.
+- [ ] Store all generated `metrics.json`, `predictions.jsonl`, `trace.jsonl`,
+  and `report.md` under `reports/`.
+- [ ] Keep dataset download outside the runner; use explicit `data_path`.
+- [ ] Document known benchmark weaknesses and manual audit decisions.
 
-reports/
-  .gitkeep
-```
+## Primary Metrics
 
-This structure is intentionally boring: enough separation for experiments, but
-no product-style abstraction layer.
+Quality:
 
-## Phase P0: Core And First Runner
+- [ ] Accuracy / exact match / substring match where deterministic scoring is
+  valid.
+- [ ] LLM judge score where deterministic scoring is insufficient.
+- [ ] Task success for agent-style tasks.
+- [ ] Abstention accuracy.
+- [ ] Conflict update accuracy.
+- [ ] Temporal reasoning accuracy.
 
-Deliver the minimum runnable prototype.
+Reliability:
 
-Status:
+- [ ] Source traceability.
+- [ ] Unsupported answer rate.
+- [ ] False fact creation rate.
+- [ ] False decision creation rate.
+- [ ] Hallucination rate on HaluMem.
 
-- [x] Completed.
+Efficiency:
 
-### Core Models
+- [ ] Prompt tokens.
+- [ ] Output tokens.
+- [ ] Estimated cost.
+- [ ] Latency.
+- [ ] Memory brief token budget usage.
 
-Implement:
+Decision criterion:
 
-```text
-Ref
-RawInput
-Fact
-Decision
-MemoryBrief
-RecallTrace
-```
+- [ ] `decisions_facts` or a justified improved variant must beat the strongest
+  same-budget baseline on at least 3 long-horizon task families.
+- [ ] It must not win only by spending more tokens.
+- [ ] It must not increase hallucination or unsupported-answer risk.
+- [ ] It must have better traceability than full-context or naive RAG baselines.
 
-Required fields:
+## Benchmark Ladder
 
-```text
-Decision:
-  kind
-  key
-  value
-  scope
-  refs
-  meta
+Use a ladder rather than a single leaderboard number.
 
-Fact:
-  kind
-  text
-  scope
-  recall_count
-  tags
-  refs
-  meta
+### B1: LongMemEval
 
-Ref:
-  target
-  rel
-  weight
-```
+- [ ] B1 complete.
 
-Use dataclasses or Pydantic. Prefer dataclasses first unless validation becomes
-painful.
-
-### Core API
-
-Implement:
-
-```text
-add_raw_input(...)
-add_fact(...)
-set_decision(...)
-recall(...)
-forget_facts(...)
-export_trace(...)
-```
-
-Rules:
-
-- [x] `set_decision` replaces current decision by `key + scope`.
-- [x] Old decision value is saved as a fact with tags `history` and
-   `decision_change`.
-- [x] Facts selected into `MemoryBrief` receive `recall_count += 1`.
-- [x] Important facts and decisions should carry source refs when available.
-- [x] Decision creation/update requires explicit commit signal in extraction
-  policy.
-
-### Initial Policies
-
-Implement only deterministic policies first:
-
-```text
-extraction:
-  manual_oracle
-  rule_based
-
-recall:
-  recent_only
-  keyword
-  decision_first
-  decision_first_with_recall_count
-
-forgetting:
-  none
-  low_recall_count_except_decision_refs
-
-safety:
-  require_commit_for_decision
-  require_key_value_scope
-  preserve_decision_history
-```
-
-### Tests
-
-Add focused tests for:
-
-- [x] Adding raw inputs and facts.
-- [x] Creating a decision.
-- [x] Updating a decision and preserving history as fact.
-- [x] Recall returns decisions first.
-- [x] Recall increments `recall_count` for selected facts.
-- [x] Trace explains selected decisions/facts.
-- [x] Forgetting does not remove facts referenced by current decisions.
-
-### CLI
-
-Create a minimal command:
-
-```text
-python -m memorycore.experiments.run_experiment benchmark=toy memory=decisions_facts
-```
-
-The first benchmark can be a tiny local fixture. This prevents external dataset
-download and API keys from blocking core validation.
-
-## Phase P1: LongMemEval And Baselines
-
-Add the first real external benchmark adapter.
-
-Status:
-
-- [x] LongMemEval-compatible JSON adapter with local `data_path`.
-- [x] Tiny LongMemEval-compatible smoke fixture.
-- [x] Baseline runner and comparison report.
-- [x] Real LongMemEval schema validation.
-- [x] Real LongMemEval oracle subset report.
-
-### LongMemEval Adapter
-
-Use LongMemEval as the first benchmark because it directly tests:
+Purpose:
 
 ```text
 information extraction
@@ -244,482 +117,354 @@ knowledge updates
 abstention
 ```
 
-Adapter responsibilities:
-
-- [x] Load local LongMemEval JSON files.
-- [x] Convert sessions/messages into raw inputs.
-- [x] Feed history into memory runtime.
-- [x] Run recall for each question.
-- [x] Produce prediction records.
-- [x] Save trace records.
-- [x] Validate against the real LongMemEval schema and fields.
-
-Do not hardcode dataset download into the runner. Prefer a config path, because
-datasets and licenses can change.
-
-### Baselines
-
-Implement through the same runner:
+Source:
 
 ```text
-no_memory
-recent_context_only
-full_context_where_possible
-simple_rag
-fact_only
-decisions_only
-decisions_plus_facts
-decisions_plus_facts_plus_refs
-decisions_plus_facts_plus_refs_plus_recall_count
-```
-
-For P1, required minimum:
-
-- [x] `recent_context_only`
-- [x] `simple_rag`
-- [x] `fact_only`
-- [x] `decisions_facts`
-
-### Scoring
-
-Start with metrics that do not require expensive judging:
-
-```text
-accuracy
-exact_match
-substring_match
-memory_brief_tokens
-facts_selected_per_recall
-decisions_selected_per_recall
-source_traceability
-false_decision_rate
-latency
-```
-
-- [x] `accuracy`
-- [x] `exact_match`
-- [x] `substring_match`
-- [x] `memory_brief_tokens`
-- [x] `facts_selected_per_recall`
-- [x] `decisions_selected_per_recall`
-- [x] `source_traceability`
-- [x] `false_decision_rate`
-- [x] `latency`
-- [x] LongMemEval-specific deterministic scoring, grouped by `question_type`
-  with abstention metric when applicable.
-- [x] LLM-as-judge behind config.
-
-### Reports
-
-Each run should write:
-
-```text
-metrics.json
-predictions.jsonl
-trace.jsonl
-report.md
-```
-
-The markdown report should include:
-
-- [x] Summary table.
-- [x] Per-policy comparison.
-- [x] Sample memory briefs.
-- [x] Failure cases.
-- [x] Basic token summary via `memory_brief_tokens`.
-- [x] Cost estimate.
-
-## Phase P2: Sweeps And More Benchmarks
-
-Status:
-
-- [x] `run_sweep`.
-- [x] Optuna objective.
-- [x] Grid fallback.
-- [x] `best_config.yaml`.
-- [x] `trials.csv`.
-- [x] `sweep_report.md`.
-- [x] Generic JSON adapters for LoCoMo, HaluMem, and MemoryAgentBench.
-- [x] Hydra multirun integration.
-- [x] Real LoCoMo run.
-- [x] Real HaluMem run.
-- [x] Real MemoryAgentBench run.
-
-### Hydra And Optuna
-
-Add:
-
-- [x] `run_sweep`
-- [x] `best_config.yaml`
-- [x] `trials.csv`
-- [x] `sweep_report.md`
-
-Initial tunable parameters:
-
-- [x] `top_k_facts`
-- [x] `top_k_decisions`
-- [x] `recall_count_weight`
-- [x] `keyword_weight`
-- [x] `recency_weight`
-- [x] `scope_weight`
-- [x] `refs_expansion_depth`
-- [x] `max_memory_brief_tokens`
-- [x] `forgetting_threshold`
-
-Start with one objective metric. Multi-objective optimization can wait until the
-single-metric pipeline is stable.
-
-### LoCoMo Adapter
-
-Add LoCoMo after LongMemEval. It is useful for long-term conversational memory,
-QA over long conversations, temporal facts, and multi-session memory.
-
-- [x] Generic JSON adapter.
-- [x] Real dataset schema validation.
-- [x] Real benchmark run.
-
-### HaluMem Adapter
-
-Add HaluMem to test memory hallucination risks:
-
-```text
-false fact creation
-false decision creation
-wrong decision update
-unsupported memory answer
-```
-
-This is important because the architecture claims decision safety and source
-traceability as strengths.
-
-- [x] Generic JSON adapter.
-- [x] Real dataset schema validation.
-- [x] Real benchmark run.
-
-### MemoryAgentBench Adapter
-
-Add after the simpler adapters are stable. It is broader and heavier, so it
-should not block the initial prototype.
-
-- [x] Generic JSON adapter.
-- [x] Real dataset schema validation.
-- [x] Real benchmark run.
-
-## Phase P3: Better Retrieval And Safety
-
-Add only after benchmark reports show where the current prototype fails.
-
-Status:
-
-- [x] Implemented after real LongMemEval baseline results.
-
-Possible additions:
-
-- [x] LLM extraction.
-- [x] LLM extraction safety checks.
-- [x] Semantic/vector recall.
-- [x] Hybrid keyword/vector recall.
-- [x] Refs expansion.
-- [x] Reranking.
-- [x] Age-aware forgetting.
-- [x] Failure analysis reports, initial version.
-- [x] Multi-objective scoring.
-
-Keep each addition benchmark-driven. If a new component does not improve quality,
-debuggability, cost, or maintainability, remove it.
-
-## Definition Of Done
-
-Single experiment:
-
-- [x] Smoke fixture command works.
-- [x] Real LongMemEval oracle subset command works.
-
-```text
-python -m memorycore.experiments.run_experiment benchmark=longmemeval memory=decisions_facts recall=decision_first
-```
-
-Expected outputs:
-
-```text
-metrics.json
-predictions.jsonl
-trace.jsonl
-report.md
-```
-
-Sweep:
-
-- [x] Smoke fixture command works.
-- [x] Real LongMemEval dataset command works.
-
-```text
-python -m memorycore.experiments.run_sweep benchmark=longmemeval memory=decisions_facts search=optuna
-```
-
-Expected outputs:
-
-```text
-best_config.yaml
-trials.csv
-sweep_report.md
-```
-
-## Key Trade-Offs
-
-1. In-memory storage first means the prototype is easier to test and debug, but
-   not production-ready.
-2. Keyword/recent recall first gives a measurable baseline quickly, but will not
-   be the best retrieval quality.
-3. Rule-based/manual extraction reduces cost and randomness, but cannot prove
-   end-to-end LLM extraction quality.
-4. One benchmark first reduces integration risk, but conclusions must wait until
-   at least LongMemEval, LoCoMo, and HaluMem are compared.
-5. Reports and traces are mandatory from the beginning because benchmark scores
-   without debuggability will not explain whether Decisions, Facts, refs, or
-   recallCount are helping.
-
-## First Implementation Checklist
-
-- [x] Add `pyproject.toml` with package metadata and test dependencies.
-- [x] Create package skeleton under `memorycore/`.
-- [x] Implement core models and in-memory store.
-- [x] Implement runtime operations.
-- [x] Implement deterministic recall policies.
-- [x] Add focused pytest coverage for core behavior.
-- [x] Add toy benchmark fixture and runner.
-- [x] Add report/traces output.
-- [x] Add LongMemEval adapter using local dataset path from config.
-- [x] Add first baseline comparison report.
-
-## Next Plan: Real Benchmark Signal
-
-The first prototype milestone is implemented. The next stage should focus on
-getting the first honest benchmark result, not on adding more architecture.
-
-### Goal
-
-Answer this question on real data:
-
-```text
-Does Decision-First Memory produce a measurable signal over simple baselines?
-```
-
-Use a small but real LongMemEval subset first. Expand only after the runner,
-scoring, traces, and failure analysis are trustworthy.
-
-### N1: Real LongMemEval Subset
-
-Implement a real LongMemEval subset runner.
-
-Work:
-
-- [x] Add clear local dataset instructions.
-- [x] Inspect the real LongMemEval file schema.
-- [x] Adapt `memorycore/benchmarks/longmemeval.py` to that schema.
-- [x] Support subset limits for quick runs.
-- [x] Preserve raw sessions/messages in traces.
-- [x] Add tests with a small fixture matching the real schema.
-
-Do not download datasets automatically inside the runner. Keep `data_path`
-explicit so benchmark data, licenses, and local storage remain under user
-control.
-
-Target command:
-
-```bash
-uv run python -m memorycore.experiments.run_experiment \
-  benchmark=longmemeval \
-  data_path=/path/to/longmemeval \
-  memory=decisions_facts \
-  recall=decision_first \
-  output_dir=reports/longmemeval_real_subset
-```
-
-Expected outputs:
-
-```text
-metrics.json
-predictions.jsonl
-trace.jsonl
-report.md
-```
-
-### N2: Benchmark-Specific Scoring
-
-Strengthen scoring before adding heavier retrieval.
-
-Work:
-
-- [x] Keep existing exact/substring metrics.
-- [x] Add LongMemEval-specific scoring where answer types require it.
-- [x] Separate metrics by case type when available:
-  - [x] extraction-like single-session types
-  - [x] multi-session reasoning
-  - [x] temporal reasoning
-  - [x] knowledge updates
-  - [x] abstention
-- [x] Add unsupported/abstention handling where labels support it.
-- [x] Keep LLM-as-judge out of the default path until deterministic scoring is
-   understood.
-
-Practical reason: poor scoring can make retrieval changes look better or worse
-than they are.
-
-### N3: Real Baseline Table
-
-Run the first real comparison table on the same LongMemEval subset.
-
-Required baselines:
-
-- [x] `recent_context_only`, smoke fixture.
-- [x] `simple_rag`, smoke fixture.
-- [x] `fact_only`, smoke fixture.
-- [x] `decisions_facts`, smoke fixture.
-- [x] `recent_context_only`, real LongMemEval oracle subset.
-- [x] `simple_rag`, real LongMemEval oracle subset.
-- [x] `fact_only`, real LongMemEval oracle subset.
-- [x] `decisions_facts`, real LongMemEval oracle subset.
-
-Target command:
-
-```bash
-uv run python -m memorycore.experiments.run_experiment \
-  benchmark=longmemeval \
-  data_path=/path/to/longmemeval \
-  compare_memories=recent_context_only,simple_rag,fact_only,decisions_facts \
-  output_dir=reports/longmemeval_baselines
-```
-
-Report must show:
-
-- [x] Summary table, smoke fixture.
-- [x] Per-baseline metrics, smoke fixture.
-- [x] Sample memory briefs, smoke fixture.
-- [x] Failure cases, smoke fixture.
-- [x] Trace examples, smoke fixture.
-- [x] Same report on real LongMemEval oracle subset.
-
-The point is to see whether failures come from extraction, recall, scoring, or
-the memory model itself.
-
-### N4: Retrieval Improvement Only After Baseline
-
-Improve retrieval only after the real baseline table exists.
-
-Preferred first upgrade:
-
-- [x] BM25 or TF-IDF recall.
-
-Avoid vector databases at this stage. If a dependency is needed, prefer a mature
-small package or `scikit-learn` only if it clearly improves quality and keeps the
-prototype simple.
-
-Compare:
-
-- [x] `keyword`, smoke fixture.
-- [x] `decision_first`, smoke fixture.
-- [x] `decision_first_with_recall_count`, smoke fixture.
-- [x] `BM25/TF-IDF`.
-- [x] Real subset comparison.
-
-Do not keep a retrieval policy that does not improve quality, traceability, cost,
-or debugging clarity.
-
-### N5: Extraction Upgrade
-
-The current rule-based extractor is useful for smoke tests, but weak for real
-LongMemEval data.
-
-Next extraction step:
-
-```text
-dataset-aware deterministic extraction
+https://github.com/xiaowu0162/LongMemEval
+https://arxiv.org/abs/2410.10813
 ```
 
 Work:
 
-- [x] Extract facts from benchmark sessions/messages without requiring artificial
-   `FACT:` prefixes.
-- [x] Preserve source refs for every extracted fact.
-- [x] Only create decisions from explicit update/commit-like signals in the data.
-- [x] Store ambiguous updates as facts or hypotheses, not decisions.
-
-LLM extraction should be a separate policy later. It should not be mixed into
-the first real benchmark result, because it adds cost, randomness, and another
-failure source.
-
-### N6: Quality Tooling
-
-Add lightweight tooling after the real subset runner works.
-
-Preferred tools:
-
-- [x] `uv`
-- [x] `ruff`
-- [x] `pytest`
-
-Possible additions:
-
-- [x] `pyright` or `mypy`
-
-Only add type-checking if it catches real mistakes without slowing iteration
-too much.
+- [ ] Create a frozen LongMemEval manifest with file path, row count, hash, and
+  subset IDs.
+- [ ] Run all current baselines on a dev subset.
+- [ ] Run all current baselines on a held-out test subset.
+- [ ] Add per-question-type tables.
+- [ ] Add failure analysis grouped by extraction, recall, scoring, update, and
+  abstention.
+- [ ] Compare cost/latency against full-context and RAG baselines.
+- [ ] Audit a small sample of labels and judge decisions manually.
 
 Target commands:
 
 ```bash
-uv run pytest
-uv run ruff check .
-uv run ruff format --check .
+uv run python -m memorycore.experiments.run_experiment \
+  benchmark=longmemeval \
+  data_path=/path/to/longmemeval_oracle.json \
+  compare_memories=recent_context_only,simple_rag,bm25,tfidf,hybrid,fact_only,decisions_facts \
+  recall=hybrid \
+  limit=100 \
+  output_dir=reports/proof/longmemeval_dev
+
+uv run --extra experiments python -m memorycore.experiments.run_sweep \
+  benchmark=longmemeval \
+  data_path=/path/to/longmemeval_oracle.json \
+  memory=decisions_facts \
+  recall=hybrid \
+  metric=quality_score \
+  n_trials=24 \
+  output_dir=reports/proof/longmemeval_sweep
 ```
 
-### Next Milestone Commit
+### B2: MemoryAgentBench
 
-The next large commit should be:
+- [ ] B2 complete.
+
+Purpose:
 
 ```text
-Add real LongMemEval subset runner
+accurate retrieval
+test-time learning
+long-range understanding
+conflict resolution
+incremental multi-turn interaction
 ```
 
-It should include:
+Sources:
 
-- [x] Real-schema LongMemEval parser.
-- [x] Local fixture matching that schema.
-- [x] Subset-limit config or CLI override.
-- [x] Benchmark-specific metrics where practical.
-- [x] Baseline comparison report on the subset.
-- [x] README command for `data_path`.
-- [x] Tests and smoke verification.
+```text
+https://github.com/HUST-AI-HYZ/MemoryAgentBench
+https://huggingface.co/datasets/ai-hyz/MemoryAgentBench
+https://arxiv.org/abs/2507.05257
+```
 
-### Next Definition Of Done
+Work:
 
-The next stage is complete when these commands work on a local LongMemEval data
-path:
+- [ ] Create a manifest for all four official splits:
+  `Accurate_Retrieval`, `Test_Time_Learning`, `Long_Range_Understanding`,
+  `Conflict_Resolution`.
+- [ ] Run a small smoke for each split.
+- [ ] Run a dev subset for each split.
+- [ ] Run a held-out test subset for each split.
+- [ ] Fix scoring per split instead of relying only on substring matching.
+- [ ] Report metrics by MemoryAgentBench competency.
+- [ ] Add budget-aware comparison because some rows have huge contexts.
+
+Target command:
 
 ```bash
-uv run pytest
-
-uv run python -m memorycore.experiments.run_experiment \
-  benchmark=longmemeval \
-  data_path=/path/to/longmemeval \
-  memory=decisions_facts \
-  recall=decision_first \
-  output_dir=reports/longmemeval_real_subset
-
-uv run python -m memorycore.experiments.run_experiment \
-  benchmark=longmemeval \
-  data_path=/path/to/longmemeval \
-  compare_memories=recent_context_only,simple_rag,fact_only,decisions_facts \
-  output_dir=reports/longmemeval_baselines
+uv run --extra experiments python -m memorycore.experiments.run_experiment \
+  benchmark=memoryagentbench \
+  data_path=/path/to/Accurate_Retrieval-00000-of-00001.parquet \
+  compare_memories=recent_context_only,simple_rag,bm25,tfidf,hybrid,fact_only,decisions_facts \
+  max_memory_brief_tokens=2000 \
+  limit=100 \
+  output_dir=reports/proof/memoryagentbench_ar_dev
 ```
 
-And the generated report makes it clear whether each failure is likely caused by:
+### B3: HaluMem
+
+- [ ] B3 complete.
+
+Purpose:
 
 ```text
-extraction
-recall
-scoring
-memory update
-abstention
+memory hallucination
+false fact creation
+false decision creation
+wrong memory updates
+unsupported memory answers
 ```
+
+Source:
+
+```text
+https://github.com/MemTensor/HaluMem
+https://arxiv.org/abs/2511.03506
+```
+
+Work:
+
+- [ ] Create a manifest for selected HaluMem stage files.
+- [ ] Define deterministic hallucination and unsupported-answer metrics where
+  possible.
+- [ ] Add LLM judge only behind config for ambiguous cases.
+- [ ] Compare `decisions_facts` against RAG and facts-only baselines.
+- [ ] Verify that decisions are not created without explicit commit signals.
+- [ ] Report false decision and false fact rates.
+
+Target command:
+
+```bash
+uv run python -m memorycore.experiments.run_experiment \
+  benchmark=halumem \
+  data_path=/path/to/stage5_1_dialogue_generation.jsonl \
+  compare_memories=simple_rag,bm25,tfidf,hybrid,fact_only,decisions_facts \
+  limit=100 \
+  output_dir=reports/proof/halumem_dev
+```
+
+### B4: LoCoMo
+
+- [ ] B4 complete.
+
+Purpose:
+
+```text
+long multi-session conversational memory
+temporal facts
+cross-session personal/event reasoning
+```
+
+Source:
+
+```text
+https://github.com/snap-research/locomo
+```
+
+Caution:
+
+LoCoMo is useful, but we should not rely on it blindly. Treat it as a secondary
+benchmark and manually audit a small sample of labels and judge outcomes before
+making strong claims.
+
+Work:
+
+- [ ] Create a manifest for `locomo10.json`.
+- [ ] Run all baselines on all QA examples.
+- [ ] Add category-level metrics.
+- [ ] Manually audit at least 30 random QA items.
+- [ ] Mark unreliable examples and report results with and without them.
+
+Target command:
+
+```bash
+uv run python -m memorycore.experiments.run_experiment \
+  benchmark=locomo \
+  data_path=/path/to/locomo10.json \
+  compare_memories=recent_context_only,simple_rag,bm25,tfidf,hybrid,fact_only,decisions_facts \
+  output_dir=reports/proof/locomo_full
+```
+
+### B5: 2026 Watchlist
+
+- [ ] B5 complete.
+
+Do not block the first proof package on these, but track them because they are
+closer to long-horizon agent use cases.
+
+Sources:
+
+```text
+https://github.com/xiaowu0162/LongMemEval-V2
+https://arxiv.org/abs/2605.12493
+https://arxiv.org/abs/2605.18565
+```
+
+Work:
+
+- [ ] Inspect LongMemEval-V2 schema and licensing.
+- [ ] Inspect LongMINT availability and schema.
+- [ ] Decide whether either benchmark should become part of the proof suite.
+- [ ] Add adapters only if the dataset is accessible and the task adds new
+  signal beyond LongMemEval and MemoryAgentBench.
+
+## Baseline Matrix
+
+Every serious benchmark run should include:
+
+- [ ] `no_memory`
+- [ ] `recent_context_only`
+- [ ] `full_context_where_possible`
+- [ ] `simple_rag`
+- [ ] `bm25`
+- [ ] `tfidf`
+- [ ] `hybrid`
+- [ ] `fact_only`
+- [ ] `decisions_only`
+- [ ] `decisions_facts`
+- [ ] `decisions_plus_facts_plus_refs`
+- [ ] `decisions_plus_facts_plus_refs_plus_recall_count`
+
+Add later only if needed:
+
+- [ ] Local embedding vector recall.
+- [ ] Cross-encoder or LLM reranker.
+- [ ] Strong open-source memory baseline if it can be run reproducibly.
+
+## Ablation Plan
+
+The proof must show which component helps.
+
+- [ ] Facts only vs Decisions only.
+- [ ] Decisions + Facts vs Facts only.
+- [ ] With refs expansion vs without refs expansion.
+- [ ] With recall_count weighting vs without recall_count weighting.
+- [ ] With forgetting vs without forgetting.
+- [ ] With age-aware forgetting vs basic low-recall forgetting.
+- [ ] Rule-based extraction vs LLM extraction.
+- [ ] Sparse recall vs vector recall.
+- [ ] Hybrid recall vs reranked hybrid recall.
+- [ ] Same quality at lower token budget.
+- [ ] Same token budget at higher quality.
+
+## Implementation Milestones
+
+### M1: Proof Harness Hardening
+
+- [ ] M1 complete.
+
+- [ ] Add run manifest output with dataset path, hash, size, split, model config,
+  git commit, and command.
+- [ ] Add bootstrap confidence interval helper.
+- [ ] Add benchmark-run table aggregation across report directories.
+- [ ] Add `reports/proof/index.md` generator.
+- [ ] Add command recipes to `README.md`.
+- [ ] Keep `uv run pytest`, Ruff, and mypy green.
+
+### M2: LongMemEval Proof Run
+
+- [ ] M2 complete.
+
+- [ ] Freeze LongMemEval manifest.
+- [ ] Run dev baseline table.
+- [ ] Tune only on dev subset.
+- [ ] Run held-out test baseline table.
+- [ ] Generate ablation table.
+- [ ] Generate cost/latency Pareto table.
+- [ ] Write failure analysis.
+
+### M3: MemoryAgentBench Proof Run
+
+- [ ] M3 complete.
+
+- [ ] Freeze split manifests.
+- [ ] Add split-specific scoring where needed.
+- [ ] Run smoke for every split.
+- [ ] Run dev baseline table for every split.
+- [ ] Run held-out test table for every split.
+- [ ] Summarize by competency.
+
+### M4: HaluMem Safety Proof
+
+- [ ] M4 complete.
+
+- [ ] Freeze HaluMem manifest.
+- [ ] Add unsupported-answer and hallucination metrics.
+- [ ] Run baseline table.
+- [ ] Verify false decision rate.
+- [ ] Compare with and without decision safety.
+- [ ] Add qualitative failure examples.
+
+### M5: LoCoMo Secondary Validation
+
+- [ ] M5 complete.
+
+- [ ] Freeze LoCoMo manifest.
+- [ ] Run all baselines.
+- [ ] Audit labels.
+- [ ] Report raw and audited metrics.
+- [ ] Decide whether LoCoMo supports or weakens the main claim.
+
+### M6: Strong Retrieval Challenge
+
+- [ ] M6 complete or intentionally skipped.
+
+- [ ] Add local embedding vector recall if sparse retrieval is not competitive.
+- [ ] Add reranker only if recall traces show ranking failures.
+- [ ] Compare against `decisions_facts` at the same token budget.
+- [ ] Remove any component that does not improve quality, traceability, cost, or
+  maintainability.
+
+### M7: Final Proof Report
+
+- [ ] M7 complete.
+
+- [ ] Write `reports/proof/final_report.md`.
+- [ ] Include benchmark versions and commands.
+- [ ] Include all primary metrics.
+- [ ] Include ablations.
+- [ ] Include confidence intervals.
+- [ ] Include cost/latency tables.
+- [ ] Include failure analysis.
+- [ ] State whether the hypothesis is supported, partially supported, or not
+  supported.
+
+## Definition Of Proof
+
+The main claim is supported only if all are true:
+
+- [ ] Our best Decision + Fact variant beats the strongest same-budget baseline
+  on LongMemEval.
+- [ ] It beats the strongest same-budget baseline on at least two additional
+  long-horizon task families.
+- [ ] It has equal or lower hallucination / unsupported-answer rate.
+- [ ] It has better source traceability.
+- [ ] It uses fewer tokens or lower cost than full-context baselines.
+- [ ] The result survives ablations and is not explained by one lucky component
+  or one weak baseline.
+- [ ] The result is reproducible from a clean checkout with documented commands.
+
+If these conditions fail, the correct result is not to force the claim. The
+correct result is to document where the model loses and decide whether the next
+business-relevant improvement is extraction, recall, update safety, scoring, or
+cost reduction.
+
+## Practical Next Step
+
+Start with `M1` and `M2`.
+
+The next commit should be:
+
+```text
+Add proof run manifests and LongMemEval aggregation
+```
+
+Minimum next deliverables:
+
+- [ ] `manifest.json` for every experiment run.
+- [ ] `reports/proof/index.md` aggregation.
+- [ ] LongMemEval dev baseline table with all current baselines.
+- [ ] LongMemEval failure analysis table.
+- [ ] Updated README commands.
