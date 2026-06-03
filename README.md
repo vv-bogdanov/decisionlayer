@@ -28,9 +28,9 @@ uv run decision-layer --state /tmp/decision-state.json brief
 ## POC Smoke
 
 ```bash
-uv run decision-layer run-poc \
+uv run decision-layer run-suite \
   --data-root tests/fixtures/longmemeval_v2 \
-  --output-dir /tmp/decision-layer-poc/D0 \
-  --mode D0 \
-  --limit 1
+  --output-dir /tmp/decision-layer-poc \
+  --limit 1 \
+  --oracle-decisions tests/fixtures/longmemeval_v2/oracle_decisions.json
 ```

@@ -13,7 +13,7 @@ from decision_layer.core import (
     render_decision_brief,
     replace_decision,
 )
-from decision_layer.poc import PocConfig, PocMode, run_poc
+from decision_layer.poc import PocConfig, PocMode, PocSuiteConfig, run_poc, run_poc_suite
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -41,6 +41,13 @@ def main(argv: list[str] | None = None) -> int:
     run_poc_parser.add_argument("--tier", default="small")
     run_poc_parser.add_argument("--limit", type=int)
     run_poc_parser.add_argument("--oracle-decisions")
+
+    run_suite_parser = subparsers.add_parser("run-suite")
+    run_suite_parser.add_argument("--data-root", required=True)
+    run_suite_parser.add_argument("--output-dir", required=True)
+    run_suite_parser.add_argument("--tier", default="small")
+    run_suite_parser.add_argument("--limit", type=int)
+    run_suite_parser.add_argument("--oracle-decisions")
 
     args = parser.parse_args(argv)
     state_path = Path(args.state)
@@ -91,6 +98,20 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
         print(json.dumps(result.metrics, ensure_ascii=False))
+        return 0
+    if args.command == "run-suite":
+        suite_result = run_poc_suite(
+            PocSuiteConfig(
+                data_root=Path(args.data_root),
+                output_dir=Path(args.output_dir),
+                tier=args.tier,
+                limit=args.limit,
+                oracle_decisions_path=Path(args.oracle_decisions)
+                if args.oracle_decisions
+                else None,
+            )
+        )
+        print(json.dumps(suite_result.metrics, ensure_ascii=False))
         return 0
     raise AssertionError(f"unhandled command: {args.command}")
 

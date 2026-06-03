@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from decision_layer.poc import PocConfig, run_poc
+from decision_layer.poc import PocConfig, PocSuiteConfig, run_poc, run_poc_suite
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures" / "longmemeval_v2"
 
@@ -37,3 +37,22 @@ def test_run_poc_writes_required_artifacts_for_all_modes(tmp_path: Path) -> None
     assert d0_metrics["non_empty_decision_briefs"] == 0
     assert d1_metrics["non_empty_decision_briefs"] == 1
     assert d2_metrics["non_empty_decision_briefs"] == 1
+
+
+def test_run_poc_suite_writes_comparison_report(tmp_path: Path) -> None:
+    result = run_poc_suite(
+        PocSuiteConfig(
+            data_root=FIXTURE_ROOT,
+            output_dir=tmp_path,
+            limit=1,
+            oracle_decisions_path=FIXTURE_ROOT / "oracle_decisions.json",
+        )
+    )
+
+    assert "delta_D1_minus_D0" in result.metrics
+    assert (tmp_path / "suite_metrics.json").exists()
+    assert (tmp_path / "report.md").exists()
+    assert (tmp_path / "D0" / "metrics.json").exists()
+    assert (tmp_path / "D1" / "metrics.json").exists()
+    assert (tmp_path / "D2" / "metrics.json").exists()
+    assert "Decision Layer POC Suite Report" in (tmp_path / "report.md").read_text(encoding="utf-8")

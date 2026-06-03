@@ -103,6 +103,8 @@ Run the same benchmark subset in three modes:
 - [ ] `D0`: baseline backend without Decision Layer.
 - [ ] `D1`: baseline backend + oracle/manual Decision Layer.
 - [ ] `D2`: baseline backend + automatic Decision Layer.
+- [x] Fixture smoke suite can run `D0`, `D1`, and `D2` with one command and
+  write comparison artifacts.
 
 Interpretation:
 
@@ -157,7 +159,7 @@ Interpretation:
 - [x] Include an instruction to ask for clarification if decisions conflict or
   look outdated.
 - [x] Enforce a token budget.
-- [ ] Log the exact brief used for each example.
+- [x] Log the exact brief used for each example.
 
 ### 6. Traceability
 
@@ -287,6 +289,7 @@ The POC is done when one documented command can:
 
 - [ ] create the environment;
 - [ ] run tests;
+- [x] run a fixture-level `D0` / `D1` / `D2` smoke suite;
 - [ ] run the selected LongMemEval-V2 subset;
 - [ ] produce D0 metrics;
 - [ ] produce D1 metrics;

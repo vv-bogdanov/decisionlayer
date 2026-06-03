@@ -35,6 +35,21 @@ class PocResult:
     brief_trace: list[dict[str, object]]
 
 
+@dataclass(frozen=True, slots=True)
+class PocSuiteConfig:
+    data_root: Path
+    output_dir: Path
+    tier: str = "small"
+    limit: int | None = None
+    oracle_decisions_path: Path | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PocSuiteResult:
+    metrics: dict[str, object]
+    mode_results: dict[PocMode, PocResult]
+
+
 def run_poc(config: PocConfig) -> PocResult:
     start = perf_counter()
     examples = load_longmemeval_v2_examples(
@@ -91,6 +106,29 @@ def run_poc(config: PocConfig) -> PocResult:
     result = PocResult(metrics, predictions, decision_trace, brief_trace)
     write_artifacts(config, examples, result)
     return result
+
+
+def run_poc_suite(config: PocSuiteConfig) -> PocSuiteResult:
+    mode_results: dict[PocMode, PocResult] = {}
+    for mode in ("D0", "D1", "D2"):
+        mode_results[mode] = run_poc(
+            PocConfig(
+                data_root=config.data_root,
+                output_dir=config.output_dir / mode,
+                mode=mode,
+                tier=config.tier,
+                limit=config.limit,
+                oracle_decisions_path=config.oracle_decisions_path,
+            )
+        )
+    suite_metrics = compute_suite_metrics(mode_results)
+    config.output_dir.mkdir(parents=True, exist_ok=True)
+    write_json(config.output_dir / "suite_metrics.json", suite_metrics)
+    (config.output_dir / "report.md").write_text(
+        render_suite_report(config, suite_metrics),
+        encoding="utf-8",
+    )
+    return PocSuiteResult(suite_metrics, mode_results)
 
 
 def apply_oracle_decisions(
@@ -189,6 +227,27 @@ def compute_metrics(predictions: list[dict[str, object]], start: float) -> dict[
     }
 
 
+def compute_suite_metrics(mode_results: dict[PocMode, PocResult]) -> dict[str, object]:
+    d0_accuracy = float_metric(mode_results["D0"].metrics, "accuracy")
+    d1_accuracy = float_metric(mode_results["D1"].metrics, "accuracy")
+    d2_accuracy = float_metric(mode_results["D2"].metrics, "accuracy")
+    return {
+        "D0": mode_results["D0"].metrics,
+        "D1": mode_results["D1"].metrics,
+        "D2": mode_results["D2"].metrics,
+        "delta_D1_minus_D0": round(d1_accuracy - d0_accuracy, 6),
+        "delta_D2_minus_D0": round(d2_accuracy - d0_accuracy, 6),
+        "reader_policy": "smoke_oracle_substring_reader",
+    }
+
+
+def float_metric(metrics: dict[str, object], key: str) -> float:
+    value = metrics.get(key)
+    if not isinstance(value, int | float):
+        raise TypeError(f"metric field must be numeric: {key}")
+    return float(value)
+
+
 def int_prediction_value(prediction: dict[str, object], key: str) -> int:
     value = prediction.get(key)
     if not isinstance(value, int):
@@ -258,6 +317,41 @@ def render_report(config: PocConfig, result: PocResult) -> str:
         "This report is produced by the deterministic smoke runner. It is not a proof run.",
     ]
     return "\n".join(lines) + "\n"
+
+
+def render_suite_report(config: PocSuiteConfig, metrics: dict[str, object]) -> str:
+    d0 = metrics["D0"]
+    d1 = metrics["D1"]
+    d2 = metrics["D2"]
+    if not isinstance(d0, dict) or not isinstance(d1, dict) or not isinstance(d2, dict):
+        raise TypeError("suite metrics must include per-mode metric objects")
+    lines = [
+        "# Decision Layer POC Suite Report",
+        "",
+        "- benchmark: `longmemeval_v2`",
+        f"- tier: `{config.tier}`",
+        f"- limit: `{config.limit}`",
+        f"- reader_policy: `{metrics['reader_policy']}`",
+        "",
+        "| Mode | Accuracy | Non-empty Briefs | Avg Brief Tokens |",
+        "| --- | ---: | ---: | ---: |",
+        format_suite_row("D0", d0),
+        format_suite_row("D1", d1),
+        format_suite_row("D2", d2),
+        "",
+        f"- delta_D1_minus_D0: `{metrics['delta_D1_minus_D0']}`",
+        f"- delta_D2_minus_D0: `{metrics['delta_D2_minus_D0']}`",
+        "",
+        "This suite uses the deterministic smoke reader and is not a proof run.",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def format_suite_row(mode: str, metrics: dict[str, object]) -> str:
+    return (
+        f"| {mode} | {metrics['accuracy']} | {metrics['non_empty_decision_briefs']} | "
+        f"{metrics['avg_brief_tokens']} |"
+    )
 
 
 def load_oracle_decisions(path: Path | None) -> dict[str, list[str]]:
