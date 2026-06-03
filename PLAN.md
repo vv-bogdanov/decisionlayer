@@ -8,6 +8,12 @@ Full deterministic LongMemEval-V2 run artifacts:
 /tmp/decision-layer-overnight-20260603212552/full
 ```
 
+Blind D1 full run artifacts:
+
+```text
+/tmp/decision-layer-d1-blind-full
+```
+
 Current result is useful as a pipeline and baseline check, but not as a full
 Decision Layer proof. The current D1 oracle contains only a few accepted
 commitments, so D1 is not yet a real upper bound.
@@ -19,9 +25,13 @@ Key current metrics:
 | D0 | 21/295 | 0.071186 | 0 |
 | D1 | 24/295 | 0.081356 | 4 |
 | D2 | 25/295 | 0.084746 | 6 |
+| Blind D1 | 30/295 | 0.101695 | 74 |
 
 Main signal: `procedure` improved from `1/74` in D0 to `6/74` in D2, but this
 is based on sparse commitment coverage.
+
+Blind D1 full improves `procedure` to `9/74` with 74 non-empty procedure
+briefs. Exact D0-vs-blind-D1 diff: 11 D1-only correct, 2 regressions, net +9.
 
 Blind D1 canary after goal labels + rule-based goal augmentation:
 
@@ -59,11 +69,15 @@ plain environment facts, UI state, answer keys, or transient observations.
 - [ ] Inspect remaining procedure miss `07ffeedf`: use trajectory
   states/protocol text to extract the missing stable workflow rule without
   using final `answer`.
-- [ ] Run D1-only with the blind oracle and the same local reader/settings.
-- [ ] Compare blind D1 against the existing D0 baseline from
+- [x] Run D1-only with the blind oracle and the same local reader/settings.
+- [x] Compare blind D1 against the existing D0 baseline from
   `/tmp/decision-layer-overnight-20260603212552/full/D0`.
-- [ ] Inspect D1 regressions where D0 was correct but D1 was wrong.
-- [ ] Inspect cases with non-empty Decision Briefs where D1 still failed.
+- [x] Inspect D1 regressions where D0 was correct but D1 was wrong: one
+  procedure noise regression (`767e4106`) and one static reader-variance case
+  without a Decision Brief (`f1f9de44`).
+- [x] First-pass inspect cases with non-empty Decision Briefs where D1 still
+  failed: many failures have irrelevant first-ranked task requirements, so
+  decision retrieval/ranking is now the main bottleneck.
 - [ ] Use the blind D1 oracle as the gold target for D2 extraction audit.
 - [ ] Run D2 against the blind oracle after the D1 ceiling is established.
 - [ ] Improve the extractor using concrete D2 missing-decision cases.
