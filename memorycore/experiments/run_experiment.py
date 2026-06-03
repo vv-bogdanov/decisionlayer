@@ -137,8 +137,8 @@ def run_single(merged: dict[str, Any], memory: str) -> dict[str, Any]:
     started = time.perf_counter()
     for example in benchmark.iter_examples():
         result = runner.run(example)
-        exact_match = exact_match_score(result.answer, example.expected_answer)
-        substring_match = substring_match_score(result.answer, example.expected_answer)
+        expected_answers = expected_answer_options(example)
+        exact_match, substring_match = score_prediction(result.answer, expected_answers)
         correct = exact_match or substring_match
         memory_brief = result.brief.render() if result.brief else ""
         predictions.append(
@@ -146,6 +146,7 @@ def run_single(merged: dict[str, Any], memory: str) -> dict[str, Any]:
                 "id": example.id,
                 "question": example.question,
                 "expected_answer": example.expected_answer,
+                "expected_answers": expected_answers,
                 "prediction": result.answer,
                 "correct": correct,
                 "exact_match": exact_match,
@@ -201,6 +202,21 @@ def substring_match_score(prediction: str, expected: str) -> bool:
     if not prediction_normalized or not expected_normalized:
         return prediction_normalized == expected_normalized
     return expected_normalized in prediction_normalized or prediction_normalized in expected_normalized
+
+
+def score_prediction(prediction: str, expected_answers: list[str]) -> tuple[bool, bool]:
+    exact_match = any(exact_match_score(prediction, expected) for expected in expected_answers)
+    substring_match = any(substring_match_score(prediction, expected) for expected in expected_answers)
+    return exact_match, substring_match
+
+
+def expected_answer_options(example: Any) -> list[str]:
+    values = example.meta.get("expected_answers")
+    if isinstance(values, list):
+        options = [str(value) for value in values if str(value)]
+        if options:
+            return options
+    return [example.expected_answer]
 
 
 def normalize_text(text: str) -> str:

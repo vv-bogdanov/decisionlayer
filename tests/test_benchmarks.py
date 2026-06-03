@@ -3,13 +3,22 @@ from pathlib import Path
 import pytest
 
 from memorycore.benchmarks import get_benchmark
-from memorycore.experiments.run_experiment import run_experiment, substring_match_score
+from memorycore.benchmarks.memoryagentbench import record_to_memoryagentbench_examples
+from memorycore.experiments.run_experiment import run_experiment, score_prediction, substring_match_score
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 LONGMEMEVAL_FIXTURE = FIXTURE_DIR / "longmemeval_oracle_sample.json"
 LOCOMO_FIXTURE = FIXTURE_DIR / "locomo_sample.json"
 HALUMEM_FIXTURE = FIXTURE_DIR / "halumem_sample.jsonl"
 MEMORYAGENTBENCH_FIXTURE = FIXTURE_DIR / "memoryagentbench_sample.json"
+
+
+class ArrayLike:
+    def __init__(self, values: list[str]) -> None:
+        self.values = values
+
+    def tolist(self) -> list[str]:
+        return self.values
 
 
 def test_toy_benchmark_loads_examples() -> None:
@@ -195,6 +204,30 @@ def test_memoryagentbench_schema_fixture_expands_question_arrays() -> None:
     assert example.expected_answer == "Huaxin Consulting"
     assert example.meta["source"] == "Accurate_Retrieval"
     assert example.messages[0].meta["has_answer"] is True
+
+
+def test_memoryagentbench_array_answers_are_kept_as_aliases() -> None:
+    examples = record_to_memoryagentbench_examples(
+        {
+            "questions": ["Where is Normandy located?"],
+            "answers": [ArrayLike(["France", "Republic of France"])],
+            "metadata": {
+                "source": "Accurate_Retrieval",
+                "qa_pair_ids": ["mab-answer-alias"],
+            },
+        },
+        row_index=0,
+    )
+
+    assert examples[0].expected_answer == "France"
+    assert examples[0].meta["expected_answers"] == ["France", "Republic of France"]
+
+
+def test_score_prediction_accepts_expected_answer_aliases() -> None:
+    exact_match, substring_match = score_prediction("Republic of France", ["France", "Republic of France"])
+
+    assert exact_match is True
+    assert substring_match is True
 
 
 def test_real_schema_smoke_runs_for_additional_benchmarks(tmp_path: Path) -> None:

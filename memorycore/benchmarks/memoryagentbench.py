@@ -60,7 +60,8 @@ def record_to_memoryagentbench_examples(record: dict[str, Any], *, row_index: in
     question_dates = normalize_list(metadata.get("question_dates"))
     keypoints = normalize_list(metadata.get("keypoints"))
     for question_index, question in enumerate(questions):
-        expected = answer_at(answers, question_index)
+        expected_answers = answer_options_at(answers, question_index)
+        expected = expected_answers[0] if expected_answers else ""
         qa_pair_id = str(value_at(qa_pair_ids, question_index, f"row_{row_index}_q_{question_index}"))
         examples.append(
             BenchmarkExample(
@@ -77,6 +78,7 @@ def record_to_memoryagentbench_examples(record: dict[str, Any], *, row_index: in
                     "question_type": value_at(question_types, question_index, metadata.get("source")),
                     "question_date": value_at(question_dates, question_index),
                     "keypoint": value_at(keypoints, question_index),
+                    "expected_answers": expected_answers,
                     "source": metadata.get("source"),
                 },
             )
@@ -179,13 +181,10 @@ def normalize_list(value: object) -> list[Any]:
         return []
     if isinstance(value, list):
         return value
-    try:
-        import numpy as np
-
-        if isinstance(value, np.ndarray):
-            return value.tolist()
-    except ImportError:
-        pass
+    tolist = getattr(value, "tolist", None)
+    if callable(tolist):
+        converted = tolist()
+        return converted if isinstance(converted, list) else [converted]
     return [value]
 
 
@@ -203,10 +202,28 @@ def value_at(values: list[Any], index: int, default: object = None) -> object:
 
 
 def answer_at(answers: list[Any], index: int) -> str:
-    value = value_at(answers, index, "")
-    if isinstance(value, list):
-        return str(value[0]) if value else ""
-    return str(value)
+    options = answer_options_at(answers, index)
+    return options[0] if options else ""
+
+
+def answer_options_at(answers: list[Any], index: int) -> list[str]:
+    return [str(item) for item in flatten_answer_values(value_at(answers, index, "")) if str(item)]
+
+
+def flatten_answer_values(value: object) -> list[Any]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, (list, tuple)):
+        flattened: list[Any] = []
+        for item in value:
+            flattened.extend(flatten_answer_values(item))
+        return flattened
+    tolist = getattr(value, "tolist", None)
+    if callable(tolist):
+        return flatten_answer_values(tolist())
+    return [value]
 
 
 def metadata_dict(record: dict[str, Any]) -> dict[str, Any]:
