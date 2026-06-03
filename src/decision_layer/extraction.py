@@ -152,4 +152,22 @@ def structured_workflow_texts(text: str) -> tuple[str, ...]:
             "To locate an incident-related performance report, use the All filter, type reports, "
             "open View/Run, then locate the relevant report."
         )
+    if (
+        ("allocate investments" in lowered or "maximizing total investment return" in lowered)
+        and ("maximize returns" in lowered or "maximizing" in lowered)
+        and "expense" in lowered
+        and "short description" in lowered
+    ):
+        decisions.append(
+            "For allocating investments to maximize returns, use Cost > Expense Lines; "
+            "returns are stored in Short description."
+        )
+    if (
+        ("offboard user" in lowered or "offboarding" in lowered)
+        and "hardware asset" in lowered
+        and "assigned to" in lowered
+    ):
+        decisions.append(
+            "For offboarding a user, edit the user's hardware asset and clear Assigned to."
+        )
     return tuple(dict.fromkeys(decisions))

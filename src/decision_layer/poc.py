@@ -554,6 +554,14 @@ def decision_relevant_to_question(decision_text: str, question_text: str) -> boo
         )
     if "incident-related performance report" in decision:
         return "report" in question and ("performance" in question or "title" in question)
+    if "allocating investments to maximize returns" in decision:
+        return (
+            ("investment" in question or "investments" in question)
+            and ("return" in question or "returns" in question)
+            and ("expense" in question or "expenses" in question or "module" in question)
+        )
+    if "offboarding a user" in decision:
+        return "offboard" in question and "hardware asset" in question
     decision_terms = keyword_terms(decision_text)
     question_terms = keyword_terms(question_text)
     return len(decision_terms & question_terms) >= 4

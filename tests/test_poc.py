@@ -63,11 +63,29 @@ def test_decision_relevance_rejects_neighboring_workflows() -> None:
         "My boss asks me to find a report with a specific title that shows agents' "
         "performance and then create and assign problems based on it."
     )
+    investment_decision = (
+        "For allocating investments to maximize returns, use Cost > Expense Lines; "
+        "returns are stored in Short description."
+    )
+    investment_question = (
+        "If I am told to allocate investments to maximize returns, which module "
+        "should I work in first?"
+    )
+    offboarding_decision = (
+        "For offboarding a user, edit the user's hardware asset and clear Assigned to."
+    )
+    offboarding_question = (
+        "I need to offboard a user. What should I do on that user's hardware asset record?"
+    )
 
     assert decision_relevant_to_question(item_request_decision, item_request_question)
     assert not decision_relevant_to_question(item_request_decision, problem_request_question)
     assert decision_relevant_to_question(report_decision, report_question)
     assert not decision_relevant_to_question(report_decision, item_request_question)
+    assert decision_relevant_to_question(investment_decision, investment_question)
+    assert not decision_relevant_to_question(investment_decision, report_question)
+    assert decision_relevant_to_question(offboarding_decision, offboarding_question)
+    assert not decision_relevant_to_question(offboarding_decision, investment_question)
 
 
 def test_rank_decision_texts_prefers_question_overlap() -> None:

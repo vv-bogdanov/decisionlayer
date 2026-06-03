@@ -104,6 +104,29 @@ def test_structured_workflow_extraction_can_emit_multiple_decisions() -> None:
     assert "To locate an incident-related performance report" in texts[1]
 
 
+def test_structured_workflow_extraction_for_investment_allocation() -> None:
+    assert extract(
+        'Follow protocol "Maximizing total investment return" to allocate investments '
+        "to the expenses with short description containing #ded37a11-b to maximize "
+        "returns while fitting inside the budget."
+    ) == (
+        "add",
+        "For allocating investments to maximize returns, use Cost > Expense Lines; "
+        "returns are stored in Short description.",
+    )
+
+
+def test_structured_workflow_extraction_for_user_offboarding() -> None:
+    assert extract(
+        "Offboard user Sean-Michelle Morris-Martinez. Create a filter for hardware "
+        'assets where "Assigned to" is the user. Edit the hardware asset record by '
+        'replacing "Assigned to" with "".'
+    ) == (
+        "add",
+        "For offboarding a user, edit the user's hardware asset and clear Assigned to.",
+    )
+
+
 def test_structured_workflow_extraction_still_respects_authority() -> None:
     text = 'Referring to company protocol "Agent Workload Balancing" re-distribute problems.'
 
