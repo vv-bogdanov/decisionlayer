@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from memorycore.core.models import Decision, Fact, MemoryBrief, RawInput, RecallTrace, Ref, TraceSelection
 from memorycore.core.store import MemoryStore
 from memorycore.policies.forgetting import ForgettingPolicy, get_forgetting_policy
@@ -190,6 +192,18 @@ class MemoryRuntime:
             assert isinstance(fact, Fact)
             fact_tokens = len(fact.text.split())
             if used + fact_tokens > max_tokens:
+                remaining = max_tokens - used
+                truncated = truncate_words(fact.text, remaining)
+                if not truncated:
+                    continue
+                selected.append(
+                    SelectedItem(
+                        replace(fact, text=truncated),
+                        selected_fact.score,
+                        f"{selected_fact.reason}; truncated_to_budget",
+                    )
+                )
+                used += len(truncated.split())
                 continue
             selected.append(selected_fact)
             used += fact_tokens
@@ -225,3 +239,10 @@ class MemoryRuntime:
 
     def export_trace(self) -> list[dict[str, object]]:
         return [trace.to_dict() for trace in self.traces]
+
+
+def truncate_words(text: str, max_tokens: int) -> str:
+    if max_tokens <= 0:
+        return ""
+    words = text.split()
+    return " ".join(words[:max_tokens])

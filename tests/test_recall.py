@@ -75,13 +75,14 @@ def test_recall_refs_expansion_and_token_budget() -> None:
     assert len(brief.facts) <= 1
 
 
-def test_recall_token_budget_skips_oversized_facts() -> None:
+def test_recall_token_budget_truncates_oversized_facts() -> None:
     runtime = MemoryRuntime(recall_policy="keyword")
     oversized = runtime.add_fact("database " * 100, scope="project:test")
-    small = runtime.add_fact("database SQLite", scope="project:test")
+    runtime.add_fact("database SQLite", scope="project:test")
 
     brief = runtime.recall("database", scope="project:test", top_k_facts=2, max_memory_brief_tokens=5)
 
-    fact_ids = {fact.id for fact in brief.facts}
-    assert oversized.id not in fact_ids
-    assert small.id in fact_ids
+    assert brief.facts[0].id == oversized.id
+    assert len(brief.facts[0].text.split()) == 5
+    assert brief.facts[0].text == "database database database database database"
+    assert "truncated_to_budget" in brief.trace.facts[0].reason
