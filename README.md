@@ -94,3 +94,8 @@ Artifacts are written to `/tmp/decision-layer-overnight-*` by default. Override
 `OUTPUT_DIR`, `DATA_ROOT`, `READER_BASE_URL`, `READER_MODEL`, or
 `READER_MAX_TOKENS` when needed. Override `CONTEXT_MAX_CHARS` if the local
 reader has a larger or smaller context window.
+
+The overnight runner resumes by default. If the latest timestamped run under
+`/tmp` is incomplete, `scripts/run-overnight-poc` reuses it and cached reader
+responses are skipped by request hash. Use `OVERWRITE=1 scripts/run-overnight-poc`
+to force a fresh output directory and rerun reader calls.

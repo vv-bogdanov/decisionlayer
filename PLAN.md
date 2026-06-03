@@ -92,6 +92,8 @@ UI state.
   `D1`, and `D2`.
 - [x] Cap retrieved context with `CONTEXT_MAX_CHARS` so full runs stay inside the
   local reader context window.
+- [x] Resume incomplete benchmark runs by default and cache reader responses by
+  request hash; use `OVERWRITE=1` / `--no-resume` for a clean rerun.
 - [x] Save all traces and reports for morning audit.
 
 ## Manual Launch

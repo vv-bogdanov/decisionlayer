@@ -16,7 +16,7 @@ from decision_layer.benchmarks.longmemeval_v2 import (
 from decision_layer.core import DecisionBrief, DecisionState, add_decision, render_decision_brief
 from decision_layer.evaluation import score_answer
 from decision_layer.extraction import RuleBasedDecisionExtractor, SourceMessage
-from decision_layer.readers import ReaderKind, ReaderRequest, build_reader
+from decision_layer.readers import ReaderKind, ReaderRequest, ReaderResult, build_reader
 
 PocMode = Literal["D0", "D1", "D2"]
 NON_DECISION_QUESTION_TYPES = frozenset(
@@ -52,6 +52,7 @@ KEYWORD_STOPWORDS = frozenset(
     }
 )
 DEFAULT_CONTEXT_MAX_CHARS = 96_000
+READER_CACHE_VERSION = 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +69,7 @@ class PocConfig:
     reader_timeout_seconds: float = 60.0
     reader_max_tokens: int = 64
     context_max_chars: int = DEFAULT_CONTEXT_MAX_CHARS
+    resume: bool = True
     oracle_decisions_path: Path | None = None
     accepted_decisions_path: Path | None = None
 
@@ -93,6 +95,7 @@ class PocSuiteConfig:
     reader_timeout_seconds: float = 60.0
     reader_max_tokens: int = 64
     context_max_chars: int = DEFAULT_CONTEXT_MAX_CHARS
+    resume: bool = True
     oracle_decisions_path: Path | None = None
     accepted_decisions_path: Path | None = None
 
@@ -124,6 +127,8 @@ def run_poc(config: PocConfig) -> PocResult:
     predictions: list[dict[str, object]] = []
     decision_trace: list[dict[str, object]] = []
     brief_trace: list[dict[str, object]] = []
+    cached_reader_results = load_reader_cache(config) if config.resume else {}
+    cached_prediction_results = load_prediction_reader_cache(config) if config.resume else {}
 
     for example in examples:
         state = DecisionState()
@@ -137,13 +142,23 @@ def run_poc(config: PocConfig) -> PocResult:
         brief = render_decision_brief(state)
         context = retrieve_keyword_context(example, max_chars=config.context_max_chars)
         augmented_context = build_reader_context(config.mode, brief, context)
-        reader_result = reader.answer(
-            ReaderRequest(
-                question=example.question.question,
-                context=augmented_context,
-                expected_answer=example.question.answer,
-            )
+        reader_request = ReaderRequest(
+            question=example.question.question,
+            context=augmented_context,
+            expected_answer=example.question.answer,
         )
+        cache_key = reader_cache_key(config, example, reader_request)
+        reader_result = cached_reader_results.get(cache_key)
+        reader_cache_hit = reader_result is not None
+        if reader_result is None:
+            reader_result = cached_prediction_results.get(cache_key)
+            if reader_result is None:
+                reader_result = cached_prediction_results.get(example.question.id)
+            reader_cache_hit = reader_result is not None
+        if reader_result is None:
+            reader_result = reader.answer(reader_request)
+            if config.resume:
+                append_reader_cache_row(config, cache_key, reader_result)
         prediction = reader_result.answer
         evaluation = score_answer(
             prediction,
@@ -155,6 +170,7 @@ def run_poc(config: PocConfig) -> PocResult:
             {
                 "id": example.question.id,
                 "mode": config.mode,
+                "reader_cache_key": cache_key,
                 "question": example.question.question,
                 "question_type": example.question.question_type,
                 "eval_function": example.question.eval_function,
@@ -169,6 +185,7 @@ def run_poc(config: PocConfig) -> PocResult:
                 "reader_policy": reader_result.reader_policy,
                 "reader_model": config.reader_model,
                 "reader_latency_seconds": reader_result.latency_seconds,
+                "reader_cache_hit": reader_cache_hit,
                 "prompt_tokens": reader_result.prompt_tokens,
                 "completion_tokens": reader_result.completion_tokens,
                 "total_tokens": reader_result.total_tokens,
@@ -197,6 +214,109 @@ def build_reader_context(mode: PocMode, brief: DecisionBrief, context: str) -> s
     return f"{brief.text}\n\n{context}"
 
 
+def load_reader_cache(config: PocConfig) -> dict[str, ReaderResult]:
+    path = reader_cache_path(config)
+    if not path.exists():
+        return {}
+    cache: dict[str, ReaderResult] = {}
+    for row in read_jsonl_rows(path, strict=False):
+        key = row.get("cache_key")
+        reader_result = row.get("reader_result")
+        if not isinstance(key, str) or not isinstance(reader_result, dict):
+            continue
+        cache[key] = ReaderResult.from_dict(reader_result)
+    return cache
+
+
+def load_prediction_reader_cache(config: PocConfig) -> dict[str, ReaderResult]:
+    if not resumable_config_matches(config):
+        return {}
+    path = config.output_dir / "predictions.jsonl"
+    if not path.exists():
+        return {}
+    cache: dict[str, ReaderResult] = {}
+    for row in read_jsonl_rows(path, strict=False):
+        question_id = row.get("id")
+        if not isinstance(question_id, str):
+            continue
+        cache_key = row.get("reader_cache_key")
+        key = cache_key if isinstance(cache_key, str) else question_id
+        cache[key] = ReaderResult(
+            answer=str(row.get("prediction", "")),
+            reader_policy=str(row.get("reader_policy", "")),
+            latency_seconds=0.0,
+            prompt_tokens=optional_int(row, "prompt_tokens"),
+            completion_tokens=optional_int(row, "completion_tokens"),
+            total_tokens=optional_int(row, "total_tokens"),
+        )
+    return cache
+
+
+def resumable_config_matches(config: PocConfig) -> bool:
+    path = config.output_dir / "config.json"
+    if not path.exists():
+        return False
+    previous = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(previous, dict):
+        return False
+    current = config_to_dict(config)
+    keys = (
+        "data_root",
+        "mode",
+        "tier",
+        "limit",
+        "question_ids",
+        "reader",
+        "reader_base_url",
+        "reader_model",
+        "reader_max_tokens",
+        "context_max_chars",
+        "oracle_decisions_path",
+        "accepted_decisions_path",
+    )
+    return all(previous.get(key) == current.get(key) for key in keys)
+
+
+def append_reader_cache_row(config: PocConfig, cache_key: str, reader_result: ReaderResult) -> None:
+    path = reader_cache_path(config)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as file:
+        file.write(
+            json.dumps(
+                {"cache_key": cache_key, "reader_result": reader_result.to_dict()},
+                ensure_ascii=False,
+            )
+            + "\n"
+        )
+
+
+def reader_cache_path(config: PocConfig) -> Path:
+    return config.output_dir / "reader_cache.jsonl"
+
+
+def reader_cache_key(
+    config: PocConfig,
+    example: LongMemEvalV2Example,
+    request: ReaderRequest,
+) -> str:
+    payload = {
+        "version": READER_CACHE_VERSION,
+        "benchmark": "longmemeval_v2",
+        "mode": config.mode,
+        "question_id": example.question.id,
+        "question": request.question,
+        "context_sha256": sha256_text(request.context),
+        "expected_answer": request.expected_answer,
+        "reader": config.reader,
+        "reader_base_url": config.reader_base_url,
+        "reader_model": config.reader_model,
+        "reader_max_tokens": config.reader_max_tokens,
+        "reader_temperature": 0.0,
+        "context_max_chars": config.context_max_chars,
+    }
+    return sha256_text(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+
+
 def run_poc_suite(config: PocSuiteConfig) -> PocSuiteResult:
     mode_results: dict[PocMode, PocResult] = {}
     for mode in ("D0", "D1", "D2"):
@@ -214,6 +334,7 @@ def run_poc_suite(config: PocSuiteConfig) -> PocSuiteResult:
                 reader_timeout_seconds=config.reader_timeout_seconds,
                 reader_max_tokens=config.reader_max_tokens,
                 context_max_chars=config.context_max_chars,
+                resume=config.resume,
                 oracle_decisions_path=config.oracle_decisions_path,
                 accepted_decisions_path=config.accepted_decisions_path,
             )
@@ -516,6 +637,9 @@ def compute_metrics(
         if total
         else 0.0,
         "latency_seconds": round(perf_counter() - start, 6),
+        "reader_cache_hits": sum(
+            1 for prediction in predictions if prediction.get("reader_cache_hit") is True
+        ),
         "reader_policy": reader_policies[0] if len(reader_policies) == 1 else reader_policies,
         "reader_model": reader_models[0] if len(reader_models) == 1 else None,
         "category_metrics": compute_category_metrics(predictions),
@@ -723,6 +847,7 @@ def config_to_dict(config: PocConfig) -> dict[str, object]:
         "reader_timeout_seconds": config.reader_timeout_seconds,
         "reader_max_tokens": config.reader_max_tokens,
         "context_max_chars": config.context_max_chars,
+        "resume": config.resume,
         "oracle_decisions_path": str(config.oracle_decisions_path)
         if config.oracle_decisions_path
         else None,
@@ -776,6 +901,8 @@ def render_report(config: PocConfig, result: PocResult) -> str:
         f"- reader_policy: `{result.metrics['reader_policy']}`",
         f"- reader_model: `{result.metrics['reader_model']}`",
         f"- context_max_chars: `{config.context_max_chars}`",
+        f"- resume: `{config.resume}`",
+        f"- reader_cache_hits: `{result.metrics['reader_cache_hits']}`",
         f"- prompt_tokens: `{result.metrics['prompt_tokens']}`",
         f"- total_tokens: `{result.metrics['total_tokens']}`",
         f"- false_decision_rate: `{result.metrics['false_decision_rate']}`",
@@ -801,6 +928,9 @@ def render_suite_report(config: PocSuiteConfig, metrics: dict[str, object]) -> s
         f"- reader_policy: `{metrics['reader_policy']}`",
         f"- reader_model: `{metrics['reader_model']}`",
         f"- context_max_chars: `{config.context_max_chars}`",
+        f"- resume: `{config.resume}`",
+        f"- reader_cache_hits: `{d0['reader_cache_hits']}` / `{d1['reader_cache_hits']}` / "
+        f"`{d2['reader_cache_hits']}`",
         f"- D2 false_decision_rate: `{d2['false_decision_rate']}`",
         f"- D2 decision_recall: `{d2['decision_recall']}`",
         f"- D2 decision_persistence_rate: `{d2['decision_persistence_rate']}`",
@@ -881,8 +1011,31 @@ def write_jsonl(path: Path, rows: list[dict[str, object]]) -> None:
     )
 
 
+def read_jsonl_rows(path: Path, *, strict: bool = True) -> list[dict[str, object]]:
+    rows = []
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            data = json.loads(line)
+        except json.JSONDecodeError:
+            if strict:
+                raise
+            continue
+        if not isinstance(data, dict):
+            if not strict:
+                continue
+            raise ValueError(f"JSONL line must be an object at {path}:{line_number}")
+        rows.append(data)
+    return rows
+
+
 def file_sha256(path: Path) -> str:
     return sha256(path.read_bytes()).hexdigest()
+
+
+def sha256_text(text: str) -> str:
+    return sha256(text.encode("utf-8")).hexdigest()
 
 
 def count_jsonl_rows(path: Path) -> int:
@@ -898,3 +1051,10 @@ def count_haystack_entries(path: Path) -> int:
 
 def normalize(text: str) -> str:
     return " ".join(text.lower().split())
+
+
+def optional_int(data: object, key: str) -> int | None:
+    if not isinstance(data, dict):
+        return None
+    value = data.get(key)
+    return value if isinstance(value, int) else None

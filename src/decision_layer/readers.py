@@ -26,6 +26,27 @@ class ReaderResult:
     completion_tokens: int | None = None
     total_tokens: int | None = None
 
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "answer": self.answer,
+            "reader_policy": self.reader_policy,
+            "latency_seconds": self.latency_seconds,
+            "prompt_tokens": self.prompt_tokens,
+            "completion_tokens": self.completion_tokens,
+            "total_tokens": self.total_tokens,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, object]) -> ReaderResult:
+        return cls(
+            answer=str(data.get("answer", "")),
+            reader_policy=str(data.get("reader_policy", "")),
+            latency_seconds=optional_float(data, "latency_seconds"),
+            prompt_tokens=optional_int(data, "prompt_tokens"),
+            completion_tokens=optional_int(data, "completion_tokens"),
+            total_tokens=optional_int(data, "total_tokens"),
+        )
+
 
 class ReaderPlugin(Protocol):
     @property
@@ -161,6 +182,13 @@ def optional_int(data: object, key: str) -> int | None:
         return None
     value = data.get(key)
     return value if isinstance(value, int) else None
+
+
+def optional_float(data: object, key: str) -> float:
+    if not isinstance(data, dict):
+        return 0.0
+    value = data.get(key)
+    return float(value) if isinstance(value, int | float) else 0.0
 
 
 def normalize(text: str) -> str:

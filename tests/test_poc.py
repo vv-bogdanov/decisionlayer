@@ -188,6 +188,33 @@ def test_run_poc_writes_required_artifacts_for_all_modes(tmp_path: Path) -> None
     assert d2_metrics["decision_add_events"] == 1
 
 
+def test_run_poc_resumes_reader_results_by_default(tmp_path: Path) -> None:
+    output_dir = tmp_path / "D0"
+    first = run_poc(
+        PocConfig(
+            data_root=FIXTURE_ROOT,
+            output_dir=output_dir,
+            mode="D0",
+            question_ids=("q_static",),
+        )
+    )
+
+    assert first.metrics["reader_cache_hits"] == 0
+    assert (output_dir / "reader_cache.jsonl").exists()
+
+    second = run_poc(
+        PocConfig(
+            data_root=FIXTURE_ROOT,
+            output_dir=output_dir,
+            mode="D0",
+            question_ids=("q_static",),
+        )
+    )
+
+    assert second.metrics["reader_cache_hits"] == 1
+    assert second.predictions[0]["reader_cache_hit"] is True
+
+
 def test_run_poc_suite_writes_comparison_report(tmp_path: Path) -> None:
     result = run_poc_suite(
         PocSuiteConfig(

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+canary_only="${CANARY_ONLY:-0}"
+overwrite="${OVERWRITE:-0}"
 data_root="${DATA_ROOT:-data/longmemeval-v2}"
-output_dir="${OUTPUT_DIR:-/tmp/decision-layer-overnight-$(date +%Y%m%d%H%M%S)}"
 reader="${READER:-openai-chat}"
 reader_base_url="${READER_BASE_URL:-http://127.0.0.1:18080/v1}"
 reader_model="${READER_MODEL:-qwen36-35b-a3b-udiq3s}"
@@ -14,7 +15,27 @@ canary_subset="${CANARY_SUBSET:-configs/longmemeval-v2-canary-deterministic-subs
 full_subset="${FULL_SUBSET:-configs/longmemeval-v2-full-deterministic-subset.txt}"
 oracle_decisions="${ORACLE_DECISIONS:-configs/longmemeval-v2-full-deterministic-oracle-decisions.json}"
 accepted_decisions="${ACCEPTED_DECISIONS:-configs/longmemeval-v2-full-deterministic-accepted-d2-decisions.json}"
-canary_only="${CANARY_ONLY:-0}"
+
+default_output_dir() {
+  local newest=""
+  local candidate
+  if [[ "$overwrite" != "1" ]]; then
+    for candidate in /tmp/decision-layer-overnight-[0-9]*; do
+      [[ -d "$candidate" ]] || continue
+      [[ "$(basename "$candidate")" =~ ^decision-layer-overnight-[0-9]{14}$ ]] || continue
+      if [[ ! -f "$candidate/full/suite_metrics.json" ]] && [[ "$candidate" > "$newest" ]]; then
+        newest="$candidate"
+      fi
+    done
+    if [[ -n "$newest" ]]; then
+      printf '%s\n' "$newest"
+      return
+    fi
+  fi
+  printf '/tmp/decision-layer-overnight-%s\n' "$(date +%Y%m%d%H%M%S)"
+}
+
+output_dir="${OUTPUT_DIR:-$(default_output_dir)}"
 
 mkdir -p "$output_dir"
 run_log="$output_dir/run.log"
@@ -34,6 +55,7 @@ printf 'reader_model=%s\n' "$reader_model"
 printf 'context_max_chars=%s\n' "$context_max_chars"
 printf 'tier=%s\n' "$tier"
 printf 'canary_only=%s\n' "$canary_only"
+printf 'overwrite=%s\n' "$overwrite"
 
 require_file() {
   local path="$1"
@@ -70,6 +92,10 @@ uv run python scripts/draft-d1-decisions \
 run_suite() {
   local subset="$1"
   local suite_output="$2"
+  local resume_args=()
+  if [[ "$overwrite" == "1" ]]; then
+    resume_args+=(--no-resume)
+  fi
   uv run decision-layer run-suite \
     --data-root "$data_root" \
     --output-dir "$suite_output" \
@@ -81,6 +107,7 @@ run_suite() {
     --reader-timeout-seconds "$reader_timeout_seconds" \
     --reader-max-tokens "$reader_max_tokens" \
     --context-max-chars "$context_max_chars" \
+    "${resume_args[@]}" \
     --oracle-decisions "$oracle_decisions" \
     --accepted-decisions "$accepted_decisions"
 }

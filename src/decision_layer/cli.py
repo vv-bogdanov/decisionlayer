@@ -115,6 +115,7 @@ def main(argv: list[str] | None = None) -> int:
                 reader_timeout_seconds=args.reader_timeout_seconds,
                 reader_max_tokens=args.reader_max_tokens,
                 context_max_chars=args.context_max_chars,
+                resume=not args.no_resume,
                 oracle_decisions_path=Path(args.oracle_decisions)
                 if args.oracle_decisions
                 else None,
@@ -139,6 +140,7 @@ def main(argv: list[str] | None = None) -> int:
                 reader_timeout_seconds=args.reader_timeout_seconds,
                 reader_max_tokens=args.reader_max_tokens,
                 context_max_chars=args.context_max_chars,
+                resume=not args.no_resume,
                 oracle_decisions_path=Path(args.oracle_decisions)
                 if args.oracle_decisions
                 else None,
@@ -159,6 +161,7 @@ def add_reader_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--reader-timeout-seconds", type=float, default=60.0)
     parser.add_argument("--reader-max-tokens", type=int, default=64)
     parser.add_argument("--context-max-chars", type=int, default=DEFAULT_CONTEXT_MAX_CHARS)
+    parser.add_argument("--no-resume", action="store_true")
 
 
 def load_question_ids(inline_ids: list[str], file_paths: list[str]) -> tuple[str, ...]:
