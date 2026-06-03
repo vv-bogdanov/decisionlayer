@@ -1,154 +1,115 @@
-# Decision Layer Next Run Plan
+# Decision Layer POC Plan
 
-## Current Context
+## Goal
 
-Full deterministic LongMemEval-V2 run artifacts:
+Prove or falsify that a Decision Layer improves long-horizon task performance
+on a known external benchmark while using the same backend/model. We are not
+building a memory product, custom benchmark, REST API, UI, vector DB, graph
+memory, reranker, or production storage for this POC.
+
+Reasoning stays disabled for the local reader. Current reader calls use
+`/no_think`, strict one-line boxed answers, and the same llama.cpp OpenAI
+compatible endpoint:
 
 ```text
-/tmp/decision-layer-overnight-20260603212552/full
+http://127.0.0.1:18080/v1
+qwen36-35b-a3b-udiq3s
 ```
 
-Blind D1 full run artifacts:
+## Latest Completed Artifacts
+
+Old deterministic D0 baseline:
+
+```text
+/tmp/decision-layer-overnight-20260603212552/full/D0
+```
+
+Old broad blind D1 run:
 
 ```text
 /tmp/decision-layer-d1-blind-full
 ```
 
-New D2 full run artifacts after adding investment/offboarding extraction:
-
-```text
-/tmp/decision-layer-d2-blind-full
-```
-
-Latest D2 full run artifacts after targeted workflow enrichment:
-
-```text
-/tmp/decision-layer-d2-blind-full-v2
-```
-
-Latest D2 full run artifacts after reader-output contract and stock-restocking
+D2 v3 broad-oracle audit after reader-output contract and stock-restocking
 clarification:
 
 ```text
 /tmp/decision-layer-d2-blind-full-v3-broad
 ```
 
-Conservative narrow oracle built from the same blind labels with strict
-commitment filtering:
+Current conservative narrow oracle:
 
 ```text
 configs/longmemeval-v2-full-blind-oracle-decisions.narrow.json
 ```
 
-Narrow oracle summary: 68 questions with decisions, 98 question-level decisions,
-11 unique decision texts. This is not a hand-audited gold set, but it removes
-most task facts and field-value noise from the 70k-line broad draft, then applies
-the same question-relevance gate used by D1 retrieval.
+Narrow oracle summary: 42 questions with decisions, 45 question-level decisions,
+12 unique decision texts. This is still not hand-audited gold, but it removes
+most facts, UI state, answer-like statements, and weak requirements from the
+broad 70k-line draft, then applies the same question-relevance gate used by D1.
 
-Current result is useful as a pipeline and baseline check, but not as a full
-Decision Layer proof. The current D1 oracle contains only a few accepted
-commitments, so D1 is not yet a real upper bound.
-
-Key current metrics:
-
-| Mode | Correct | Accuracy | Non-empty Briefs |
-| --- | ---: | ---: | ---: |
-| D0 | 21/295 | 0.071186 | 0 |
-| D1 | 24/295 | 0.081356 | 4 |
-| D2 | 25/295 | 0.084746 | 6 |
-| Blind D1 | 30/295 | 0.101695 | 74 |
-| New D2 | 29/295 | 0.098305 | 11 |
-| D2 v2 | 36/295 | 0.122034 | 14 |
-| D2 v3 | 40/295 | 0.135593 | 14 |
-
-Main signal: `procedure` improved from `1/74` in D0 to `6/74` in D2, but this
-is based on sparse commitment coverage.
-
-Blind D1 full improves `procedure` to `9/74` with 74 non-empty procedure
-briefs. Exact D0-vs-blind-D1 diff: 11 D1-only correct, 2 regressions, net +9.
-
-New D2 improves old D2 from `25/295` to `29/295` and matches blind D1 on
-`procedure` at `9/74`, with only 11 non-empty Decision Briefs. D2 audit against
-the broad blind oracle has `false_decision_rate=0.0`, but recall is not useful
-yet because the draft oracle contains about 70k question-level requirements.
-
-Targeted D2 smoke after enriching problem-request, investment, offboarding, and
-stock-restocking decisions: `7/7` correct on `07ffeedf`, `25b00876`,
-`4df5e6b4`, `52dd33bb`, `75816b26`, `bfb3bcc4`, and `e334d5c6`, with
-`false_decision_rate=0.0`.
-
-D2 v2 full improves old D2 from `25/295` to `36/295` and improves `procedure`
-from `6/74` to `13/74`, using only 14 non-empty Decision Briefs. Audit
-false-decision rate remains `0.0`. Recall is still not meaningful against the
-broad draft oracle. These D2 v2 metrics were produced before the reader prompt
-contract was tightened.
-
-D2 v3 full improves D2 v2 from `36/295` to `40/295` and improves `procedure`
-from `13/74` to `16/74`, still using only 14 non-empty Decision Briefs. All D2
-v3 cases with non-empty Decision Briefs are correct. Audit false-decision rate
-remains `0.0` against the broad oracle, while broad-oracle recall remains
-unusable because the denominator is still 70k draft requirements. Completion
-tokens dropped from `9893` in D2 v2 to `4709` in D2 v3.
-
-Targeted reader-contract smoke after adding `/no_think`, one-line boxed output,
-and a more explicit stock-restocking module decision:
+Current narrow D1 full run:
 
 ```text
-/tmp/decision-layer-reader-contract-smoke
+/tmp/decision-layer-d1-narrow-relevant-full-v2
 ```
 
-Result: `2/2` correct on `3a2e9368` and `eb3cfd03`, with only 12 completion
-tokens total. `3a2e9368` was mainly a clipped/verbose reader-output issue.
-`eb3cfd03` needed the decision to state the exact module set:
-`Reports > View/Run` and `Self-Service > Service Catalog`, with no approvals,
-procurement, request-management, or stockroom modules.
+Current D2 full run against the narrow oracle:
 
-D1 retrieval/ranking now gates oracle decisions by relevance using the core
-question text, with answer-format instructions and option blocks stripped before
-keyword scoring. Targeted `767e4106` smoke: 357 broad oracle candidates skipped,
-0 Decision Brief entries, so the `Short description` noise regression is
-removed.
+```text
+/tmp/decision-layer-d2-narrow-full-v4
+```
 
-D1 smoke sanity checks after relevance gating:
+## Current Metrics
 
-| D1 Oracle | Reader | Non-empty Briefs | Decision Adds | `767e4106` Briefs |
-| --- | --- | ---: | ---: | ---: |
-| Broad + runtime relevance | smoke | 49 | 281 | 0 |
-| Narrow + question relevance | smoke | 22 | 35 | 0 |
+| Run | Correct | Accuracy | Procedure | Static | Dynamic | Briefs | Adds | Completion Tokens | False Rate | Recall |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Old D0 | 21/295 | 0.071186 | 1/74 | 17/134 | 3/86 | 0 | 0 | 20954 | n/a | n/a |
+| Old broad D1 | 30/295 | 0.101695 | 9/74 | 18/134 | 3/86 | 74 | 16798 | 19984 | n/a | n/a |
+| D2 v3 broad audit | 40/295 | 0.135593 | 16/74 | 20/134 | 4/86 | 14 | 15 | 4709 | 0.0 | not useful |
+| D1 narrow v2 | 44/295 | 0.149153 | 19/74 | 22/134 | 3/86 | 17 | 18 | 4970 | n/a | n/a |
+| D2 narrow v4 | 42/295 | 0.142373 | 18/74 | 20/134 | 4/86 | 16 | 17 | 4585 | 0.0 | 0.377778 |
 
-Blind D1 canary after goal labels + rule-based goal augmentation:
+Important read:
 
-| Mode | Correct | Procedure Correct |
-| --- | ---: | ---: |
-| D0 baseline canary | 1/13 | 0/4 |
-| D1 blind canary | 4/13 | 3/4 |
-
-Decision Briefs should contain only accepted decisions, explicit requirements,
-constraints, procedures, and stable operating rules. They should not contain
-plain environment facts, UI state, answer keys, or transient observations.
+- D2 narrow v4 has zero audited false decisions.
+- D2 narrow v4 has no failed cases with non-empty Decision Briefs.
+- D2 narrow v4 is only 2 correct answers behind D1 narrow v2.
+- The D1-only-correct cases versus D2 v4 had 0 Decision Brief entries, so the
+  gap is reader variance or base-task behavior, not an obvious memory miss.
+- The promising signal is procedure lift: old D0 `1/74`, D1 narrow v2 `19/74`,
+  D2 narrow v4 `18/74`.
+- The proof is not finished because old D0 was produced before the latest reader
+  contract changes. We need a fresh current-code D0 before claiming the final
+  Decision Layer delta.
 
 ## Active Checklist
 
-- [ ] Audit the draft manually: remove facts, answer-like statements,
-  UI state, long observations, weak guesses, and duplicates.
-- [ ] Run LLM-reader D1/D2 against the narrow oracle and compare accuracy,
-  `decision_recall`, and `false_decision_rate`.
+- [ ] Run a fresh current-code D0 full baseline with reasoning disabled and the
+  same reader settings as D2 narrow v4.
+- [ ] Compare current-code D0 vs D1 narrow v2 vs D2 narrow v4; treat only lift
+  over the fresh D0 as the Decision Layer signal.
+- [ ] Audit D2 v4 missing expected decisions: 28 expected narrow-oracle
+  decisions were not extracted. Classify each as extractor miss, oracle noise, or
+  harmless because it did not affect the final answer.
+- [ ] Add at most one small extractor improvement only if the audit shows a
+  repeated high-confidence decision pattern with low false-decision risk.
+- [ ] Re-run D2 after any extractor change, using resume-by-default behavior so
+  completed benchmark cases are not repeated unless an explicit overwrite flag is
+  passed.
 
-## Next D1 Command
-
-After the blind oracle is ready:
+## Next D0 Command
 
 ```bash
 uv run decision-layer run-poc \
   --data-root data/longmemeval-v2 \
-  --output-dir /tmp/decision-layer-d1-blind-full \
-  --mode D1 \
+  --output-dir /tmp/decision-layer-d0-current-no-reasoning \
+  --mode D0 \
   --tier small \
   --question-id-file configs/longmemeval-v2-full-deterministic-subset.txt \
   --reader openai-chat \
   --reader-base-url http://127.0.0.1:18080/v1 \
   --reader-model qwen36-35b-a3b-udiq3s \
   --reader-max-tokens 128 \
-  --context-max-chars 96000 \
-  --oracle-decisions configs/longmemeval-v2-full-blind-oracle-decisions.json
+  --context-max-chars 96000
 ```
