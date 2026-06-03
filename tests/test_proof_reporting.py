@@ -5,6 +5,9 @@ from memorycore.experiments.aggregate_proof import main as aggregate_proof_main
 from memorycore.experiments.run_experiment import run_experiment
 from memorycore.reporting.proof import bootstrap_binary_ci
 
+FIXTURE_DIR = Path(__file__).parent / "fixtures"
+MEMORYAGENTBENCH_FIXTURE = FIXTURE_DIR / "memoryagentbench_sample.json"
+
 
 def test_bootstrap_binary_ci_is_deterministic() -> None:
     assert bootstrap_binary_ci([True, False, True], n_samples=50, seed=1) == bootstrap_binary_ci(
@@ -60,3 +63,23 @@ def test_aggregate_proof_summarizes_comparison_runs(tmp_path: Path) -> None:
     assert "Baseline And Ablation Summary" in index
     assert "Cost/Latency Pareto Candidates" in index
     assert "no_memory" in index
+    summary = index.split("## Baseline And Ablation Summary", 1)[1]
+    assert "toy_compare/no_memory" not in summary
+
+
+def test_aggregate_proof_summarizes_memoryagentbench_competencies(tmp_path: Path) -> None:
+    proof_root = tmp_path / "proof"
+    run_experiment(
+        {
+            "benchmark": "memoryagentbench",
+            "data_path": str(MEMORYAGENTBENCH_FIXTURE),
+            "compare_memories": "no_memory,decisions_facts",
+            "output_dir": str(proof_root / "memoryagentbench_smoke"),
+        }
+    )
+
+    aggregate_proof_main([str(proof_root)])
+
+    index = (proof_root / "index.md").read_text(encoding="utf-8")
+    assert "MemoryAgentBench Competency Summary" in index
+    assert "memoryagentbench_sample" in index

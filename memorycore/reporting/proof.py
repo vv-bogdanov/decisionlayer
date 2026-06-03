@@ -294,16 +294,22 @@ def render_proof_index(root: Path, rows: list[dict[str, Any]]) -> str:
     comparison_rows = collect_comparison_rows(root, rows)
     if comparison_rows:
         lines.extend(render_comparison_rows(comparison_rows))
+        memoryagentbench_rows = [row for row in comparison_rows if row["benchmark"] == "memoryagentbench"]
+        if memoryagentbench_rows:
+            lines.extend(render_memoryagentbench_competency_rows(memoryagentbench_rows))
         lines.extend(render_pareto_rows(pareto_rows(comparison_rows)))
     return "\n".join(lines) + "\n"
 
 
 def collect_comparison_rows(root: Path, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    comparison_child_dirs = comparison_child_run_dirs(rows)
     comparison_rows: list[dict[str, Any]] = []
     for row in rows:
         metrics = row["metrics"]
         baseline_metrics = metrics.get("baseline_metrics")
         if not isinstance(baseline_metrics, list):
+            if row["run_dir"] in comparison_child_dirs:
+                continue
             single_row = comparison_row_from_metrics(
                 root=root,
                 run_dir=row["run_dir"],
@@ -331,6 +337,18 @@ def collect_comparison_rows(root: Path, rows: list[dict[str, Any]]) -> list[dict
     return [row for row in comparison_rows if row]
 
 
+def comparison_child_run_dirs(rows: list[dict[str, Any]]) -> set[Path]:
+    child_dirs: set[Path] = set()
+    for row in rows:
+        baseline_metrics = row["metrics"].get("baseline_metrics")
+        if not isinstance(baseline_metrics, list):
+            continue
+        for baseline in baseline_metrics:
+            if isinstance(baseline, dict) and baseline.get("memory"):
+                child_dirs.add(row["run_dir"] / str(baseline["memory"]))
+    return child_dirs
+
+
 def comparison_row_from_metrics(
     *,
     root: Path,
@@ -344,6 +362,7 @@ def comparison_row_from_metrics(
     return {
         "run": run_dir.relative_to(root).as_posix(),
         "benchmark": config.get("benchmark", ""),
+        "competency": memoryagentbench_competency(config),
         "memory": memory or "",
         "accuracy": float_value(metrics.get("accuracy")),
         "quality_score": float_value(metrics.get("quality_score")),
@@ -370,6 +389,22 @@ def render_comparison_rows(rows: list[dict[str, Any]]) -> list[str]:
     ]
     for row in sorted(rows, key=lambda item: (str(item["run"]), str(item["memory"]))):
         lines.append(comparison_table_row(row))
+    return lines
+
+
+def render_memoryagentbench_competency_rows(rows: list[dict[str, Any]]) -> list[str]:
+    lines = [
+        "",
+        "## MemoryAgentBench Competency Summary",
+        "",
+        "| Run | Competency | Memory | Examples | Accuracy | Quality | Latency | Brief Tokens |",
+        "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for row in sorted(rows, key=lambda item: (str(item["competency"]), str(item["run"]), str(item["memory"]))):
+        lines.append(
+            "| {run} | {competency} | {memory} | {examples} | {accuracy} | {quality_score} | "
+            "{latency_seconds} | {memory_brief_tokens} |".format(**row)
+        )
     return lines
 
 
@@ -462,3 +497,18 @@ def report_href(run_dir: Path, relative: str) -> str:
         if (run_dir / filename).exists():
             return f"{relative}/{filename}"
     return relative
+
+
+def memoryagentbench_competency(config: dict[str, Any]) -> str:
+    if config.get("benchmark") != "memoryagentbench":
+        return ""
+    split = benchmark_split(config) or ""
+    for competency in (
+        "Accurate_Retrieval",
+        "Test_Time_Learning",
+        "Long_Range_Understanding",
+        "Conflict_Resolution",
+    ):
+        if split.startswith(competency):
+            return competency
+    return split

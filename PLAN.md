@@ -67,7 +67,15 @@ Use this as the short working queue. The broader proof checklist remains below.
   committed.
 - [x] Regenerate `reports/proof/index.md` from the latest clean checkout.
 - [ ] Audit a small sample of LongMemEval labels and scoring decisions.
-- [ ] Start MemoryAgentBench proof run.
+- [x] Start MemoryAgentBench proof run.
+- [x] Download official MemoryAgentBench parquet files to
+  `/tmp/memoryagentbench`.
+- [x] Fix MemoryAgentBench answer alias scoring for parquet array answers.
+- [x] Enforce `max_memory_brief_tokens` with oversized fact truncation.
+- [x] Run MemoryAgentBench smoke on all four official splits.
+- [x] Run MemoryAgentBench dev baseline table on all four official splits.
+- [x] Add MemoryAgentBench competency summary table.
+- [ ] Run MemoryAgentBench held-out baseline table on all four official splits.
 
 ## Evidence Standard
 
@@ -203,15 +211,17 @@ https://arxiv.org/abs/2507.05257
 
 Work:
 
-- [ ] Create a manifest for all four official splits:
+- [x] Create a manifest for all four official splits:
   `Accurate_Retrieval`, `Test_Time_Learning`, `Long_Range_Understanding`,
   `Conflict_Resolution`.
-- [ ] Run a small smoke for each split.
-- [ ] Run a dev subset for each split.
+- [x] Run a small smoke for each split.
+- [x] Run a dev subset for each split.
 - [ ] Run a held-out test subset for each split.
-- [ ] Fix scoring per split instead of relying only on substring matching.
-- [ ] Report metrics by MemoryAgentBench competency.
-- [ ] Add budget-aware comparison because some rows have huge contexts.
+- [x] Normalize official answer alias arrays before scoring.
+- [ ] Add split-specific semantic scoring instead of relying only on substring
+  matching.
+- [x] Report metrics by MemoryAgentBench competency.
+- [x] Add budget-aware comparison because some rows have huge contexts.
 
 Target command:
 
@@ -401,12 +411,13 @@ The proof must show which component helps.
 
 - [ ] M3 complete.
 
-- [ ] Freeze split manifests.
-- [ ] Add split-specific scoring where needed.
-- [ ] Run smoke for every split.
-- [ ] Run dev baseline table for every split.
+- [x] Freeze split manifests.
+- [x] Normalize official answer alias arrays before scoring.
+- [ ] Add split-specific semantic scoring where needed.
+- [x] Run smoke for every split.
+- [x] Run dev baseline table for every split.
 - [ ] Run held-out test table for every split.
-- [ ] Summarize by competency.
+- [x] Summarize by competency.
 
 ### M4: HaluMem Safety Proof
 
@@ -479,4 +490,6 @@ cost reduction.
 - [x] Rerun the LongMemEval sweep so the sweep root also has `metrics.json`.
 - [x] Regenerate `reports/proof/index.md`.
 - [x] Update this checklist after the regenerated report is verified.
-- [ ] Continue with `M3: MemoryAgentBench Proof Run`.
+- [x] Continue with `M3: MemoryAgentBench Proof Run`.
+- [x] Add MemoryAgentBench competency summary.
+- [ ] Decide held-out subset size for MemoryAgentBench after dev latency review.
