@@ -1,0 +1,8 @@
+{
+  "q_static": [
+    "Use Guest checkout as the default checkout option."
+  ],
+  "q_workflow": [
+    "Add a resolution note before closing a ticket."
+  ]
+}

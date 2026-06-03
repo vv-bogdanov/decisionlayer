@@ -177,7 +177,7 @@ Interpretation:
 - [x] Add unit tests for weak non-commit signals.
 - [x] Add unit tests that assistant/tool/retrieved content cannot create
   decisions.
-- [ ] Add a smoke test for D0/D1/D2 on a tiny fixture.
+- [x] Add a smoke test for D0/D1/D2 on a tiny fixture.
 
 Golden cases:
 
@@ -212,13 +212,13 @@ Decision Layer metrics:
 
 Every run should write:
 
-- [ ] `config.json`
-- [ ] `manifest.json`
-- [ ] `metrics.json`
-- [ ] `predictions.jsonl`
-- [ ] `decision_trace.jsonl`
-- [ ] `brief_trace.jsonl`
-- [ ] `report.md`
+- [x] `config.json`
+- [x] `manifest.json`
+- [x] `metrics.json`
+- [x] `predictions.jsonl`
+- [x] `decision_trace.jsonl`
+- [x] `brief_trace.jsonl`
+- [x] `report.md`
 
 The final POC report must answer:
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import cast
 
 from decision_layer.core import (
     DecisionState,
@@ -12,6 +13,7 @@ from decision_layer.core import (
     render_decision_brief,
     replace_decision,
 )
+from decision_layer.poc import PocConfig, PocMode, run_poc
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -31,6 +33,14 @@ def main(argv: list[str] | None = None) -> int:
 
     subparsers.add_parser("list")
     subparsers.add_parser("brief")
+
+    run_poc_parser = subparsers.add_parser("run-poc")
+    run_poc_parser.add_argument("--data-root", required=True)
+    run_poc_parser.add_argument("--output-dir", required=True)
+    run_poc_parser.add_argument("--mode", choices=["D0", "D1", "D2"], required=True)
+    run_poc_parser.add_argument("--tier", default="small")
+    run_poc_parser.add_argument("--limit", type=int)
+    run_poc_parser.add_argument("--oracle-decisions")
 
     args = parser.parse_args(argv)
     state_path = Path(args.state)
@@ -66,6 +76,21 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "brief":
         print(render_decision_brief(state).text)
+        return 0
+    if args.command == "run-poc":
+        result = run_poc(
+            PocConfig(
+                data_root=Path(args.data_root),
+                output_dir=Path(args.output_dir),
+                mode=cast(PocMode, args.mode),
+                tier=args.tier,
+                limit=args.limit,
+                oracle_decisions_path=Path(args.oracle_decisions)
+                if args.oracle_decisions
+                else None,
+            )
+        )
+        print(json.dumps(result.metrics, ensure_ascii=False))
         return 0
     raise AssertionError(f"unhandled command: {args.command}")
 

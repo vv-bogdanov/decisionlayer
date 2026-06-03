@@ -24,3 +24,13 @@ uv run decision-layer --state /tmp/decision-state.json add "Use Python for the P
 uv run decision-layer --state /tmp/decision-state.json list
 uv run decision-layer --state /tmp/decision-state.json brief
 ```
+
+## POC Smoke
+
+```bash
+uv run decision-layer run-poc \
+  --data-root tests/fixtures/longmemeval_v2 \
+  --output-dir /tmp/decision-layer-poc/D0 \
+  --mode D0 \
+  --limit 1
+```
