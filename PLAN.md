@@ -14,6 +14,12 @@ Blind D1 full run artifacts:
 /tmp/decision-layer-d1-blind-full
 ```
 
+New D2 full run artifacts after adding investment/offboarding extraction:
+
+```text
+/tmp/decision-layer-d2-blind-full
+```
+
 Current result is useful as a pipeline and baseline check, but not as a full
 Decision Layer proof. The current D1 oracle contains only a few accepted
 commitments, so D1 is not yet a real upper bound.
@@ -26,12 +32,18 @@ Key current metrics:
 | D1 | 24/295 | 0.081356 | 4 |
 | D2 | 25/295 | 0.084746 | 6 |
 | Blind D1 | 30/295 | 0.101695 | 74 |
+| New D2 | 29/295 | 0.098305 | 11 |
 
 Main signal: `procedure` improved from `1/74` in D0 to `6/74` in D2, but this
 is based on sparse commitment coverage.
 
 Blind D1 full improves `procedure` to `9/74` with 74 non-empty procedure
 briefs. Exact D0-vs-blind-D1 diff: 11 D1-only correct, 2 regressions, net +9.
+
+New D2 improves old D2 from `25/295` to `29/295` and matches blind D1 on
+`procedure` at `9/74`, with only 11 non-empty Decision Briefs. D2 audit against
+the broad blind oracle has `false_decision_rate=0.0`, but recall is not useful
+yet because the draft oracle contains about 70k question-level requirements.
 
 Blind D1 canary after goal labels + rule-based goal augmentation:
 
@@ -78,11 +90,18 @@ plain environment facts, UI state, answer keys, or transient observations.
 - [x] First-pass inspect cases with non-empty Decision Briefs where D1 still
   failed: many failures have irrelevant first-ranked task requirements, so
   decision retrieval/ranking is now the main bottleneck.
-- [ ] Use the blind D1 oracle as the gold target for D2 extraction audit.
-- [ ] Run D2 against the blind oracle after the D1 ceiling is established.
-- [ ] Improve the extractor using concrete D2 missing-decision cases.
-- [ ] Re-run D2 and track `decision_recall`, `false_decision_rate`, `D2-D1 gap`,
+- [x] Use the blind D1 oracle as the gold target for D2 extraction audit.
+- [x] Run D2 against the blind oracle after the D1 ceiling is established.
+- [x] Improve the extractor using concrete D2 missing-decision cases:
+  investment allocation and user offboarding.
+- [x] Re-run D2 and track `decision_recall`, `false_decision_rate`, `D2-D1 gap`,
   and `procedure D2-D0`.
+- [ ] Narrow/audit the broad blind oracle before treating `decision_recall` as a
+  meaningful metric.
+- [ ] Inspect new D2 failed decision cases with non-empty briefs:
+  `4df5e6b4`, `52dd33bb`, and `bfb3bcc4`.
+- [ ] Improve decision retrieval/ranking to reduce D1 noise, especially
+  `767e4106`.
 
 ## Next D1 Command
 
