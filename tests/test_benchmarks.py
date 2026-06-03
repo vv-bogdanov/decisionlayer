@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from memorycore.benchmarks import get_benchmark
-from memorycore.experiments.run_experiment import run_experiment
+from memorycore.experiments.run_experiment import run_experiment, substring_match_score
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 LONGMEMEVAL_FIXTURE = FIXTURE_DIR / "longmemeval_oracle_sample.json"
@@ -21,6 +21,11 @@ def test_toy_benchmark_loads_examples() -> None:
     assert examples[0].expected_answer == "SQLite"
 
 
+def test_empty_prediction_does_not_match_non_empty_answer() -> None:
+    assert substring_match_score("", "GPS system not functioning correctly") is False
+    assert substring_match_score("", "") is True
+
+
 def test_longmemeval_default_fixture_runs(tmp_path: Path) -> None:
     result = run_experiment(
         {
@@ -35,7 +40,10 @@ def test_longmemeval_default_fixture_runs(tmp_path: Path) -> None:
     assert (tmp_path / "metrics.json").exists()
     assert (tmp_path / "predictions.jsonl").exists()
     assert (tmp_path / "trace.jsonl").exists()
+    assert (tmp_path / "manifest.json").exists()
     assert (tmp_path / "report.md").exists()
+    assert "accuracy_ci_low" in result["metrics"]
+    assert "accuracy_ci_high" in result["metrics"]
 
 
 def test_cost_estimate_uses_configured_token_prices(tmp_path: Path) -> None:
@@ -109,6 +117,9 @@ def test_longmemeval_real_schema_run_has_grouped_metrics_and_source_refs(tmp_pat
     assert result["predictions"][0]["question_type"] == "single-session-user"
     assert result["traces"][0]["facts"][0]["refs"][0]["rel"] == "source"
     assert result["traces"][0]["source_messages"][0]["content"] == "I had oatmeal for breakfast today."
+    manifest = (tmp_path / "manifest.json").read_text(encoding="utf-8")
+    assert "longmemeval_oracle_sample.json" in manifest
+    assert "sha256" in manifest
     report = (tmp_path / "report.md").read_text(encoding="utf-8")
     assert "Question Type Metrics" in report
 

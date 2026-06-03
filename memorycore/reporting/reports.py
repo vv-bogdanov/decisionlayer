@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from memorycore.reporting.proof import write_run_manifest
+
 
 def write_json(path: Path, data: Any) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -28,6 +30,14 @@ def write_experiment_outputs(
     write_json(output_dir / "metrics.json", metrics)
     write_jsonl(output_dir / "predictions.jsonl", predictions)
     write_jsonl(output_dir / "trace.jsonl", traces)
+    write_run_manifest(
+        output_dir,
+        config=config,
+        metrics=metrics,
+        predictions_count=len(predictions),
+        traces_count=len(traces),
+        prediction_ids=[str(prediction.get("id")) for prediction in predictions],
+    )
     (output_dir / "report.md").write_text(
         render_markdown_report(config=config, metrics=metrics, predictions=predictions),
         encoding="utf-8",

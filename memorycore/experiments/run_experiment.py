@@ -12,6 +12,7 @@ from memorycore.baselines import get_baseline_runner
 from memorycore.benchmarks import get_benchmark
 from memorycore.experiments.args import parse_overrides
 from memorycore.reporting import write_experiment_outputs
+from memorycore.reporting.proof import bootstrap_binary_ci
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "benchmark": "toy",
@@ -194,8 +195,8 @@ def exact_match_score(prediction: str, expected: str) -> bool:
 def substring_match_score(prediction: str, expected: str) -> bool:
     prediction_normalized = normalize_text(prediction)
     expected_normalized = normalize_text(expected)
-    if not expected_normalized:
-        return not prediction_normalized
+    if not prediction_normalized or not expected_normalized:
+        return prediction_normalized == expected_normalized
     return expected_normalized in prediction_normalized or prediction_normalized in expected_normalized
 
 
@@ -342,6 +343,9 @@ def compute_metrics(
         "source_traceability": round(source_traceability, 6),
         "false_decision_rate": 0.0,
     }
+    accuracy_ci_low, accuracy_ci_high = bootstrap_binary_ci([bool(item["correct"]) for item in predictions])
+    metrics["accuracy_ci_low"] = accuracy_ci_low
+    metrics["accuracy_ci_high"] = accuracy_ci_high
     metrics["quality_score"] = composite_quality_score(metrics)
     metrics["objectives"] = {
         "accuracy": metrics["accuracy"],

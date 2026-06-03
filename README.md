@@ -70,6 +70,20 @@ Run a Hydra multirun:
 uv run --extra experiments python -m memorycore.experiments.run_hydra -m benchmark=toy memory=decisions_facts,hybrid output_dir=reports/hydra_multirun
 ```
 
+Run a proof baseline table and aggregate proof reports:
+
+```bash
+uv run python -m memorycore.experiments.run_experiment \
+  benchmark=longmemeval \
+  data_path=/path/to/longmemeval_oracle.json \
+  compare_memories=no_memory,recent_context_only,full_context_where_possible,simple_rag,bm25,tfidf,hybrid,fact_only,decisions_only,decisions_facts,decisions_plus_facts_plus_refs,decisions_plus_facts_plus_refs_plus_recall_count \
+  recall=hybrid \
+  limit=100 \
+  output_dir=reports/proof/longmemeval_dev
+
+uv run python -m memorycore.experiments.aggregate_proof reports/proof
+```
+
 Run real LoCoMo after downloading the official repo data:
 
 ```bash
@@ -90,6 +104,8 @@ uv run --extra experiments python -m memorycore.experiments.run_experiment bench
 ```
 
 Generated reports are written under `reports/` and ignored by git.
+Each experiment run also writes a `manifest.json` with dataset fingerprint, git
+commit, model/scoring config, command, and selected example IDs.
 
 Cost estimates are disabled by default. Pass token prices explicitly when needed:
 
@@ -128,9 +144,10 @@ LoCoMo / HaluMem / MemoryAgentBench real-schema adapters
 BM25, TF-IDF sparse vector, and hybrid recall
 baseline runner
 experiment reports
+run manifests and proof report aggregation
 grid, Optuna, and Hydra multirun support
 optional LLM judge and LLM extractor behind explicit config
-cost estimate and composite quality scoring
+cost estimate, bootstrap accuracy interval, and composite quality scoring
 pytest, Ruff, and mypy coverage for core, recall, benchmark, and sweep behavior
 ```
 

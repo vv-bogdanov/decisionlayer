@@ -30,7 +30,7 @@ and a clear answer about whether the memory model is actually better.
 Use this section as the top-level progress tracker. Detailed checklists live in
 the sections below.
 
-- [ ] M1: Proof harness hardening is complete.
+- [x] M1: Proof harness hardening is complete.
 - [ ] M2: LongMemEval proof run is complete.
 - [ ] M3: MemoryAgentBench proof run is complete.
 - [ ] M4: HaluMem safety proof is complete.
@@ -51,16 +51,16 @@ the sections below.
 
 The proof is credible only if the comparisons are fair and reproducible.
 
-- [ ] Pin exact dataset versions and local paths in a run manifest.
-- [ ] Pin model, extractor, judge, embedding model, and prompt versions.
+- [x] Pin exact dataset versions and local paths in a run manifest.
+- [x] Pin model, extractor, judge, embedding model, and prompt versions.
 - [ ] Separate tuning/dev runs from final held-out test runs.
 - [ ] Use the same token budget and context budget for competing systems.
 - [ ] Run deterministic baselines once and LLM-dependent variants at least 3
   times.
-- [ ] Report confidence intervals or bootstrap intervals for key metrics.
+- [x] Report confidence intervals or bootstrap intervals for key metrics.
 - [ ] Store all generated `metrics.json`, `predictions.jsonl`, `trace.jsonl`,
   and `report.md` under `reports/`.
-- [ ] Keep dataset download outside the runner; use explicit `data_path`.
+- [x] Keep dataset download outside the runner; use explicit `data_path`.
 - [ ] Document known benchmark weaknesses and manual audit decisions.
 
 ## Primary Metrics
@@ -126,9 +126,9 @@ https://arxiv.org/abs/2410.10813
 
 Work:
 
-- [ ] Create a frozen LongMemEval manifest with file path, row count, hash, and
+- [x] Create a frozen LongMemEval manifest with file path, row count, hash, and
   subset IDs.
-- [ ] Run all current baselines on a dev subset.
+- [x] Run all current baselines on a dev subset.
 - [ ] Run all current baselines on a held-out test subset.
 - [ ] Add per-question-type tables.
 - [ ] Add failure analysis grouped by extraction, recall, scoring, update, and
@@ -353,22 +353,22 @@ The proof must show which component helps.
 
 ### M1: Proof Harness Hardening
 
-- [ ] M1 complete.
+- [x] M1 complete.
 
-- [ ] Add run manifest output with dataset path, hash, size, split, model config,
+- [x] Add run manifest output with dataset path, hash, size, split, model config,
   git commit, and command.
-- [ ] Add bootstrap confidence interval helper.
-- [ ] Add benchmark-run table aggregation across report directories.
-- [ ] Add `reports/proof/index.md` generator.
-- [ ] Add command recipes to `README.md`.
-- [ ] Keep `uv run pytest`, Ruff, and mypy green.
+- [x] Add bootstrap confidence interval helper.
+- [x] Add benchmark-run table aggregation across report directories.
+- [x] Add `reports/proof/index.md` generator.
+- [x] Add command recipes to `README.md`.
+- [x] Keep `uv run pytest`, Ruff, and mypy green.
 
 ### M2: LongMemEval Proof Run
 
 - [ ] M2 complete.
 
-- [ ] Freeze LongMemEval manifest.
-- [ ] Run dev baseline table.
+- [x] Freeze LongMemEval manifest.
+- [x] Run dev baseline table.
 - [ ] Tune only on dev subset.
 - [ ] Run held-out test baseline table.
 - [ ] Generate ablation table.
@@ -463,8 +463,8 @@ Add proof run manifests and LongMemEval aggregation
 
 Minimum next deliverables:
 
-- [ ] `manifest.json` for every experiment run.
-- [ ] `reports/proof/index.md` aggregation.
-- [ ] LongMemEval dev baseline table with all current baselines.
+- [x] `manifest.json` for every experiment run.
+- [x] `reports/proof/index.md` aggregation.
+- [x] LongMemEval dev baseline table with all current baselines.
 - [ ] LongMemEval failure analysis table.
-- [ ] Updated README commands.
+- [x] Updated README commands.

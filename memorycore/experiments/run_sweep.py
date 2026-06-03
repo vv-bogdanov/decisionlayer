@@ -9,6 +9,7 @@ from typing import Any
 
 from memorycore.experiments.args import parse_overrides
 from memorycore.experiments.run_experiment import DEFAULT_CONFIG, run_experiment
+from memorycore.reporting.proof import write_run_manifest
 
 DEFAULT_SWEEP_CONFIG: dict[str, Any] = {
     "benchmark": "toy",
@@ -242,6 +243,17 @@ def write_sweep_outputs(
     (output_dir / "sweep_config.json").write_text(
         json.dumps(config, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
+    )
+    write_run_manifest(
+        output_dir,
+        config={**config, "run_kind": "sweep"},
+        metrics={
+            "trials": len(trials),
+            "best_metric": config.get("metric"),
+            "best_value": best_config.get(str(config.get("metric"))),
+        },
+        predictions_count=0,
+        traces_count=0,
     )
 
 
