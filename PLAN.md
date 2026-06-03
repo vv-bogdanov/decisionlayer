@@ -73,6 +73,7 @@ Use this as the short working queue. The broader proof checklist remains below.
 - [x] Fix MemoryAgentBench answer alias scoring for parquet array answers.
 - [x] Add official MemoryAgentBench deterministic scoring policy mapping.
 - [x] Add local llama.cpp judge support through `judge_policy=llama_cpp`.
+- [x] Run MemoryAgentBench LRU llama.cpp judge smoke.
 - [x] Enforce `max_memory_brief_tokens` with oversized fact truncation.
 - [x] Run MemoryAgentBench smoke on all four official splits.
 - [x] Run MemoryAgentBench dev baseline table on all four official splits.
@@ -223,6 +224,7 @@ Work:
 - [x] Add split-specific deterministic scoring policy instead of applying
   substring matching to every split.
 - [x] Add local llama.cpp judge support for judge-required scoring.
+- [x] Run a local llama.cpp judge smoke on MemoryAgentBench LRU.
 - [ ] Run llama.cpp judge evaluation for MemoryAgentBench summarization and
   LongMemEval-style tasks.
 - [x] Report metrics by MemoryAgentBench competency.
@@ -422,6 +424,7 @@ The proof must show which component helps.
   deterministic.
 - [x] Add local llama.cpp judge support for judge-required MemoryAgentBench
   tasks.
+- [x] Run local llama.cpp judge smoke for MemoryAgentBench LRU.
 - [ ] Run judge-required MemoryAgentBench tasks with local llama.cpp.
 - [x] Run smoke for every split.
 - [x] Run dev baseline table for every split.
