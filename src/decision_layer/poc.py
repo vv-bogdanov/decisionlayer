@@ -33,6 +33,7 @@ class PocConfig:
     reader_timeout_seconds: float = 60.0
     reader_max_tokens: int = 64
     oracle_decisions_path: Path | None = None
+    accepted_decisions_path: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,6 +57,7 @@ class PocSuiteConfig:
     reader_timeout_seconds: float = 60.0
     reader_max_tokens: int = 64
     oracle_decisions_path: Path | None = None
+    accepted_decisions_path: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +75,7 @@ def run_poc(config: PocConfig) -> PocResult:
         question_ids=set(config.question_ids) if config.question_ids else None,
     )
     oracle_decisions = load_oracle_decisions(config.oracle_decisions_path)
+    accepted_decisions = load_oracle_decisions(config.accepted_decisions_path)
     extractor = RuleBasedDecisionExtractor()
     reader = build_reader(
         config.reader,
@@ -145,7 +148,7 @@ def run_poc(config: PocConfig) -> PocResult:
             }
         )
 
-    metrics = compute_metrics(predictions, decision_trace, start)
+    metrics = compute_metrics(predictions, decision_trace, brief_trace, accepted_decisions, start)
     result = PocResult(metrics, predictions, decision_trace, brief_trace)
     write_artifacts(config, examples, result)
     return result
@@ -168,6 +171,7 @@ def run_poc_suite(config: PocSuiteConfig) -> PocSuiteResult:
                 reader_timeout_seconds=config.reader_timeout_seconds,
                 reader_max_tokens=config.reader_max_tokens,
                 oracle_decisions_path=config.oracle_decisions_path,
+                accepted_decisions_path=config.accepted_decisions_path,
             )
         )
     suite_metrics = compute_suite_metrics(mode_results)
@@ -319,6 +323,8 @@ def state_text(goal: str, state: dict[str, object]) -> str:
 def compute_metrics(
     predictions: list[dict[str, object]],
     decision_trace: list[dict[str, object]],
+    brief_trace: list[dict[str, object]],
+    accepted_decisions: dict[str, list[str]],
     start: float,
 ) -> dict[str, object]:
     total = len(predictions)
@@ -340,7 +346,7 @@ def compute_metrics(
             if prediction["reader_model"]
         }
     )
-    return {
+    metrics: dict[str, object] = {
         "examples": total,
         "scorable_examples": scorable_total,
         "unsupported_examples": total - scorable_total,
@@ -358,6 +364,8 @@ def compute_metrics(
         "skipped_candidates": sum(
             1 for trace in decision_trace if trace.get("event") == "decision_candidate_skipped"
         ),
+        "examples_with_decisions": non_empty_briefs,
+        "decision_persistence_rate": round(non_empty_briefs / total, 6) if total else 0.0,
         "non_empty_decision_briefs": non_empty_briefs,
         "avg_brief_tokens": round(
             sum(int_prediction_value(prediction, "brief_tokens") for prediction in predictions)
@@ -389,7 +397,11 @@ def compute_metrics(
         "latency_seconds": round(perf_counter() - start, 6),
         "reader_policy": reader_policies[0] if len(reader_policies) == 1 else reader_policies,
         "reader_model": reader_models[0] if len(reader_models) == 1 else None,
+        "category_metrics": compute_category_metrics(predictions),
     }
+    mode = str(predictions[0].get("mode", "")) if predictions else ""
+    metrics.update(compute_decision_audit_metrics(brief_trace, accepted_decisions, mode=mode))
+    return metrics
 
 
 def compute_suite_metrics(mode_results: dict[PocMode, PocResult]) -> dict[str, object]:
@@ -402,9 +414,137 @@ def compute_suite_metrics(mode_results: dict[PocMode, PocResult]) -> dict[str, o
         "D2": mode_results["D2"].metrics,
         "delta_D1_minus_D0": round(d1_accuracy - d0_accuracy, 6),
         "delta_D2_minus_D0": round(d2_accuracy - d0_accuracy, 6),
+        "category_deltas": compute_category_deltas(mode_results),
         "reader_policy": mode_results["D0"].metrics["reader_policy"],
         "reader_model": mode_results["D0"].metrics["reader_model"],
     }
+
+
+def compute_category_metrics(predictions: list[dict[str, object]]) -> dict[str, object]:
+    categories: dict[str, list[dict[str, object]]] = {}
+    for prediction in predictions:
+        key = str(prediction.get("question_type", "unknown"))
+        categories.setdefault(key, []).append(prediction)
+    return {
+        key: compute_prediction_group_metrics(group)
+        for key, group in sorted(categories.items(), key=lambda item: item[0])
+    }
+
+
+def compute_category_deltas(mode_results: dict[PocMode, PocResult]) -> dict[str, object]:
+    per_mode_categories = {
+        mode: typed_metric_dict(result.metrics.get("category_metrics"))
+        for mode, result in mode_results.items()
+    }
+    category_names = sorted(
+        {category for categories in per_mode_categories.values() for category in categories}
+    )
+    return {
+        category: {
+            "D0_accuracy": category_accuracy(per_mode_categories["D0"], category),
+            "D1_accuracy": category_accuracy(per_mode_categories["D1"], category),
+            "D2_accuracy": category_accuracy(per_mode_categories["D2"], category),
+            "delta_D1_minus_D0": round(
+                category_accuracy(per_mode_categories["D1"], category)
+                - category_accuracy(per_mode_categories["D0"], category),
+                6,
+            ),
+            "delta_D2_minus_D0": round(
+                category_accuracy(per_mode_categories["D2"], category)
+                - category_accuracy(per_mode_categories["D0"], category),
+                6,
+            ),
+        }
+        for category in category_names
+    }
+
+
+def typed_metric_dict(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        return {}
+    return {str(key): nested for key, nested in value.items() if isinstance(nested, dict)}
+
+
+def category_accuracy(categories: dict[str, object], category: str) -> float:
+    metrics = categories.get(category)
+    if not isinstance(metrics, dict):
+        return 0.0
+    return float_metric({str(key): value for key, value in metrics.items()}, "accuracy")
+
+
+def compute_prediction_group_metrics(predictions: list[dict[str, object]]) -> dict[str, object]:
+    scorable = [
+        prediction for prediction in predictions if prediction.get("score_supported") is True
+    ]
+    correct = sum(1 for prediction in scorable if prediction.get("correct") is True)
+    total = len(predictions)
+    scorable_total = len(scorable)
+    return {
+        "examples": total,
+        "scorable_examples": scorable_total,
+        "correct": correct,
+        "accuracy": round(correct / scorable_total, 6) if scorable_total else 0.0,
+        "non_empty_decision_briefs": sum(
+            1
+            for prediction in predictions
+            if int_prediction_value(prediction, "decision_count") > 0
+        ),
+    }
+
+
+def compute_decision_audit_metrics(
+    brief_trace: list[dict[str, object]],
+    accepted_decisions: dict[str, list[str]],
+    *,
+    mode: str,
+) -> dict[str, object]:
+    if mode != "D2" or not accepted_decisions:
+        return {
+            "decision_audit_enabled": False,
+            "audited_decisions": 0,
+            "false_decisions": 0,
+            "false_decision_rate": None,
+            "missing_expected_decisions": 0,
+            "decision_recall": None,
+        }
+
+    audited_decisions = 0
+    false_decisions = 0
+    expected_decisions = 0
+    missing_expected_decisions = 0
+    for row in brief_trace:
+        question_id = str(row.get("id", ""))
+        expected = {normalize(decision) for decision in accepted_decisions.get(question_id, [])}
+        if not expected:
+            continue
+        actual = {normalize(str(decision["text"])) for decision in typed_final_decisions(row)}
+        audited_decisions += len(actual)
+        false_decisions += len(actual - expected)
+        expected_decisions += len(expected)
+        missing_expected_decisions += len(expected - actual)
+
+    return {
+        "decision_audit_enabled": True,
+        "audited_decisions": audited_decisions,
+        "false_decisions": false_decisions,
+        "false_decision_rate": round(false_decisions / audited_decisions, 6)
+        if audited_decisions
+        else 0.0,
+        "missing_expected_decisions": missing_expected_decisions,
+        "decision_recall": round(
+            (expected_decisions - missing_expected_decisions) / expected_decisions,
+            6,
+        )
+        if expected_decisions
+        else 0.0,
+    }
+
+
+def typed_final_decisions(row: dict[str, object]) -> list[dict[str, object]]:
+    decisions = row.get("final_decisions")
+    if not isinstance(decisions, list):
+        return []
+    return [dict(decision) for decision in decisions if isinstance(decision, dict)]
 
 
 def float_metric(metrics: dict[str, object], key: str) -> float:
@@ -464,6 +604,9 @@ def config_to_dict(config: PocConfig) -> dict[str, object]:
         "oracle_decisions_path": str(config.oracle_decisions_path)
         if config.oracle_decisions_path
         else None,
+        "accepted_decisions_path": str(config.accepted_decisions_path)
+        if config.accepted_decisions_path
+        else None,
     }
 
 
@@ -506,11 +649,14 @@ def render_report(config: PocConfig, result: PocResult) -> str:
         f"- unsupported_examples: `{result.metrics['unsupported_examples']}`",
         f"- accuracy: `{result.metrics['accuracy']}`",
         f"- non_empty_decision_briefs: `{result.metrics['non_empty_decision_briefs']}`",
+        f"- decision_persistence_rate: `{result.metrics['decision_persistence_rate']}`",
         f"- avg_brief_tokens: `{result.metrics['avg_brief_tokens']}`",
         f"- reader_policy: `{result.metrics['reader_policy']}`",
         f"- reader_model: `{result.metrics['reader_model']}`",
         f"- prompt_tokens: `{result.metrics['prompt_tokens']}`",
         f"- total_tokens: `{result.metrics['total_tokens']}`",
+        f"- false_decision_rate: `{result.metrics['false_decision_rate']}`",
+        f"- decision_recall: `{result.metrics['decision_recall']}`",
         "",
         report_note(str(result.metrics["reader_policy"])),
     ]
@@ -531,12 +677,21 @@ def render_suite_report(config: PocSuiteConfig, metrics: dict[str, object]) -> s
         f"- limit: `{config.limit}`",
         f"- reader_policy: `{metrics['reader_policy']}`",
         f"- reader_model: `{metrics['reader_model']}`",
+        f"- D2 false_decision_rate: `{d2['false_decision_rate']}`",
+        f"- D2 decision_recall: `{d2['decision_recall']}`",
+        f"- D2 decision_persistence_rate: `{d2['decision_persistence_rate']}`",
         "",
         "| Mode | Accuracy | Non-empty Briefs | Avg Brief Tokens |",
         "| --- | ---: | ---: | ---: |",
         format_suite_row("D0", d0),
         format_suite_row("D1", d1),
         format_suite_row("D2", d2),
+        "",
+        "Category deltas:",
+        "",
+        "| Category | D0 | D1 | D2 | D1-D0 | D2-D0 |",
+        "| --- | ---: | ---: | ---: | ---: | ---: |",
+        *format_category_delta_rows(metrics["category_deltas"]),
         "",
         f"- delta_D1_minus_D0: `{metrics['delta_D1_minus_D0']}`",
         f"- delta_D2_minus_D0: `{metrics['delta_D2_minus_D0']}`",
@@ -551,6 +706,21 @@ def format_suite_row(mode: str, metrics: dict[str, object]) -> str:
         f"| {mode} | {metrics['accuracy']} | {metrics['non_empty_decision_briefs']} | "
         f"{metrics['avg_brief_tokens']} |"
     )
+
+
+def format_category_delta_rows(value: object) -> list[str]:
+    if not isinstance(value, dict):
+        return []
+    rows = []
+    for category, metrics in sorted(value.items(), key=lambda item: str(item[0])):
+        if not isinstance(metrics, dict):
+            continue
+        rows.append(
+            f"| {category} | {metrics['D0_accuracy']} | {metrics['D1_accuracy']} | "
+            f"{metrics['D2_accuracy']} | {metrics['delta_D1_minus_D0']} | "
+            f"{metrics['delta_D2_minus_D0']} |"
+        )
+    return rows
 
 
 def report_note(reader_policy: str) -> str:

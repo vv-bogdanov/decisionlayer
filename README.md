@@ -64,5 +64,6 @@ uv run decision-layer run-suite \
   --reader openai-chat \
   --reader-base-url http://127.0.0.1:18080/v1 \
   --reader-model qwen36-35b-a3b-udiq3s \
-  --oracle-decisions configs/longmemeval-v2-poc-oracle-decisions.json
+  --oracle-decisions configs/longmemeval-v2-poc-oracle-decisions.json \
+  --accepted-decisions configs/longmemeval-v2-poc-accepted-d2-decisions.json
 ```

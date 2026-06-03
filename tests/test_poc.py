@@ -53,12 +53,15 @@ def test_run_poc_suite_writes_comparison_report(tmp_path: Path) -> None:
     )
 
     assert "delta_D1_minus_D0" in result.metrics
+    assert "static_state_recall" in result.metrics["category_deltas"]
     assert (tmp_path / "suite_metrics.json").exists()
     assert (tmp_path / "report.md").exists()
     assert (tmp_path / "D0" / "metrics.json").exists()
     assert (tmp_path / "D1" / "metrics.json").exists()
     assert (tmp_path / "D2" / "metrics.json").exists()
-    assert "Decision Layer POC Suite Report" in (tmp_path / "report.md").read_text(encoding="utf-8")
+    report = (tmp_path / "report.md").read_text(encoding="utf-8")
+    assert "Decision Layer POC Suite Report" in report
+    assert "Category deltas" in report
 
 
 def test_run_poc_manifest_records_explicit_subset(tmp_path: Path) -> None:
@@ -110,3 +113,27 @@ def test_run_poc_logs_decision_trace_and_final_decisions(tmp_path: Path) -> None
     assert brief_trace[0]["final_decisions"][0]["text"] == (
         "use Guest checkout as the default checkout option"
     )
+
+
+def test_run_poc_computes_decision_audit_metrics(tmp_path: Path) -> None:
+    accepted_path = tmp_path / "accepted.json"
+    accepted_path.write_text(
+        json.dumps({"q_static": ["use Guest checkout as the default checkout option"]}),
+        encoding="utf-8",
+    )
+    result = run_poc(
+        PocConfig(
+            data_root=FIXTURE_ROOT,
+            output_dir=tmp_path / "D2",
+            mode="D2",
+            question_ids=("q_static",),
+            accepted_decisions_path=accepted_path,
+        )
+    )
+
+    assert result.metrics["decision_audit_enabled"] is True
+    assert result.metrics["audited_decisions"] == 1
+    assert result.metrics["false_decisions"] == 0
+    assert result.metrics["false_decision_rate"] == 0.0
+    assert result.metrics["decision_recall"] == 1.0
+    assert result.metrics["missing_expected_decisions"] == 0

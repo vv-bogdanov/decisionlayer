@@ -3,7 +3,7 @@
 ## Run
 
 - date: 2026-06-03
-- artifact path: `/tmp/decision-layer-poc-check-final`
+- artifact path: `/tmp/decision-layer-poc-check-audit`
 - verified command: `scripts/run-poc-check`
 - benchmark: LongMemEval-V2
 - tier: `small`
@@ -12,6 +12,7 @@
 - reader policy: `openai_chat`
 - reader model: `qwen36-35b-a3b-udiq3s`
 - reader base URL: `http://127.0.0.1:18080/v1`
+- accepted D2 decisions: `configs/longmemeval-v2-poc-accepted-d2-decisions.json`
 
 ## Subset
 
@@ -28,11 +29,20 @@ All 3 examples are scorable locally. No LLM judge examples are included.
 | Mode | Accuracy | Correct | Non-empty Briefs | Prompt Tokens | Total Tokens |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | D0 | 0.0 | 0 / 3 | 0 / 3 | 164193 | 164577 |
-| D1 | 1.0 | 3 / 3 | 3 / 3 | 164395 | 164503 |
-| D2 | 1.0 | 3 / 3 | 3 / 3 | 164520 | 164652 |
+| D1 | 1.0 | 3 / 3 | 3 / 3 | 164395 | 164518 |
+| D2 | 1.0 | 3 / 3 | 3 / 3 | 164520 | 164622 |
 
 - `D1 - D0`: `+1.0`
 - `D2 - D0`: `+1.0`
+- D2 false decision rate: `0.0`
+- D2 decision recall: `1.0`
+- D2 decision persistence rate: `1.0`
+
+## Category Effect
+
+| Category | D0 | D1 | D2 | D1-D0 | D2-D0 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| procedure | 0.0 | 1.0 | 1.0 | +1.0 | +1.0 |
 
 ## D2 Extraction
 
@@ -61,3 +71,13 @@ from tool outputs or external documents.
 The result is not a final benchmark proof. The subset is intentionally small,
 and the extractor includes POC-specific workflow rules. The next step is to
 audit false-decision risk, add category-level reporting, then expand the subset.
+
+## Scope Limits
+
+- LLM judge scoring is not needed for this subset: all three examples use
+  deterministic LongMemEval-V2 eval functions.
+- Evidence-quality scoring is not available for the selected text-only subset.
+- Cost estimate is not reported because the reader is a local llama.cpp model
+  without model pricing.
+- Decision update correctness is not exercised because this subset contains no
+  replace/remove decision events.

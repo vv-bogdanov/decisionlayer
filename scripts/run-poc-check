@@ -28,6 +28,7 @@ uv run decision-layer run-suite \
   --reader-base-url "$reader_base_url" \
   --reader-model "$reader_model" \
   --reader-max-tokens "$reader_max_tokens" \
-  --oracle-decisions configs/longmemeval-v2-poc-oracle-decisions.json
+  --oracle-decisions configs/longmemeval-v2-poc-oracle-decisions.json \
+  --accepted-decisions configs/longmemeval-v2-poc-accepted-d2-decisions.json
 
 printf 'POC artifacts: %s\n' "$output_dir"

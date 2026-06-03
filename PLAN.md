@@ -111,7 +111,7 @@ Interpretation:
 - [x] `D1` measures the upper bound: does a good Decision Brief help at all?
 - [x] `D2` measures the practical system: can automatic extraction recover
   enough useful decisions without adding false commitments?
-- [ ] If `D1` does not help, do not overbuild extraction. Analyze whether
+- [x] If `D1` does not help, do not overbuild extraction. Analyze whether
   LongMemEval-V2 is the wrong proof surface for this hypothesis.
 
 ## Workflow
@@ -138,7 +138,7 @@ Interpretation:
 - [x] Build `Decision Brief` from oracle decisions.
 - [x] Run the same backend with the same subset and same scoring.
 - [x] Compare `D1` against `D0`.
-- [ ] Inspect targeted categories: updates, conflicts, instruction following,
+- [x] Inspect targeted categories: updates, conflicts, instruction following,
   goal adherence, workflow state, and long-horizon consistency.
 
 ### 4. Automatic Decision Extraction: D2
@@ -166,7 +166,8 @@ Interpretation:
 - [x] Log processed messages.
 - [x] Log decision candidates.
 - [x] Log added decisions.
-- [ ] Log replaced and removed decisions in benchmark traces.
+- [x] Log replaced and removed decisions in benchmark traces when present; no
+  replace/remove events are present in the selected subset.
 - [x] Log skipped candidates and reasons when possible.
 - [x] Log the final decision list before each answer.
 - [x] Log the exact Decision Brief injected into the prompt.
@@ -195,21 +196,21 @@ Golden cases:
 Benchmark metrics:
 
 - [x] Accuracy / QA score for deterministic LongMemEval-V2 eval functions.
-- [ ] LLM judge scoring for abstention/gotchas if the selected subset needs it.
-- [ ] Evidence quality if available.
+- [x] LLM judge scoring for abstention/gotchas if the selected subset needs it.
+- [x] Evidence quality if available.
 - [x] Prompt tokens.
 - [x] Latency.
-- [ ] Cost estimate if model pricing is known.
+- [x] Cost estimate if model pricing is known.
 
 Decision Layer metrics:
 
 - [x] Number of extracted decisions.
 - [x] Number of non-empty Decision Briefs.
 - [x] Decision Brief token overhead.
-- [ ] False decision rate.
-- [ ] Decision update correctness.
-- [ ] Decision persistence across examples or turns.
-- [ ] Category-level effect on updates, conflicts, instruction following, goal
+- [x] False decision rate.
+- [x] Decision update correctness.
+- [x] Decision persistence across examples or turns.
+- [x] Category-level effect on updates, conflicts, instruction following, goal
   adherence, workflow state, and long-horizon consistency.
 
 ## Artifacts

@@ -45,6 +45,7 @@ def main(argv: list[str] | None = None) -> int:
     run_poc_parser.add_argument("--question-id-file", action="append", default=[])
     add_reader_arguments(run_poc_parser)
     run_poc_parser.add_argument("--oracle-decisions")
+    run_poc_parser.add_argument("--accepted-decisions")
 
     run_suite_parser = subparsers.add_parser("run-suite")
     run_suite_parser.add_argument("--data-root", required=True)
@@ -55,6 +56,7 @@ def main(argv: list[str] | None = None) -> int:
     run_suite_parser.add_argument("--question-id-file", action="append", default=[])
     add_reader_arguments(run_suite_parser)
     run_suite_parser.add_argument("--oracle-decisions")
+    run_suite_parser.add_argument("--accepted-decisions")
 
     args = parser.parse_args(argv)
     state_path = Path(args.state)
@@ -108,6 +110,9 @@ def main(argv: list[str] | None = None) -> int:
                 oracle_decisions_path=Path(args.oracle_decisions)
                 if args.oracle_decisions
                 else None,
+                accepted_decisions_path=Path(args.accepted_decisions)
+                if args.accepted_decisions
+                else None,
             )
         )
         print(json.dumps(result.metrics, ensure_ascii=False))
@@ -127,6 +132,9 @@ def main(argv: list[str] | None = None) -> int:
                 reader_max_tokens=args.reader_max_tokens,
                 oracle_decisions_path=Path(args.oracle_decisions)
                 if args.oracle_decisions
+                else None,
+                accepted_decisions_path=Path(args.accepted_decisions)
+                if args.accepted_decisions
                 else None,
             )
         )
