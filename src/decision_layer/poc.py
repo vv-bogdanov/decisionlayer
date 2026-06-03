@@ -129,15 +129,16 @@ def run_poc(config: PocConfig) -> PocResult:
     brief_trace: list[dict[str, object]] = []
     cached_reader_results = load_reader_cache(config) if config.resume else {}
     cached_prediction_results = load_prediction_reader_cache(config) if config.resume else {}
+    prepare_streaming_artifacts(config, examples)
 
     for example in examples:
         state = DecisionState()
+        example_decision_trace: list[dict[str, object]] = []
         if config.mode == "D1":
-            state, traces = apply_oracle_decisions(state, example, oracle_decisions)
-            decision_trace.extend(traces)
+            state, example_decision_trace = apply_oracle_decisions(state, example, oracle_decisions)
         elif config.mode == "D2":
-            state, traces = apply_automatic_decisions(state, example, extractor)
-            decision_trace.extend(traces)
+            state, example_decision_trace = apply_automatic_decisions(state, example, extractor)
+        decision_trace.extend(example_decision_trace)
 
         brief = render_decision_brief(state)
         context = retrieve_keyword_context(example, max_chars=config.context_max_chars)
@@ -155,10 +156,14 @@ def run_poc(config: PocConfig) -> PocResult:
             if reader_result is None:
                 reader_result = cached_prediction_results.get(example.question.id)
             reader_cache_hit = reader_result is not None
+            if reader_result is not None and config.resume:
+                append_reader_cache_row(config, cache_key, reader_result)
+                cached_reader_results[cache_key] = reader_result
         if reader_result is None:
             reader_result = reader.answer(reader_request)
             if config.resume:
                 append_reader_cache_row(config, cache_key, reader_result)
+                cached_reader_results[cache_key] = reader_result
         prediction = reader_result.answer
         evaluation = score_answer(
             prediction,
@@ -166,40 +171,45 @@ def run_poc(config: PocConfig) -> PocResult:
             example.question.eval_function,
         )
 
-        predictions.append(
-            {
-                "id": example.question.id,
-                "mode": config.mode,
-                "reader_cache_key": cache_key,
-                "question": example.question.question,
-                "question_type": example.question.question_type,
-                "eval_function": example.question.eval_function,
-                "expected_answer": example.question.answer,
-                "prediction": prediction,
-                "correct": evaluation.correct,
-                "score_supported": evaluation.supported,
-                "score_evaluator": evaluation.evaluator,
-                "score_reason": evaluation.reason,
-                "decision_count": len(brief.decisions),
-                "brief_tokens": brief.token_count,
-                "reader_policy": reader_result.reader_policy,
-                "reader_model": config.reader_model,
-                "reader_latency_seconds": reader_result.latency_seconds,
-                "reader_cache_hit": reader_cache_hit,
-                "prompt_tokens": reader_result.prompt_tokens,
-                "completion_tokens": reader_result.completion_tokens,
-                "total_tokens": reader_result.total_tokens,
-            }
-        )
-        brief_trace.append(
-            {
-                "id": example.question.id,
-                "mode": config.mode,
-                "decision_ids": [decision.id for decision in brief.decisions],
-                "final_decisions": [decision.to_dict() for decision in brief.decisions],
-                "brief": brief.text,
-                "brief_tokens": brief.token_count,
-            }
+        prediction_row: dict[str, object] = {
+            "id": example.question.id,
+            "mode": config.mode,
+            "reader_cache_key": cache_key,
+            "question": example.question.question,
+            "question_type": example.question.question_type,
+            "eval_function": example.question.eval_function,
+            "expected_answer": example.question.answer,
+            "prediction": prediction,
+            "correct": evaluation.correct,
+            "score_supported": evaluation.supported,
+            "score_evaluator": evaluation.evaluator,
+            "score_reason": evaluation.reason,
+            "decision_count": len(brief.decisions),
+            "brief_tokens": brief.token_count,
+            "reader_policy": reader_result.reader_policy,
+            "reader_model": config.reader_model,
+            "reader_latency_seconds": reader_result.latency_seconds,
+            "reader_cache_hit": reader_cache_hit,
+            "prompt_tokens": reader_result.prompt_tokens,
+            "completion_tokens": reader_result.completion_tokens,
+            "total_tokens": reader_result.total_tokens,
+        }
+        brief_row: dict[str, object] = {
+            "id": example.question.id,
+            "mode": config.mode,
+            "decision_ids": [decision.id for decision in brief.decisions],
+            "final_decisions": [decision.to_dict() for decision in brief.decisions],
+            "brief": brief.text,
+            "brief_tokens": brief.token_count,
+        }
+        predictions.append(prediction_row)
+        brief_trace.append(brief_row)
+        append_jsonl_row(config.output_dir / "predictions.jsonl", prediction_row)
+        append_jsonl_rows(config.output_dir / "decision_trace.jsonl", example_decision_trace)
+        append_jsonl_row(config.output_dir / "brief_trace.jsonl", brief_row)
+        write_json(
+            config.output_dir / "metrics.partial.json",
+            compute_metrics(predictions, decision_trace, brief_trace, accepted_decisions, start),
         )
 
     metrics = compute_metrics(predictions, decision_trace, brief_trace, accepted_decisions, start)
@@ -212,6 +222,28 @@ def build_reader_context(mode: PocMode, brief: DecisionBrief, context: str) -> s
     if mode == "D0" or not brief.decisions:
         return context
     return f"{brief.text}\n\n{context}"
+
+
+def prepare_streaming_artifacts(
+    config: PocConfig,
+    examples: tuple[LongMemEvalV2Example, ...],
+) -> None:
+    config.output_dir.mkdir(parents=True, exist_ok=True)
+    write_json(config.output_dir / "config.json", config_to_dict(config))
+    write_json(config.output_dir / "manifest.json", build_manifest(config, examples))
+    for name in (
+        "predictions.jsonl",
+        "decision_trace.jsonl",
+        "brief_trace.jsonl",
+        "metrics.partial.json",
+    ):
+        path = config.output_dir / name
+        if path.exists():
+            path.unlink()
+    if not config.resume:
+        cache_path = reader_cache_path(config)
+        if cache_path.exists():
+            cache_path.unlink()
 
 
 def load_reader_cache(config: PocConfig) -> dict[str, ReaderResult]:
@@ -1009,6 +1041,19 @@ def write_jsonl(path: Path, rows: list[dict[str, object]]) -> None:
         "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows),
         encoding="utf-8",
     )
+
+
+def append_jsonl_row(path: Path, row: dict[str, object]) -> None:
+    append_jsonl_rows(path, [row])
+
+
+def append_jsonl_rows(path: Path, rows: list[dict[str, object]]) -> None:
+    if not rows:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as file:
+        for row in rows:
+            file.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
 def read_jsonl_rows(path: Path, *, strict: bool = True) -> list[dict[str, object]]:

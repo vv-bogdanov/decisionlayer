@@ -99,3 +99,7 @@ The overnight runner resumes by default. If the latest timestamped run under
 `/tmp` is incomplete, `scripts/run-overnight-poc` reuses it and cached reader
 responses are skipped by request hash. Use `OVERWRITE=1 scripts/run-overnight-poc`
 to force a fresh output directory and rerun reader calls.
+
+During long runs, each mode writes `predictions.jsonl`, `brief_trace.jsonl`,
+`decision_trace.jsonl`, and `metrics.partial.json` as examples complete. Use
+`metrics.json` and `suite_metrics.json` as the final reports.

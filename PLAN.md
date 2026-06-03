@@ -29,13 +29,13 @@ plain environment facts, UI state, answer keys, or transient observations.
 
 ## Active Checklist
 
-- [ ] Fix the final shell quoting error in `scripts/run-overnight-poc`:
+- [x] Fix the final shell quoting error in `scripts/run-overnight-poc`:
   `unexpected EOF while looking for matching "`.
-- [ ] Add streaming artifacts during benchmark runs so each completed example is
+- [x] Add streaming artifacts during benchmark runs so each completed example is
   saved immediately, not only at the end of a full mode.
-- [ ] Write `metrics.partial.json` during long runs so progress can be inspected
+- [x] Write `metrics.partial.json` during long runs so progress can be inspected
   while the benchmark is still running.
-- [ ] Keep resume/cache as the default behavior; keep `OVERWRITE=1` /
+- [x] Keep resume/cache as the default behavior; keep `OVERWRITE=1` /
   `--no-resume` as the explicit clean-rerun path.
 - [ ] Prepare a cheap blind D1 labeling input that hides final `question`,
   `answer`, and `eval_function`.

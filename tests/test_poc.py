@@ -171,6 +171,7 @@ def test_run_poc_writes_required_artifacts_for_all_modes(tmp_path: Path) -> None
         assert (output_dir / "config.json").exists()
         assert (output_dir / "manifest.json").exists()
         assert (output_dir / "metrics.json").exists()
+        assert (output_dir / "metrics.partial.json").exists()
         assert (output_dir / "predictions.jsonl").exists()
         assert (output_dir / "decision_trace.jsonl").exists()
         assert (output_dir / "brief_trace.jsonl").exists()
