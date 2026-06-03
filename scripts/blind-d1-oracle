@@ -71,6 +71,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Keep only high-precision commitment-like rules and skip task facts.",
     )
+    build.add_argument(
+        "--question-relevance-filter",
+        action="store_true",
+        help="Keep only decisions relevant to each final question; does not use answers.",
+    )
     build.set_defaults(func=run_build)
 
     args = parser.parse_args(argv)
@@ -196,6 +201,12 @@ def run_build(args: argparse.Namespace) -> int:
         question_ids,
     )
     labels = load_labels(Path(args.labels_dir))
+    question_texts = (
+        load_question_texts(data_root / "questions.jsonl", question_ids)
+        if args.question_relevance_filter
+        else {}
+    )
+    is_question_relevant = load_question_relevance_filter() if args.question_relevance_filter else None
     required_ids = sorted({trajectory_id for ids in haystacks.values() for trajectory_id in ids})
     rule_based_decisions = {}
     if not args.no_rule_based_augment:
@@ -217,6 +228,11 @@ def run_build(args: argparse.Namespace) -> int:
         for trajectory_id in haystacks[question_id]:
             for decision in labels.get(trajectory_id, []):
                 if args.strict_commitments and not is_strict_commitment(decision):
+                    continue
+                if is_question_relevant is not None and not is_question_relevant(
+                    decision,
+                    question_texts[question_id],
+                ):
                     continue
                 normalized = normalize_key(decision)
                 if normalized in seen:
@@ -243,6 +259,7 @@ def run_build(args: argparse.Namespace) -> int:
         ),
         "missing_labels": len(missing),
         "strict_commitments": bool(args.strict_commitments),
+        "question_relevance_filter": bool(args.question_relevance_filter),
         "output": str(output_path),
     }
     print(json.dumps(summary, ensure_ascii=False))
@@ -450,6 +467,36 @@ def load_haystacks(path: Path, question_ids: list[str]) -> dict[str, list[str]]:
             raise ValueError(f"missing haystack ids for question: {question_id}")
         haystacks[question_id] = [str(value) for value in values]
     return haystacks
+
+
+def load_question_texts(path: Path, question_ids: list[str]) -> dict[str, str]:
+    selected = set(question_ids)
+    questions = {}
+    with path.open(encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if not isinstance(row, dict):
+                raise ValueError(f"question row must be an object at {path}:{line_number}")
+            question_id = str(row["id"])
+            if question_id in selected:
+                questions[question_id] = str(row["question"])
+    missing = sorted(selected - set(questions))
+    if missing:
+        raise ValueError(f"missing questions: {', '.join(missing[:5])}")
+    return questions
+
+
+def load_question_relevance_filter():
+    repo_root = Path(__file__).resolve().parents[1]
+    src_root = repo_root / "src"
+    if str(src_root) not in sys.path:
+        sys.path.insert(0, str(src_root))
+
+    from decision_layer.poc import oracle_decision_relevant_to_question
+
+    return oracle_decision_relevant_to_question
 
 
 def load_trajectory_goals(path: Path, required_ids: set[str]) -> dict[str, dict[str, str]]:

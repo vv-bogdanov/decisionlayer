@@ -33,9 +33,10 @@ commitment filtering:
 configs/longmemeval-v2-full-blind-oracle-decisions.narrow.json
 ```
 
-Narrow oracle summary: 141 questions with decisions, 1,833 question-level
-decisions, 13 unique decision texts. This is not a hand-audited gold set, but it
-removes most task facts and field-value noise from the 70k-line broad draft.
+Narrow oracle summary: 68 questions with decisions, 98 question-level decisions,
+11 unique decision texts. This is not a hand-audited gold set, but it removes
+most task facts and field-value noise from the 70k-line broad draft, then applies
+the same question-relevance gate used by D1 retrieval.
 
 Current result is useful as a pipeline and baseline check, but not as a full
 Decision Layer proof. The current D1 oracle contains only a few accepted
@@ -93,6 +94,13 @@ keyword scoring. Targeted `767e4106` smoke: 357 broad oracle candidates skipped,
 0 Decision Brief entries, so the `Short description` noise regression is
 removed.
 
+D1 smoke sanity checks after relevance gating:
+
+| D1 Oracle | Reader | Non-empty Briefs | Decision Adds | `767e4106` Briefs |
+| --- | --- | ---: | ---: | ---: |
+| Broad + runtime relevance | smoke | 49 | 281 | 0 |
+| Narrow + question relevance | smoke | 22 | 35 | 0 |
+
 Blind D1 canary after goal labels + rule-based goal augmentation:
 
 | Mode | Correct | Procedure Correct |
@@ -110,7 +118,7 @@ plain environment facts, UI state, answer keys, or transient observations.
   UI state, long observations, weak guesses, and duplicates.
 - [ ] Re-run full D2 after the reader-output contract and stock-restocking
   clarification, then refresh the metrics table.
-- [ ] Run D1/D2 against the narrow oracle and compare D1 noise,
+- [ ] Run LLM-reader D1/D2 against the narrow oracle and compare accuracy,
   `decision_recall`, and `false_decision_rate`.
 
 ## Next D1 Command
