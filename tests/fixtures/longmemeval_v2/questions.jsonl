@@ -1,0 +1,2 @@
+{"id":"q_static","domain":"web","environment":"shop","question_type":"static_state_recall","question":"Which checkout option is the default?","image":null,"answer":"Guest checkout","eval_function":"exact_match"}
+{"id":"q_workflow","domain":"enterprise","environment":"servicenow","question_type":"workflow_knowledge","question":"What should the agent do before closing a ticket?","image":null,"answer":"Add a resolution note","eval_function":"exact_match"}

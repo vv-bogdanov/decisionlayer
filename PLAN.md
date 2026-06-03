@@ -39,7 +39,7 @@ accepted decisions can improve long-horizon task performance.
 - [x] Retrieval / memory backend is a plugin boundary.
 - [x] LLM calls are outside the pure core.
 - [x] Benchmarks and judges are outside the pure core.
-- [ ] No custom proof benchmark.
+- [x] No custom proof benchmark.
 - [x] No production API, UI, database, vector store, or SDK in the first POC.
 
 ## Minimal Core
@@ -116,10 +116,10 @@ Interpretation:
 
 ### 1. Benchmark Setup
 
-- [ ] Locate the official LongMemEval-V2 repository, dataset, and runner.
-- [ ] Confirm license and dataset accessibility.
+- [x] Locate the official LongMemEval-V2 repository, dataset, and runner.
+- [x] Confirm license and dataset accessibility.
 - [ ] Download or prepare the dataset outside the runner.
-- [ ] Inspect schema and task categories.
+- [x] Inspect schema and task categories.
 - [ ] Select a small reproducible subset.
 - [ ] Save dataset path, row count, subset IDs, and hash in a manifest.
 
@@ -254,8 +254,8 @@ The final POC report must answer:
 
 ### M3: LongMemEval-V2 Adapter
 
-- [ ] Locate and document official dataset source.
-- [ ] Implement adapter for a small subset.
+- [x] Locate and document official dataset source.
+- [x] Implement adapter for a small subset.
 - [ ] Run D0 baseline.
 - [ ] Save metrics and report.
 
