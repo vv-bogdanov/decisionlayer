@@ -26,6 +26,13 @@ Latest D2 full run artifacts after targeted workflow enrichment:
 /tmp/decision-layer-d2-blind-full-v2
 ```
 
+Latest D2 full run artifacts after reader-output contract and stock-restocking
+clarification:
+
+```text
+/tmp/decision-layer-d2-blind-full-v3-broad
+```
+
 Conservative narrow oracle built from the same blind labels with strict
 commitment filtering:
 
@@ -52,6 +59,7 @@ Key current metrics:
 | Blind D1 | 30/295 | 0.101695 | 74 |
 | New D2 | 29/295 | 0.098305 | 11 |
 | D2 v2 | 36/295 | 0.122034 | 14 |
+| D2 v3 | 40/295 | 0.135593 | 14 |
 
 Main signal: `procedure` improved from `1/74` in D0 to `6/74` in D2, but this
 is based on sparse commitment coverage.
@@ -74,6 +82,13 @@ from `6/74` to `13/74`, using only 14 non-empty Decision Briefs. Audit
 false-decision rate remains `0.0`. Recall is still not meaningful against the
 broad draft oracle. These D2 v2 metrics were produced before the reader prompt
 contract was tightened.
+
+D2 v3 full improves D2 v2 from `36/295` to `40/295` and improves `procedure`
+from `13/74` to `16/74`, still using only 14 non-empty Decision Briefs. All D2
+v3 cases with non-empty Decision Briefs are correct. Audit false-decision rate
+remains `0.0` against the broad oracle, while broad-oracle recall remains
+unusable because the denominator is still 70k draft requirements. Completion
+tokens dropped from `9893` in D2 v2 to `4709` in D2 v3.
 
 Targeted reader-contract smoke after adding `/no_think`, one-line boxed output,
 and a more explicit stock-restocking module decision:
@@ -116,8 +131,6 @@ plain environment facts, UI state, answer keys, or transient observations.
 
 - [ ] Audit the draft manually: remove facts, answer-like statements,
   UI state, long observations, weak guesses, and duplicates.
-- [ ] Re-run full D2 after the reader-output contract and stock-restocking
-  clarification, then refresh the metrics table.
 - [ ] Run LLM-reader D1/D2 against the narrow oracle and compare accuracy,
   `decision_recall`, and `false_decision_rate`.
 
