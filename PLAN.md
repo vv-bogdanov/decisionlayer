@@ -23,6 +23,13 @@ Key current metrics:
 Main signal: `procedure` improved from `1/74` in D0 to `6/74` in D2, but this
 is based on sparse commitment coverage.
 
+Blind D1 canary after goal labels + rule-based goal augmentation:
+
+| Mode | Correct | Procedure Correct |
+| --- | ---: | ---: |
+| D0 baseline canary | 1/13 | 0/4 |
+| D1 blind canary | 4/13 | 3/4 |
+
 Decision Briefs should contain only accepted decisions, explicit requirements,
 constraints, procedures, and stable operating rules. They should not contain
 plain environment facts, UI state, answer keys, or transient observations.
@@ -47,9 +54,11 @@ plain environment facts, UI state, answer keys, or transient observations.
   UI state, long observations, weak guesses, and duplicates.
 - [x] Save the cleaned blind oracle draft as
   `configs/longmemeval-v2-full-blind-oracle-decisions.json`.
-- [ ] Improve procedure coverage beyond goal-only labels: inspect trajectory
-  states/protocol text for missing stable workflow rules without using final
-  `answer`.
+- [x] Improve procedure coverage beyond goal-only labels with deterministic
+  rule-based goal augmentation, without using final `answer`.
+- [ ] Inspect remaining procedure miss `07ffeedf`: use trajectory
+  states/protocol text to extract the missing stable workflow rule without
+  using final `answer`.
 - [ ] Run D1-only with the blind oracle and the same local reader/settings.
 - [ ] Compare blind D1 against the existing D0 baseline from
   `/tmp/decision-layer-overnight-20260603212552/full/D0`.

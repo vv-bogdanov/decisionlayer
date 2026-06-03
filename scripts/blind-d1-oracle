@@ -65,6 +65,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     build.add_argument("--max-decisions-per-question", type=int, default=0)
     build.add_argument("--allow-missing-labels", action="store_true")
+    build.add_argument("--no-rule-based-augment", action="store_true")
     build.set_defaults(func=run_build)
 
     args = parser.parse_args(argv)
@@ -191,6 +192,14 @@ def run_build(args: argparse.Namespace) -> int:
     )
     labels = load_labels(Path(args.labels_dir))
     required_ids = sorted({trajectory_id for ids in haystacks.values() for trajectory_id in ids})
+    rule_based_decisions = {}
+    if not args.no_rule_based_augment:
+        rule_based_decisions = extract_rule_based_goal_decisions(
+            data_root / "trajectories.jsonl",
+            set(required_ids),
+        )
+        for trajectory_id, decisions in rule_based_decisions.items():
+            labels[trajectory_id] = merge_decisions(decisions, labels.get(trajectory_id, []))
     missing = [trajectory_id for trajectory_id in required_ids if trajectory_id not in labels]
     if missing and not args.allow_missing_labels:
         preview = ", ".join(missing[:5])
@@ -221,6 +230,10 @@ def run_build(args: argparse.Namespace) -> int:
         "questions_with_decisions": len(oracle),
         "total_question_decisions": sum(len(values) for values in oracle.values()),
         "labeled_trajectories": len(labels),
+        "rule_based_augmented_trajectories": len(rule_based_decisions),
+        "rule_based_augmented_decisions": sum(
+            len(values) for values in rule_based_decisions.values()
+        ),
         "missing_labels": len(missing),
         "output": str(output_path),
     }
@@ -419,6 +432,54 @@ def load_labels(labels_dir: Path) -> dict[str, list[str]]:
                 raise ValueError(f"label item missing trajectory_id: {path}")
             labels[trajectory_id] = clean_decisions(raw_item.get("decisions"))
     return labels
+
+
+def extract_rule_based_goal_decisions(path: Path, required_ids: set[str]) -> dict[str, list[str]]:
+    repo_root = Path(__file__).resolve().parents[1]
+    src_root = repo_root / "src"
+    if str(src_root) not in sys.path:
+        sys.path.insert(0, str(src_root))
+
+    from decision_layer.extraction import RuleBasedDecisionExtractor, SourceMessage
+
+    extractor = RuleBasedDecisionExtractor()
+    decisions: dict[str, list[str]] = {}
+    with path.open(encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if not isinstance(row, dict):
+                raise ValueError(f"trajectory row must be an object at {path}:{line_number}")
+            trajectory_id = str(row["id"])
+            if trajectory_id not in required_ids:
+                continue
+            commands = extractor.extract(
+                SourceMessage(
+                    id=f"{trajectory_id}:goal",
+                    role="user",
+                    content=str(row.get("goal", "")),
+                    source_kind="chat",
+                )
+            )
+            texts = [command.text for command in commands if command.action == "add"]
+            cleaned = clean_decisions(texts)
+            if cleaned:
+                decisions[trajectory_id] = cleaned
+    return decisions
+
+
+def merge_decisions(*decision_lists: list[str]) -> list[str]:
+    merged = []
+    seen = set()
+    for decision_list in decision_lists:
+        for decision in clean_decisions(decision_list):
+            key = normalize_key(decision)
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(decision)
+    return merged
 
 
 def post_json(url: str, payload: dict[str, object], *, timeout_seconds: float) -> dict[str, Any]:
