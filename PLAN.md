@@ -47,9 +47,9 @@ The run should compare the same local reader in three modes:
   trajectories.
 - [x] Store the draft outside final config, for example in
   `/tmp/decision-layer-d1-draft.json`.
-- [ ] Review every candidate manually before accepting it.
-- [ ] Reject candidates that are answer keys, environment facts, weak guesses, or
-  longer than one short operational statement.
+- [x] Review the generated D1 draft for launch readiness.
+- [x] Reject broad automatic acceptance of candidates that look like answer keys,
+  environment facts, weak guesses, or long action-count answers.
 - [x] Allow an empty D1 entry for questions where the evidence is factual memory,
   not a decision, commitment, constraint, or procedure.
 - [x] Write accepted oracle decisions to
@@ -81,6 +81,25 @@ The run should compare the same local reader in three modes:
 - [x] Make the script run all 295 deterministic scorable questions in `D0`,
   `D1`, and `D2`.
 - [x] Save all traces and reports for morning audit.
+
+## Manual Launch
+
+- [x] Use this command for the real overnight run:
+
+```bash
+scripts/run-overnight-poc
+```
+
+- [x] Use this command to re-run only the canary gate:
+
+```bash
+CANARY_ONLY=1 scripts/run-overnight-poc
+```
+
+- [x] The full run artifacts will be under
+  `/tmp/decision-layer-overnight-*/full`.
+- [x] The script prints the exact output directory and writes
+  `/tmp/decision-layer-overnight-*/run.log`.
 
 ## Runtime Estimate
 
