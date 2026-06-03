@@ -289,7 +289,7 @@ The final POC report must answer:
 
 The POC is done when one documented command can:
 
-- [ ] create the environment;
+- [x] create the environment;
 - [x] run tests;
 - [x] run a fixture-level `D0` / `D1` / `D2` smoke suite;
 - [x] run the selected LongMemEval-V2 subset;

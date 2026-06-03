@@ -3,7 +3,8 @@
 ## Run
 
 - date: 2026-06-03
-- artifact path: `/tmp/decision-layer-lmev2-d2-structured-20260603172253`
+- artifact path: `/tmp/decision-layer-poc-check-final`
+- verified command: `scripts/run-poc-check`
 - benchmark: LongMemEval-V2
 - tier: `small`
 - subset file: `configs/longmemeval-v2-poc-subset.txt`
@@ -28,7 +29,7 @@ All 3 examples are scorable locally. No LLM judge examples are included.
 | --- | ---: | ---: | ---: | ---: | ---: |
 | D0 | 0.0 | 0 / 3 | 0 / 3 | 164193 | 164577 |
 | D1 | 1.0 | 3 / 3 | 3 / 3 | 164395 | 164503 |
-| D2 | 1.0 | 3 / 3 | 3 / 3 | 164520 | 164625 |
+| D2 | 1.0 | 3 / 3 | 3 / 3 | 164520 | 164652 |
 
 - `D1 - D0`: `+1.0`
 - `D2 - D0`: `+1.0`

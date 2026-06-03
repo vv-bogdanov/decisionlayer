@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+data_root="${DATA_ROOT:-data/longmemeval-v2}"
+output_dir="${OUTPUT_DIR:-/tmp/decision-layer-poc-check-$(date +%Y%m%d%H%M%S)}"
+reader="${READER:-openai-chat}"
+reader_base_url="${READER_BASE_URL:-http://127.0.0.1:18080/v1}"
+reader_model="${READER_MODEL:-qwen36-35b-a3b-udiq3s}"
+reader_max_tokens="${READER_MAX_TOKENS:-128}"
+
+if [[ ! -f "$data_root/questions.jsonl" || ! -f "$data_root/trajectories.jsonl" ]]; then
+  printf 'missing LongMemEval-V2 data at %s\n' "$data_root" >&2
+  printf 'run: scripts/prepare-longmemeval-v2 %s\n' "$data_root" >&2
+  exit 2
+fi
+
+uv sync --extra dev
+uv run --extra dev pytest
+uv run --extra dev ruff check .
+uv run --extra dev ruff format --check .
+uv run --extra dev mypy src/decision_layer
+
+uv run decision-layer run-suite \
+  --data-root "$data_root" \
+  --output-dir "$output_dir" \
+  --question-id-file configs/longmemeval-v2-poc-subset.txt \
+  --reader "$reader" \
+  --reader-base-url "$reader_base_url" \
+  --reader-model "$reader_model" \
+  --reader-max-tokens "$reader_max_tokens" \
+  --oracle-decisions configs/longmemeval-v2-poc-oracle-decisions.json
+
+printf 'POC artifacts: %s\n' "$output_dir"

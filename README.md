@@ -17,6 +17,12 @@ uv run --extra dev ruff format --check .
 uv run --extra dev mypy src/decision_layer
 ```
 
+Full local POC check:
+
+```bash
+scripts/run-poc-check
+```
+
 ## CLI Smoke
 
 ```bash
