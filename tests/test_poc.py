@@ -15,6 +15,7 @@ from decision_layer.poc import (
     apply_oracle_decisions,
     build_reader_context,
     decision_relevant_to_question,
+    oracle_decision_relevant_to_question,
     rank_decision_texts,
     retrieve_keyword_context,
     run_poc,
@@ -241,6 +242,52 @@ def test_oracle_decisions_skip_real_factual_question_types() -> None:
             "reason": "non_decision_question_type",
         }
     ]
+
+
+def test_oracle_decisions_filter_irrelevant_task_facts() -> None:
+    question = LongMemEvalV2Question(
+        id="q_duplicate_problem_field",
+        domain="enterprise",
+        environment="servicenow",
+        question_type="procedure",
+        question=(
+            "For the task of filtering and removing duplicated problems, besides "
+            "problem description, which field is the most important in our typical workflow?\n\n"
+            "Mark your final answer (should be one or more short phrases) in \\boxed{}."
+        ),
+        image=None,
+        answer="priority",
+        eval_function="norm_phrase_set_match",
+    )
+    example = LongMemEvalV2Example(
+        question=question,
+        trajectory_ids=(),
+        trajectories=(),
+    )
+
+    state, traces = apply_oracle_decisions(
+        DecisionState(),
+        example,
+        {
+            "q_duplicate_problem_field": [
+                "Set field 'Short description' to 'SAP Materials Management is slow'.",
+                "Delete duplicate expense lines with the same short description.",
+            ]
+        },
+    )
+
+    assert state.decisions == ()
+    assert [trace["reason"] for trace in traces] == [
+        "irrelevant_to_question",
+        "irrelevant_to_question",
+    ]
+
+
+def test_oracle_decision_relevance_allows_compact_overlap() -> None:
+    assert oracle_decision_relevant_to_question(
+        "Use Guest checkout as the default checkout option.",
+        "Which checkout option is the default?",
+    )
 
 
 def test_automatic_decisions_extract_state_supported_problem_request_rule() -> None:

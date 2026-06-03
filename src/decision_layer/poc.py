@@ -390,7 +390,7 @@ def apply_oracle_decisions(
     example: LongMemEvalV2Example,
     oracle_decisions: dict[str, list[str]],
 ) -> tuple[DecisionState, list[dict[str, object]]]:
-    traces = []
+    traces: list[dict[str, object]] = []
     if example.question.question_type in NON_DECISION_QUESTION_TYPES:
         return state, [
             {
@@ -405,6 +405,16 @@ def apply_oracle_decisions(
         example.question.question,
     )
     for index, text in enumerate(ranked_decisions):
+        if not oracle_decision_relevant_to_question(text, example.question.question):
+            traces.append(
+                {
+                    "event": "decision_candidate_skipped",
+                    "question_id": example.question.id,
+                    "source_message_id": f"{example.question.id}:oracle:{index}",
+                    "reason": "irrelevant_to_question",
+                }
+            )
+            continue
         state, trace = add_decision(
             state,
             text,
@@ -421,7 +431,7 @@ def apply_oracle_decisions(
 
 
 def rank_decision_texts(decision_texts: list[str], question_text: str) -> tuple[str, ...]:
-    question_terms = keyword_terms(question_text)
+    question_terms = keyword_terms(retrieval_question_text(question_text))
     if not question_terms:
         return tuple(decision_texts)
 
@@ -430,6 +440,25 @@ def rank_decision_texts(decision_texts: list[str], question_text: str) -> tuple[
         score = len(keyword_terms(decision_text) & question_terms)
         scored.append((-score, index, decision_text))
     return tuple(decision_text for _score, _index, decision_text in sorted(scored))
+
+
+def oracle_decision_relevant_to_question(decision_text: str, question_text: str) -> bool:
+    if decision_relevant_to_question(decision_text, question_text):
+        return True
+    return (
+        len(keyword_terms(decision_text) & keyword_terms(retrieval_question_text(question_text)))
+        >= 3
+    )
+
+
+def retrieval_question_text(question_text: str) -> str:
+    text = question_text.split("\n\nA.", 1)[0]
+    text = re.sub(
+        r"(?is)\b(?:Put|Mark|Your final answer|Tell me|Say the number).*$",
+        "",
+        text,
+    )
+    return text
 
 
 def apply_automatic_decisions(

@@ -66,6 +66,11 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument("--max-decisions-per-question", type=int, default=0)
     build.add_argument("--allow-missing-labels", action="store_true")
     build.add_argument("--no-rule-based-augment", action="store_true")
+    build.add_argument(
+        "--strict-commitments",
+        action="store_true",
+        help="Keep only high-precision commitment-like rules and skip task facts.",
+    )
     build.set_defaults(func=run_build)
 
     args = parser.parse_args(argv)
@@ -211,6 +216,8 @@ def run_build(args: argparse.Namespace) -> int:
         seen = set()
         for trajectory_id in haystacks[question_id]:
             for decision in labels.get(trajectory_id, []):
+                if args.strict_commitments and not is_strict_commitment(decision):
+                    continue
                 normalized = normalize_key(decision)
                 if normalized in seen:
                     continue
@@ -235,6 +242,7 @@ def run_build(args: argparse.Namespace) -> int:
             len(values) for values in rule_based_decisions.values()
         ),
         "missing_labels": len(missing),
+        "strict_commitments": bool(args.strict_commitments),
         "output": str(output_path),
     }
     print(json.dumps(summary, ensure_ascii=False))
@@ -366,6 +374,60 @@ def should_skip_decision(text: str) -> bool:
     if key.endswith("..."):
         return True
     return "closed - complete" in key
+
+
+STRICT_SKIP_PREFIXES = (
+    "access ",
+    "add ",
+    "answer ",
+    "calculate ",
+    "cancel ",
+    "click ",
+    "create a filter",
+    "create a new ",
+    "create new ",
+    "delete ",
+    "display ",
+    "edit ",
+    "enter ",
+    "filter ",
+    "find ",
+    "go to ",
+    "identify ",
+    "locate ",
+    "mark ",
+    "navigate ",
+    "open ",
+    "place an order",
+    "report ",
+    "retrieve ",
+    "select ",
+    "set ",
+    "show ",
+    "sort ",
+    "sum ",
+    "update ",
+    "use the ",
+    "verify ",
+)
+STRICT_KEEP_PREFIXES = (
+    "do not ",
+    "for ",
+    "if ",
+    "to complete ",
+    "to create ",
+    "to locate ",
+    "when ",
+)
+
+
+def is_strict_commitment(text: str) -> bool:
+    key = normalize_key(text)
+    if not key:
+        return False
+    if any(key.startswith(prefix) for prefix in STRICT_SKIP_PREFIXES):
+        return False
+    return any(key.startswith(prefix) for prefix in STRICT_KEEP_PREFIXES)
 
 
 def load_question_ids(path: Path) -> list[str]:

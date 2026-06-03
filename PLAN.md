@@ -26,6 +26,17 @@ Latest D2 full run artifacts after targeted workflow enrichment:
 /tmp/decision-layer-d2-blind-full-v2
 ```
 
+Conservative narrow oracle built from the same blind labels with strict
+commitment filtering:
+
+```text
+configs/longmemeval-v2-full-blind-oracle-decisions.narrow.json
+```
+
+Narrow oracle summary: 141 questions with decisions, 1,833 question-level
+decisions, 13 unique decision texts. This is not a hand-audited gold set, but it
+removes most task facts and field-value noise from the 70k-line broad draft.
+
 Current result is useful as a pipeline and baseline check, but not as a full
 Decision Layer proof. The current D1 oracle contains only a few accepted
 commitments, so D1 is not yet a real upper bound.
@@ -76,6 +87,12 @@ tokens total. `3a2e9368` was mainly a clipped/verbose reader-output issue.
 `Reports > View/Run` and `Self-Service > Service Catalog`, with no approvals,
 procurement, request-management, or stockroom modules.
 
+D1 retrieval/ranking now gates oracle decisions by relevance using the core
+question text, with answer-format instructions and option blocks stripped before
+keyword scoring. Targeted `767e4106` smoke: 357 broad oracle candidates skipped,
+0 Decision Brief entries, so the `Short description` noise regression is
+removed.
+
 Blind D1 canary after goal labels + rule-based goal augmentation:
 
 | Mode | Correct | Procedure Correct |
@@ -91,12 +108,10 @@ plain environment facts, UI state, answer keys, or transient observations.
 
 - [ ] Audit the draft manually: remove facts, answer-like statements,
   UI state, long observations, weak guesses, and duplicates.
-- [ ] Narrow/audit the broad blind oracle before treating `decision_recall` as a
-  meaningful metric.
 - [ ] Re-run full D2 after the reader-output contract and stock-restocking
   clarification, then refresh the metrics table.
-- [ ] Improve decision retrieval/ranking to reduce D1 noise, especially
-  `767e4106`.
+- [ ] Run D1/D2 against the narrow oracle and compare D1 noise,
+  `decision_recall`, and `false_decision_rate`.
 
 ## Next D1 Command
 
