@@ -32,15 +32,15 @@ accepted decisions can improve long-horizon task performance.
 
 ## Architecture Constraints
 
-- [ ] Core logic is deterministic and side-effect free.
-- [ ] Core owns only decision semantics and Decision Brief construction.
-- [ ] Extraction is a plugin boundary.
-- [ ] Storage is a plugin boundary.
-- [ ] Retrieval / memory backend is a plugin boundary.
-- [ ] LLM calls are outside the pure core.
-- [ ] Benchmarks and judges are outside the pure core.
+- [x] Core logic is deterministic and side-effect free.
+- [x] Core owns only decision semantics and Decision Brief construction.
+- [x] Extraction is a plugin boundary.
+- [x] Storage is a plugin boundary.
+- [x] Retrieval / memory backend is a plugin boundary.
+- [x] LLM calls are outside the pure core.
+- [x] Benchmarks and judges are outside the pure core.
 - [ ] No custom proof benchmark.
-- [ ] No production API, UI, database, vector store, or SDK in the first POC.
+- [x] No production API, UI, database, vector store, or SDK in the first POC.
 
 ## Minimal Core
 
@@ -55,19 +55,19 @@ Decision:
 
 Core operations:
 
-- [ ] `decision.add`
-- [ ] `decision.replace`
-- [ ] `decision.remove`
-- [ ] `decision.list`
-- [ ] `decision.brief`
+- [x] `decision.add`
+- [x] `decision.replace`
+- [x] `decision.remove`
+- [x] `decision.list`
+- [x] `decision.brief`
 
 Core invariants:
 
-- [ ] A decision is a short accepted statement.
-- [ ] A decision must be understandable without metadata.
-- [ ] Active context contains only current decisions.
-- [ ] Replaced or removed decisions are not included in the active brief.
-- [ ] History can be logged for traceability, but history is not active
+- [x] A decision is a short accepted statement.
+- [x] A decision must be understandable without metadata.
+- [x] Active context contains only current decisions.
+- [x] Replaced or removed decisions are not included in the active brief.
+- [x] History can be logged for traceability, but history is not active
   context.
 
 ## Authority Rules
@@ -76,19 +76,19 @@ Only user-authorized input can create, replace, or remove decisions.
 
 Allowed authority sources:
 
-- [ ] Explicit user commit signal.
-- [ ] User confirmation of an agent proposal.
-- [ ] Manual API/tool call made by the user or trusted application layer.
+- [x] Explicit user commit signal.
+- [x] User confirmation of an agent proposal.
+- [x] Manual API/tool call made by the user or trusted application layer.
 
 Disallowed authority sources:
 
-- [ ] Assistant messages without user confirmation.
-- [ ] Tool outputs.
-- [ ] Retrieved memory.
-- [ ] Documents.
-- [ ] Web pages.
-- [ ] Benchmark answers.
-- [ ] External sources.
+- [x] Assistant messages without user confirmation.
+- [x] Tool outputs.
+- [x] Retrieved memory.
+- [x] Documents.
+- [x] Web pages.
+- [x] Benchmark answers.
+- [x] External sources.
 
 Safety rule:
 
@@ -141,22 +141,22 @@ Interpretation:
 
 ### 4. Automatic Decision Extraction: D2
 
-- [ ] Implement conservative trigger detection for user messages.
+- [x] Implement conservative trigger detection for user messages.
 - [ ] Add structured extraction only for candidate messages.
-- [ ] Ignore assistant messages, tool outputs, retrieved memory, and external
+- [x] Ignore assistant messages, tool outputs, retrieved memory, and external
   content.
-- [ ] Add no decision when the extractor is uncertain.
+- [x] Add no decision when the extractor is uncertain.
 - [ ] Run `D2` on the same subset.
 - [ ] Compare `D2` against `D0` and `D1`.
 
 ### 5. Decision Brief
 
-- [ ] Define the minimal brief format.
-- [ ] Include relevant current decisions.
-- [ ] Include an instruction to treat decisions as current commitments.
-- [ ] Include an instruction to ask for clarification if decisions conflict or
+- [x] Define the minimal brief format.
+- [x] Include relevant current decisions.
+- [x] Include an instruction to treat decisions as current commitments.
+- [x] Include an instruction to ask for clarification if decisions conflict or
   look outdated.
-- [ ] Enforce a token budget.
+- [x] Enforce a token budget.
 - [ ] Log the exact brief used for each example.
 
 ### 6. Traceability
@@ -171,21 +171,21 @@ Interpretation:
 
 ### 7. Tests
 
-- [ ] Add unit tests for add, replace, remove, and list.
-- [ ] Add unit tests for Decision Brief rendering.
-- [ ] Add unit tests for strong commit signals.
-- [ ] Add unit tests for weak non-commit signals.
-- [ ] Add unit tests that assistant/tool/retrieved content cannot create
+- [x] Add unit tests for add, replace, remove, and list.
+- [x] Add unit tests for Decision Brief rendering.
+- [x] Add unit tests for strong commit signals.
+- [x] Add unit tests for weak non-commit signals.
+- [x] Add unit tests that assistant/tool/retrieved content cannot create
   decisions.
 - [ ] Add a smoke test for D0/D1/D2 on a tiny fixture.
 
 Golden cases:
 
-- [ ] `"Maybe SQLite"` -> no decision.
-- [ ] `"SQLite looks interesting"` -> no decision.
-- [ ] `"Let's commit: use SQLite for the MVP"` -> add decision.
-- [ ] `"Change the decision: use PostgreSQL for the MVP"` -> replace decision.
-- [ ] `"Goal: test Decision Layer on the benchmark"` -> add decision.
+- [x] `"Maybe SQLite"` -> no decision.
+- [x] `"SQLite looks interesting"` -> no decision.
+- [x] `"Let's commit: use SQLite for the MVP"` -> add decision.
+- [x] `"Change the decision: use PostgreSQL for the MVP"` -> replace decision.
+- [x] `"Goal: test Decision Layer on the benchmark"` -> add decision.
 
 ## Metrics
 
@@ -238,19 +238,19 @@ The final POC report must answer:
 
 ### M1: Repository Skeleton
 
-- [ ] Create Python project skeleton with `uv`.
-- [ ] Add package structure.
-- [ ] Add pytest.
-- [ ] Add linting and formatting.
-- [ ] Add a minimal CLI entrypoint.
+- [x] Create Python project skeleton with `uv`.
+- [x] Add package structure.
+- [x] Add pytest.
+- [x] Add linting and formatting.
+- [x] Add a minimal CLI entrypoint.
 
 ### M2: Pure Decision Core
 
-- [ ] Implement Decision model.
-- [ ] Implement in-memory state object.
-- [ ] Implement add, replace, remove, list.
-- [ ] Implement Decision Brief rendering.
-- [ ] Add unit tests.
+- [x] Implement Decision model.
+- [x] Implement in-memory state object.
+- [x] Implement add, replace, remove, list.
+- [x] Implement Decision Brief rendering.
+- [x] Add unit tests.
 
 ### M3: LongMemEval-V2 Adapter
 
