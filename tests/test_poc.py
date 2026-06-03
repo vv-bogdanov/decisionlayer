@@ -79,8 +79,10 @@ def test_decision_relevance_rejects_neighboring_workflows() -> None:
         "I need to offboard a user. What should I do on that user's hardware asset record?"
     )
     restocking_decision = (
-        "For dashboard-based restocking of low-stock items, use Reports to locate the "
-        "stock report before ordering."
+        "For dashboard-based restocking of low-stock items, use Reports > View/Run "
+        "to locate the stock report, then Self-Service > Service Catalog to order "
+        "the least-available item; no approvals, procurement, request-management, "
+        "or stockroom modules are required."
     )
     restocking_question = (
         "What shared application or module family is used by workload balancing and "

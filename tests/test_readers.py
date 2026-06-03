@@ -83,6 +83,8 @@ def test_openai_chat_reader_posts_prompt_and_reads_usage(monkeypatch) -> None:  
     assert captured["timeout"] == 7.0
     assert captured["payload"]["model"] == "local-model"
     assert captured["payload"]["max_tokens"] == 9
+    assert "/no_think" in captured["payload"]["messages"][0]["content"]
+    assert "\\boxed{A}" in captured["payload"]["messages"][0]["content"]
     assert "Do not explain" in captured["payload"]["messages"][0]["content"]
 
 

@@ -60,7 +60,21 @@ stock-restocking decisions: `7/7` correct on `07ffeedf`, `25b00876`,
 D2 v2 full improves old D2 from `25/295` to `36/295` and improves `procedure`
 from `6/74` to `13/74`, using only 14 non-empty Decision Briefs. Audit
 false-decision rate remains `0.0`. Recall is still not meaningful against the
-broad draft oracle.
+broad draft oracle. These D2 v2 metrics were produced before the reader prompt
+contract was tightened.
+
+Targeted reader-contract smoke after adding `/no_think`, one-line boxed output,
+and a more explicit stock-restocking module decision:
+
+```text
+/tmp/decision-layer-reader-contract-smoke
+```
+
+Result: `2/2` correct on `3a2e9368` and `eb3cfd03`, with only 12 completion
+tokens total. `3a2e9368` was mainly a clipped/verbose reader-output issue.
+`eb3cfd03` needed the decision to state the exact module set:
+`Reports > View/Run` and `Self-Service > Service Catalog`, with no approvals,
+procurement, request-management, or stockroom modules.
 
 Blind D1 canary after goal labels + rule-based goal augmentation:
 
@@ -75,59 +89,12 @@ plain environment facts, UI state, answer keys, or transient observations.
 
 ## Active Checklist
 
-- [x] Fix the final shell quoting error in `scripts/run-overnight-poc`:
-  `unexpected EOF while looking for matching "`.
-- [x] Add streaming artifacts during benchmark runs so each completed example is
-  saved immediately, not only at the end of a full mode.
-- [x] Write `metrics.partial.json` during long runs so progress can be inspected
-  while the benchmark is still running.
-- [x] Keep resume/cache as the default behavior; keep `OVERWRITE=1` /
-  `--no-resume` as the explicit clean-rerun path.
-- [x] Prepare a cheap blind D1 labeling input that hides final `question`,
-  `answer`, and `eval_function`.
-- [x] Run local llama.cpp draft labeling in small chunks with reasoning off.
-- [x] Extract only commitment-like statements from trajectories: decisions,
-  requirements, constraints, procedures, stable operating rules, and gotchas as
-  rules.
 - [ ] Audit the draft manually: remove facts, answer-like statements,
   UI state, long observations, weak guesses, and duplicates.
-- [x] Save the cleaned blind oracle draft as
-  `configs/longmemeval-v2-full-blind-oracle-decisions.json`.
-- [x] Improve procedure coverage beyond goal-only labels with deterministic
-  rule-based goal augmentation, without using final `answer`.
-- [x] Inspect remaining procedure miss `07ffeedf`: use trajectory
-  states/protocol text to extract the missing stable workflow rule without
-  using final `answer`.
-- [x] Run D1-only with the blind oracle and the same local reader/settings.
-- [x] Compare blind D1 against the existing D0 baseline from
-  `/tmp/decision-layer-overnight-20260603212552/full/D0`.
-- [x] Inspect D1 regressions where D0 was correct but D1 was wrong: one
-  procedure noise regression (`767e4106`) and one static reader-variance case
-  without a Decision Brief (`f1f9de44`).
-- [x] First-pass inspect cases with non-empty Decision Briefs where D1 still
-  failed: many failures have irrelevant first-ranked task requirements, so
-  decision retrieval/ranking is now the main bottleneck.
-- [x] Use the blind D1 oracle as the gold target for D2 extraction audit.
-- [x] Run D2 against the blind oracle after the D1 ceiling is established.
-- [x] Improve the extractor using concrete D2 missing-decision cases:
-  investment allocation and user offboarding.
-- [x] Re-run D2 and track `decision_recall`, `false_decision_rate`, `D2-D1 gap`,
-  and `procedure D2-D0`.
 - [ ] Narrow/audit the broad blind oracle before treating `decision_recall` as a
   meaningful metric.
-- [x] Inspect new D2 failed decision cases with non-empty briefs:
-  `4df5e6b4`, `52dd33bb`, and `bfb3bcc4`.
-- [x] Enrich ambiguous workflow decisions where D2 has a relevant but
-  insufficient brief: investment final action (`52dd33bb`) and offboarding full
-  step order (`bfb3bcc4`).
-- [x] Consider stricter short-answer reader prompting for cases like
-  `4df5e6b4`, where the brief contains the right module but the reader does not
-  return the required short phrase.
-- [x] Add a stock-restocking report decision so `4df5e6b4` has both compared
-  workflows grounded in Decision Briefs.
-- [x] Re-run full D2 after targeted fixes and refresh the metrics table.
-- [ ] Inspect new D2 v2 failed decision cases with non-empty briefs:
-  `3a2e9368` and `eb3cfd03`.
+- [ ] Re-run full D2 after the reader-output contract and stock-restocking
+  clarification, then refresh the metrics table.
 - [ ] Improve decision retrieval/ranking to reduce D1 noise, especially
   `767e4106`.
 

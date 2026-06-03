@@ -90,10 +90,13 @@ class OpenAIChatReader:
                 {
                     "role": "system",
                     "content": (
+                        "/no_think\n"
                         "Answer the question using only the provided context. "
-                        "Return only the final short answer, option letter, boolean, "
-                        "number, or phrase requested by the question. Do not explain. "
-                        "If the context is insufficient, return UNKNOWN."
+                        "Return exactly one line with only the final short answer, "
+                        "option letter, boolean, number, or phrase requested by the "
+                        "question. If the question requests boxed format, return only "
+                        "that boxed answer, for example \\boxed{A}. Do not explain or "
+                        "list options. If the context is insufficient, return UNKNOWN."
                     ),
                 },
                 {

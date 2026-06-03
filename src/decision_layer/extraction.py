@@ -160,8 +160,10 @@ def structured_workflow_texts(text: str) -> tuple[str, ...]:
         and ("title of the report" in lowered or "dashboard chart" in lowered)
     ):
         decisions.append(
-            "For dashboard-based restocking of low-stock items, use Reports to locate the "
-            "stock report before ordering."
+            "For dashboard-based restocking of low-stock items, use Reports > View/Run "
+            "to locate the stock report, then Self-Service > Service Catalog to order "
+            "the least-available item; no approvals, procurement, request-management, "
+            "or stockroom modules are required."
         )
     if (
         ("allocate investments" in lowered or "maximizing total investment return" in lowered)

@@ -127,8 +127,10 @@ def test_structured_workflow_extraction_for_stock_restocking_report() -> None:
         "#CAT001314192. Place an order for the least available item in stock."
     ) == (
         "add",
-        "For dashboard-based restocking of low-stock items, use Reports to locate the "
-        "stock report before ordering.",
+        "For dashboard-based restocking of low-stock items, use Reports > View/Run "
+        "to locate the stock report, then Self-Service > Service Catalog to order "
+        "the least-available item; no approvals, procurement, request-management, "
+        "or stockroom modules are required.",
     )
 
 
