@@ -58,7 +58,7 @@ The proof is credible only if the comparisons are fair and reproducible.
 - [ ] Run deterministic baselines once and LLM-dependent variants at least 3
   times.
 - [x] Report confidence intervals or bootstrap intervals for key metrics.
-- [ ] Store all generated `metrics.json`, `predictions.jsonl`, `trace.jsonl`,
+- [x] Store all generated `metrics.json`, `predictions.jsonl`, `trace.jsonl`,
   and `report.md` under `reports/`.
 - [x] Keep dataset download outside the runner; use explicit `data_path`.
 - [ ] Document known benchmark weaknesses and manual audit decisions.
@@ -130,10 +130,10 @@ Work:
   subset IDs.
 - [x] Run all current baselines on a dev subset.
 - [ ] Run all current baselines on a held-out test subset.
-- [ ] Add per-question-type tables.
-- [ ] Add failure analysis grouped by extraction, recall, scoring, update, and
+- [x] Add per-question-type tables.
+- [x] Add failure analysis grouped by extraction, recall, scoring, update, and
   abstention.
-- [ ] Compare cost/latency against full-context and RAG baselines.
+- [x] Compare cost/latency against full-context and RAG baselines.
 - [ ] Audit a small sample of labels and judge decisions manually.
 
 Target commands:
@@ -373,7 +373,7 @@ The proof must show which component helps.
 - [ ] Run held-out test baseline table.
 - [ ] Generate ablation table.
 - [ ] Generate cost/latency Pareto table.
-- [ ] Write failure analysis.
+- [x] Write failure analysis.
 
 ### M3: MemoryAgentBench Proof Run
 
@@ -466,5 +466,5 @@ Minimum next deliverables:
 - [x] `manifest.json` for every experiment run.
 - [x] `reports/proof/index.md` aggregation.
 - [x] LongMemEval dev baseline table with all current baselines.
-- [ ] LongMemEval failure analysis table.
+- [x] LongMemEval failure analysis table.
 - [x] Updated README commands.

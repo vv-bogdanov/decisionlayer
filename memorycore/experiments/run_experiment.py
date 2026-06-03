@@ -82,6 +82,9 @@ def run_comparison(config: dict[str, Any], memories: list[str]) -> dict[str, Any
         "baseline_metrics": baseline_metrics,
         "best_memory": best_memory(baseline_metrics),
     }
+    failure_cause_metrics = grouped_failure_cause_metrics(all_predictions)
+    if failure_cause_metrics:
+        metrics["failure_cause_metrics"] = failure_cause_metrics
     write_experiment_outputs(
         output_dir=Path(str(config["output_dir"])),
         config=config,
@@ -356,6 +359,9 @@ def compute_metrics(
     type_metrics = grouped_metrics(predictions, "question_type")
     if type_metrics:
         metrics["question_type_metrics"] = type_metrics
+    failure_cause_metrics = grouped_failure_cause_metrics(predictions)
+    if failure_cause_metrics:
+        metrics["failure_cause_metrics"] = failure_cause_metrics
     judge_predictions = [item for item in predictions if "judge_score" in item]
     if judge_predictions:
         metrics["judge_score"] = round(
@@ -369,6 +375,26 @@ def compute_metrics(
             6,
         )
     return metrics
+
+
+def grouped_failure_cause_metrics(predictions: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    failures = [item for item in predictions if not item.get("correct")]
+    if not failures:
+        return {}
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for prediction in failures:
+        cause = str(prediction.get("probable_failure_cause") or "unknown")
+        groups.setdefault(cause, []).append(prediction)
+    total = len(predictions)
+    failure_total = len(failures)
+    return {
+        cause: {
+            "failures": len(rows),
+            "failure_share": round(len(rows) / failure_total, 6) if failure_total else 0.0,
+            "dataset_share": round(len(rows) / total, 6) if total else 0.0,
+        }
+        for cause, rows in sorted(groups.items())
+    }
 
 
 def configured_forgetting_policy(config: dict[str, Any]) -> str | None:

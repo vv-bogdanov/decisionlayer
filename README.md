@@ -145,6 +145,7 @@ BM25, TF-IDF sparse vector, and hybrid recall
 baseline runner
 experiment reports
 run manifests and proof report aggregation
+failure-cause tables and cost/latency baseline comparison
 grid, Optuna, and Hydra multirun support
 optional LLM judge and LLM extractor behind explicit config
 cost estimate, bootstrap accuracy interval, and composite quality scoring

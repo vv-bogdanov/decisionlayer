@@ -135,7 +135,11 @@ def test_baseline_comparison_report_runs(tmp_path: Path) -> None:
 
     assert len(result["metrics"]["baseline_metrics"]) == 4
     assert result["metrics"]["best_memory"]
-    assert "Policy Comparison" in (tmp_path / "report.md").read_text(encoding="utf-8")
+    assert "failure_cause_metrics" in result["metrics"]
+    report = (tmp_path / "report.md").read_text(encoding="utf-8")
+    assert "Policy Comparison" in report
+    assert "Failure Cause Metrics" in report
+    assert "Traceability" in report
 
 
 def test_real_schema_baseline_comparison_report_runs(tmp_path: Path) -> None:

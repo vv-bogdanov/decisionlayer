@@ -59,7 +59,7 @@ def render_markdown_report(
         "| --- | ---: |",
     ]
     for key in sorted(metrics):
-        if key in {"baseline_metrics", "question_type_metrics"}:
+        if key in {"baseline_metrics", "question_type_metrics", "failure_cause_metrics"}:
             continue
         lines.append(f"| {key} | {metrics[key]} |")
     question_type_metrics = metrics.get("question_type_metrics")
@@ -90,17 +90,46 @@ def render_markdown_report(
                 "",
                 "## Policy Comparison",
                 "",
-                "| Memory | Accuracy | Examples | Brief Tokens |",
-                "| --- | ---: | ---: | ---: |",
+                "| Memory | Accuracy | CI 95% | Quality | Examples | Brief Tokens | Cost | Latency | Traceability |",
+                "| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |",
             ]
         )
         for row in baseline_metrics:
             lines.append(
-                "| {memory} | {accuracy} | {examples} | {memory_brief_tokens} |".format(
+                (
+                    "| {memory} | {accuracy} | {ci_low}..{ci_high} | {quality_score} | {examples} | "
+                    "{memory_brief_tokens} | {cost_estimate_usd} | {latency_seconds} | {source_traceability} |"
+                ).format(
                     memory=row.get("memory"),
                     accuracy=row.get("accuracy"),
+                    ci_low=row.get("accuracy_ci_low", ""),
+                    ci_high=row.get("accuracy_ci_high", ""),
+                    quality_score=row.get("quality_score", ""),
                     examples=row.get("examples"),
                     memory_brief_tokens=row.get("memory_brief_tokens"),
+                    cost_estimate_usd=row.get("cost_estimate_usd", ""),
+                    latency_seconds=row.get("latency_seconds", ""),
+                    source_traceability=row.get("source_traceability", ""),
+                )
+            )
+    failure_cause_metrics = metrics.get("failure_cause_metrics")
+    if isinstance(failure_cause_metrics, dict) and failure_cause_metrics:
+        lines.extend(
+            [
+                "",
+                "## Failure Cause Metrics",
+                "",
+                "| Probable Cause | Failures | Failure Share | Dataset Share |",
+                "| --- | ---: | ---: | ---: |",
+            ]
+        )
+        for cause, row in sorted(failure_cause_metrics.items()):
+            lines.append(
+                "| {cause} | {failures} | {failure_share} | {dataset_share} |".format(
+                    cause=cause,
+                    failures=row.get("failures"),
+                    failure_share=row.get("failure_share"),
+                    dataset_share=row.get("dataset_share"),
                 )
             )
     lines.extend(
