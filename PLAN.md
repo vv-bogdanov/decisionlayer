@@ -78,7 +78,10 @@ Use this as the short working queue. The broader proof checklist remains below.
 - [x] Run MemoryAgentBench smoke on all four official splits.
 - [x] Run MemoryAgentBench dev baseline table on all four official splits.
 - [x] Add MemoryAgentBench competency summary table.
-- [ ] Run MemoryAgentBench held-out baseline table on all four official splits.
+- [x] Run MemoryAgentBench held-out baseline table on all four official splits.
+- [ ] Inspect MemoryAgentBench TTL exact-format failures.
+- [ ] Run judge-required MemoryAgentBench tasks with local llama.cpp beyond the
+  smoke test.
 
 ## Evidence Standard
 
@@ -86,7 +89,7 @@ The proof is credible only if the comparisons are fair and reproducible.
 
 - [x] Pin exact dataset versions and local paths in a run manifest.
 - [x] Pin model, extractor, judge, embedding model, and prompt versions.
-- [ ] Separate tuning/dev runs from final held-out test runs.
+- [x] Separate tuning/dev runs from final held-out test runs.
 - [ ] Use the same token budget and context budget for competing systems.
 - [ ] Run deterministic baselines once and LLM-dependent variants at least 3
   times.
@@ -219,7 +222,7 @@ Work:
   `Conflict_Resolution`.
 - [x] Run a small smoke for each split.
 - [x] Run a dev subset for each split.
-- [ ] Run a held-out test subset for each split.
+- [x] Run a held-out test subset for each split.
 - [x] Normalize official answer alias arrays before scoring.
 - [x] Add split-specific deterministic scoring policy instead of applying
   substring matching to every split.
@@ -229,6 +232,21 @@ Work:
   LongMemEval-style tasks.
 - [x] Report metrics by MemoryAgentBench competency.
 - [x] Add budget-aware comparison because some rows have huge contexts.
+
+Current held-out result:
+
+- [x] Accurate_Retrieval held-out: 100 examples, all current baselines at 0.38
+  accuracy with `substring_exact_match`.
+- [x] Conflict_Resolution held-out: 100 examples, all current baselines at 0.26
+  accuracy with `substring_exact_match`.
+- [x] Test_Time_Learning held-out: 100 examples, exact accuracy 0.0 while
+  substring match is 1.0, so the next useful task is answer-format extraction
+  rather than another identical baseline run.
+- [x] Long_Range_Understanding held-out: 71 detectiveQA examples, all current
+  baselines at 0.0 exact accuracy.
+- [ ] MemoryAgentBench currently does not prove a quality win for
+  `decisions_facts`; it only proves the harness can run reproducible
+  competency-level comparisons.
 
 Target command:
 
@@ -428,7 +446,7 @@ The proof must show which component helps.
 - [ ] Run judge-required MemoryAgentBench tasks with local llama.cpp.
 - [x] Run smoke for every split.
 - [x] Run dev baseline table for every split.
-- [ ] Run held-out test table for every split.
+- [x] Run held-out test table for every split.
 - [x] Summarize by competency.
 
 ### M4: HaluMem Safety Proof
@@ -504,4 +522,12 @@ cost reduction.
 - [x] Update this checklist after the regenerated report is verified.
 - [x] Continue with `M3: MemoryAgentBench Proof Run`.
 - [x] Add MemoryAgentBench competency summary.
-- [ ] Decide held-out subset size for MemoryAgentBench after dev latency review.
+- [x] Decide held-out subset size for MemoryAgentBench after dev latency review.
+- [x] Run MemoryAgentBench held-out baseline tables for all four official
+  splits.
+- [ ] Inspect TTL exact-format failures and decide whether to add a
+  task-specific answer extractor.
+- [ ] Run a non-smoke llama.cpp judge subset for MemoryAgentBench
+  judge-required tasks.
+- [ ] Continue with `M4: HaluMem Safety Proof` after the MemoryAgentBench
+  scoring gaps are documented.
