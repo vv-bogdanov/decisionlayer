@@ -234,6 +234,14 @@ def write_sweep_outputs(
     best_config: dict[str, Any],
     trials: list[dict[str, Any]],
 ) -> None:
+    metric = str(config.get("metric") or "accuracy")
+    best_value = max((float(row.get(metric, 0.0)) for row in trials), default=0.0)
+    metrics = {
+        "run_kind": "sweep",
+        "trials": len(trials),
+        "best_metric": metric,
+        "best_value": round(best_value, 6),
+    }
     (output_dir / "best_config.yaml").write_text(render_yaml(best_config), encoding="utf-8")
     write_trials_csv(output_dir / "trials.csv", trials)
     (output_dir / "sweep_report.md").write_text(
@@ -244,14 +252,14 @@ def write_sweep_outputs(
         json.dumps(config, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+    (output_dir / "metrics.json").write_text(
+        json.dumps(metrics, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
     write_run_manifest(
         output_dir,
         config={**config, "run_kind": "sweep"},
-        metrics={
-            "trials": len(trials),
-            "best_metric": config.get("metric"),
-            "best_value": best_config.get(str(config.get("metric"))),
-        },
+        metrics=metrics,
         predictions_count=0,
         traces_count=0,
     )

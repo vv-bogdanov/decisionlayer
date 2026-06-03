@@ -24,4 +24,5 @@ def test_sweep_writes_expected_outputs(tmp_path: Path) -> None:
     assert (tmp_path / "best_config.yaml").exists()
     assert (tmp_path / "trials.csv").exists()
     assert (tmp_path / "sweep_report.md").exists()
+    assert (tmp_path / "metrics.json").exists()
     assert (tmp_path / "manifest.json").exists()

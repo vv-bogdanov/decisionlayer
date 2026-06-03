@@ -42,3 +42,21 @@ def test_aggregate_proof_writes_index(tmp_path: Path) -> None:
     assert "Proof Run Index" in index
     assert "toy_run" in index
     assert "decisions_facts" in index
+
+
+def test_aggregate_proof_summarizes_comparison_runs(tmp_path: Path) -> None:
+    proof_root = tmp_path / "proof"
+    run_experiment(
+        {
+            "benchmark": "toy",
+            "compare_memories": "no_memory,decisions_facts",
+            "output_dir": str(proof_root / "toy_compare"),
+        }
+    )
+
+    aggregate_proof_main([str(proof_root)])
+
+    index = (proof_root / "index.md").read_text(encoding="utf-8")
+    assert "Baseline And Ablation Summary" in index
+    assert "Cost/Latency Pareto Candidates" in index
+    assert "no_memory" in index

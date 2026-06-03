@@ -277,7 +277,7 @@ def render_proof_index(root: Path, rows: list[dict[str, Any]]) -> str:
         )
         lines.append(
             row_template.format(
-                run=f"[{relative}]({relative}/report.md)",
+                run=f"[{relative}]({report_href(row['run_dir'], relative)})",
                 benchmark=config.get("benchmark", ""),
                 memory=config.get("compare_memories") or config.get("memory", ""),
                 examples=metrics.get("examples", ""),
@@ -291,7 +291,162 @@ def render_proof_index(root: Path, rows: list[dict[str, Any]]) -> str:
         )
     if not rows:
         lines.append("| _No runs found_ |  |  |  |  |  |  |  |  |  |")
+    comparison_rows = collect_comparison_rows(root, rows)
+    if comparison_rows:
+        lines.extend(render_comparison_rows(comparison_rows))
+        lines.extend(render_pareto_rows(pareto_rows(comparison_rows)))
     return "\n".join(lines) + "\n"
+
+
+def collect_comparison_rows(root: Path, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    comparison_rows: list[dict[str, Any]] = []
+    for row in rows:
+        metrics = row["metrics"]
+        baseline_metrics = metrics.get("baseline_metrics")
+        if not isinstance(baseline_metrics, list):
+            single_row = comparison_row_from_metrics(
+                root=root,
+                run_dir=row["run_dir"],
+                config=row["config"],
+                metrics=metrics,
+                memory=row["config"].get("memory"),
+            )
+            if single_row:
+                comparison_rows.append(single_row)
+            continue
+        run_dir = row["run_dir"]
+        config = row["config"]
+        for baseline in baseline_metrics:
+            if not isinstance(baseline, dict):
+                continue
+            comparison_row = comparison_row_from_metrics(
+                root=root,
+                run_dir=run_dir,
+                config=config,
+                metrics=baseline,
+                memory=baseline.get("memory"),
+            )
+            if comparison_row:
+                comparison_rows.append(comparison_row)
+    return [row for row in comparison_rows if row]
+
+
+def comparison_row_from_metrics(
+    *,
+    root: Path,
+    run_dir: Path,
+    config: dict[str, Any],
+    metrics: dict[str, Any],
+    memory: object,
+) -> dict[str, Any] | None:
+    if "accuracy" not in metrics:
+        return None
+    return {
+        "run": run_dir.relative_to(root).as_posix(),
+        "benchmark": config.get("benchmark", ""),
+        "memory": memory or "",
+        "accuracy": float_value(metrics.get("accuracy")),
+        "quality_score": float_value(metrics.get("quality_score")),
+        "cost_estimate_usd": float_value(metrics.get("cost_estimate_usd")),
+        "latency_seconds": float_value(metrics.get("latency_seconds")),
+        "memory_brief_tokens": float_value(metrics.get("memory_brief_tokens")),
+        "source_traceability": float_value(metrics.get("source_traceability")),
+        "examples": int(float_value(metrics.get("examples"))),
+        "accuracy_ci_low": metrics.get("accuracy_ci_low", ""),
+        "accuracy_ci_high": metrics.get("accuracy_ci_high", ""),
+    }
+
+
+def render_comparison_rows(rows: list[dict[str, Any]]) -> list[str]:
+    lines = [
+        "",
+        "## Baseline And Ablation Summary",
+        "",
+        (
+            "| Run | Benchmark | Memory | Examples | Accuracy | CI 95% | Quality | Cost | Latency | "
+            "Brief Tokens | Traceability |"
+        ),
+        "| --- | --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for row in sorted(rows, key=lambda item: (str(item["run"]), str(item["memory"]))):
+        lines.append(comparison_table_row(row))
+    return lines
+
+
+def render_pareto_rows(rows: list[dict[str, Any]]) -> list[str]:
+    lines = [
+        "",
+        "## Cost/Latency Pareto Candidates",
+        "",
+        "| Run | Benchmark | Memory | Accuracy | Quality | Cost | Latency | Brief Tokens | Traceability |",
+        "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for row in sorted(
+        rows,
+        key=lambda item: (
+            str(item["benchmark"]),
+            -float(item["quality_score"]),
+            float(item["cost_estimate_usd"]),
+            float(item["latency_seconds"]),
+        ),
+    ):
+        lines.append(
+            "| {run} | {benchmark} | {memory} | {accuracy} | {quality_score} | {cost_estimate_usd} | "
+            "{latency_seconds} | {memory_brief_tokens} | {source_traceability} |".format(**row)
+        )
+    return lines
+
+
+def comparison_table_row(row: dict[str, Any]) -> str:
+    return (
+        "| {run} | {benchmark} | {memory} | {examples} | {accuracy} | "
+        "{accuracy_ci_low}..{accuracy_ci_high} | {quality_score} | {cost_estimate_usd} | "
+        "{latency_seconds} | {memory_brief_tokens} | {source_traceability} |"
+    ).format(**row)
+
+
+def pareto_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    selected = []
+    for row in rows:
+        dominated = False
+        for other in rows:
+            if row is other or row["benchmark"] != other["benchmark"]:
+                continue
+            if dominates(other, row):
+                dominated = True
+                break
+        if not dominated:
+            selected.append(row)
+    return selected
+
+
+def dominates(left: dict[str, Any], right: dict[str, Any]) -> bool:
+    at_least_as_good = (
+        left["accuracy"] >= right["accuracy"]
+        and left["quality_score"] >= right["quality_score"]
+        and left["source_traceability"] >= right["source_traceability"]
+        and left["cost_estimate_usd"] <= right["cost_estimate_usd"]
+        and left["latency_seconds"] <= right["latency_seconds"]
+        and left["memory_brief_tokens"] <= right["memory_brief_tokens"]
+    )
+    strictly_better = (
+        left["accuracy"] > right["accuracy"]
+        or left["quality_score"] > right["quality_score"]
+        or left["source_traceability"] > right["source_traceability"]
+        or left["cost_estimate_usd"] < right["cost_estimate_usd"]
+        or left["latency_seconds"] < right["latency_seconds"]
+        or left["memory_brief_tokens"] < right["memory_brief_tokens"]
+    )
+    return at_least_as_good and strictly_better
+
+
+def float_value(value: object) -> float:
+    if not isinstance(value, (str, int, float)):
+        return 0.0
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def ci_text(metrics: dict[str, Any]) -> str:
@@ -300,3 +455,10 @@ def ci_text(metrics: dict[str, Any]) -> str:
     if low is None or high is None:
         return ""
     return f"{low}..{high}"
+
+
+def report_href(run_dir: Path, relative: str) -> str:
+    for filename in ("report.md", "sweep_report.md", "manifest.json"):
+        if (run_dir / filename).exists():
+            return f"{relative}/{filename}"
+    return relative

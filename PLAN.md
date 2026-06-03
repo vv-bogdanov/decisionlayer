@@ -31,13 +31,13 @@ Use this section as the top-level progress tracker. Detailed checklists live in
 the sections below.
 
 - [x] M1: Proof harness hardening is complete.
-- [ ] M2: LongMemEval proof run is complete.
+- [x] M2: LongMemEval proof run is complete.
 - [ ] M3: MemoryAgentBench proof run is complete.
 - [ ] M4: HaluMem safety proof is complete.
 - [ ] M5: LoCoMo secondary validation is complete.
 - [ ] M6: Strong retrieval challenge is complete or intentionally skipped.
 - [ ] M7: Final proof report is complete.
-- [ ] B1: LongMemEval has a reproducible dev and held-out result.
+- [x] B1: LongMemEval has a reproducible dev and held-out result.
 - [ ] B2: MemoryAgentBench has reproducible results by competency.
 - [ ] B3: HaluMem has hallucination/safety results.
 - [ ] B4: LoCoMo has raw and audited secondary validation results.
@@ -46,6 +46,28 @@ the sections below.
 - [ ] Ablation matrix has been run on every primary benchmark.
 - [ ] Final decision is recorded: supported, partially supported, or not
   supported.
+
+## Active Execution Checklist
+
+Use this as the short working queue. The broader proof checklist remains below.
+
+- [x] Replace the old implementation plan with this proof plan.
+- [x] Add reproducible manifests for experiment and sweep runs.
+- [x] Add `reports/proof/index.md` aggregation.
+- [x] Add LongMemEval dev baseline table.
+- [x] Add LongMemEval grouped failure analysis.
+- [x] Run LongMemEval dev sweep.
+- [x] Run LongMemEval held-out baseline table.
+- [x] Run LongMemEval tuned held-out run from dev sweep parameters.
+- [x] Run LongMemEval ablation table.
+- [x] Add baseline/ablation and cost/latency Pareto sections to the proof
+  index.
+- [x] Commit current proof-reporting and sweep-metrics changes.
+- [ ] Rerun LongMemEval sweep after sweep-level `metrics.json` support is
+  committed.
+- [ ] Regenerate `reports/proof/index.md` from the latest clean checkout.
+- [ ] Audit a small sample of LongMemEval labels and scoring decisions.
+- [ ] Start MemoryAgentBench proof run.
 
 ## Evidence Standard
 
@@ -129,7 +151,7 @@ Work:
 - [x] Create a frozen LongMemEval manifest with file path, row count, hash, and
   subset IDs.
 - [x] Run all current baselines on a dev subset.
-- [ ] Run all current baselines on a held-out test subset.
+- [x] Run all current baselines on a held-out test subset.
 - [x] Add per-question-type tables.
 - [x] Add failure analysis grouped by extraction, recall, scoring, update, and
   abstention.
@@ -365,14 +387,14 @@ The proof must show which component helps.
 
 ### M2: LongMemEval Proof Run
 
-- [ ] M2 complete.
+- [x] M2 complete.
 
 - [x] Freeze LongMemEval manifest.
 - [x] Run dev baseline table.
-- [ ] Tune only on dev subset.
-- [ ] Run held-out test baseline table.
-- [ ] Generate ablation table.
-- [ ] Generate cost/latency Pareto table.
+- [x] Tune only on dev subset.
+- [x] Run held-out test baseline table.
+- [x] Generate ablation table.
+- [x] Generate cost/latency Pareto table.
 - [x] Write failure analysis.
 
 ### M3: MemoryAgentBench Proof Run
@@ -451,20 +473,10 @@ correct result is to document where the model loses and decide whether the next
 business-relevant improvement is extraction, recall, update safety, scoring, or
 cost reduction.
 
-## Practical Next Step
+## Next Checkpoint
 
-Start with `M1` and `M2`.
-
-The next commit should be:
-
-```text
-Add proof run manifests and LongMemEval aggregation
-```
-
-Minimum next deliverables:
-
-- [x] `manifest.json` for every experiment run.
-- [x] `reports/proof/index.md` aggregation.
-- [x] LongMemEval dev baseline table with all current baselines.
-- [x] LongMemEval failure analysis table.
-- [x] Updated README commands.
+- [x] Commit the current proof-reporting diff.
+- [ ] Rerun the LongMemEval sweep so the sweep root also has `metrics.json`.
+- [ ] Regenerate `reports/proof/index.md`.
+- [ ] Update this checklist after the regenerated report is verified.
+- [ ] Continue with `M3: MemoryAgentBench Proof Run`.
