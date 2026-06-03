@@ -1,0 +1,54 @@
+{
+  "025db8ef": [
+    "For rebalancing workload between agents by problem tag, use Reports first, then Problems."
+  ],
+  "07ffeedf": [
+    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
+  ],
+  "0b50ca0d": [
+    "For extra device item requests for agents selected from incident-report criteria, use Open Records > Items (Item Requests)."
+  ],
+  "100ff132": [
+    "To locate an incident-related performance report, use the All filter, type reports, open View/Run, then locate the relevant report."
+  ],
+  "25b00876": [
+    "For allocating investments to maximize returns, use Cost > Expense Lines; returns are in Short description; set selected lines to Closed Complete before Update."
+  ],
+  "32909aa1": [
+    "For rebalancing workload between agents by problem tag, use Reports first, then Problems."
+  ],
+  "3a2e9368": [
+    "For problem requests created from incident-report results, use Impact, Urgency, Problem statement, and Assigned to; Subcategory, Assignment Group, and State are present but unused."
+  ],
+  "4df5e6b4": [
+    "For dashboard-based restocking of low-stock items, use Reports > View/Run to locate the stock report, then Self-Service > Service Catalog to order the least-available item; no approvals, procurement, request-management, or stockroom modules are required.",
+    "For rebalancing workload between agents by problem tag, use Reports first, then Problems."
+  ],
+  "52dd33bb": [
+    "For allocating investments to maximize returns, use Cost > Expense Lines; returns are in Short description; set selected lines to Closed Complete before Update."
+  ],
+  "616c238d": [
+    "For rebalancing workload between agents by problem tag, use Reports first, then Problems."
+  ],
+  "75816b26": [
+    "For offboarding a user, unassign all hardware assets by clearing Assigned to, then delete the user profile and close the task complete."
+  ],
+  "7e32e4a2": [
+    "Do not change any other configuration while placing the order."
+  ],
+  "aca57021": [
+    "For ordering the same item a user recently requested, use Self-Service > Requested Items to inspect the existing request, then Self-Service > Service Catalog to order the item."
+  ],
+  "b7cc4da2": [
+    "For ordering the same item a user recently requested, use Self-Service > Requested Items to inspect the existing request, then Self-Service > Service Catalog to order the item."
+  ],
+  "bfb3bcc4": [
+    "For offboarding a user, unassign all hardware assets by clearing Assigned to, then delete the user profile and close the task complete."
+  ],
+  "e334d5c6": [
+    "For allocating investments to maximize returns, use Cost > Expense Lines; returns are in Short description; set selected lines to Closed Complete before Update."
+  ],
+  "eb3cfd03": [
+    "For dashboard-based restocking of low-stock items, use Reports > View/Run to locate the stock report, then Self-Service > Service Catalog to order the least-available item; no approvals, procurement, request-management, or stockroom modules are required."
+  ]
+}

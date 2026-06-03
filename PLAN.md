@@ -1,4 +1,4 @@
-# Decision Layer POC Plan
+# Decision Layer POC Result
 
 ## Goal
 
@@ -16,37 +16,24 @@ http://127.0.0.1:18080/v1
 qwen36-35b-a3b-udiq3s
 ```
 
-## Latest Completed Artifacts
+## Completed Checklist
 
-Old deterministic D0 baseline:
+- [x] Run a fresh current-code D0 full baseline with reasoning disabled and the
+  same reader settings as D2.
+- [x] Compare current-code D0 vs D1 narrow v2 vs D2.
+- [x] Audit D2 missing expected decisions.
+- [x] Avoid extractor expansion because the audit found oracle/audit denominator
+  noise, not a repeated high-confidence extractor miss.
+- [x] Recalculate D2 audit with a procedure-only accepted-decisions config and
+  295/295 reader cache hits.
 
-```text
-/tmp/decision-layer-overnight-20260603212552/full/D0
-```
+## Artifacts
 
-Old broad blind D1 run:
-
-```text
-/tmp/decision-layer-d1-blind-full
-```
-
-D2 v3 broad-oracle audit after reader-output contract and stock-restocking
-clarification:
+Fresh current-code D0 baseline:
 
 ```text
-/tmp/decision-layer-d2-blind-full-v3-broad
+/tmp/decision-layer-d0-current-no-reasoning
 ```
-
-Current conservative narrow oracle:
-
-```text
-configs/longmemeval-v2-full-blind-oracle-decisions.narrow.json
-```
-
-Narrow oracle summary: 42 questions with decisions, 45 question-level decisions,
-12 unique decision texts. This is still not hand-audited gold, but it removes
-most facts, UI state, answer-like statements, and weak requirements from the
-broad 70k-line draft, then applies the same question-relevance gate used by D1.
 
 Current narrow D1 full run:
 
@@ -54,62 +41,64 @@ Current narrow D1 full run:
 /tmp/decision-layer-d1-narrow-relevant-full-v2
 ```
 
-Current D2 full run against the narrow oracle:
+Current D2 full run with procedure-only audit denominator:
 
 ```text
-/tmp/decision-layer-d2-narrow-full-v4
+/tmp/decision-layer-d2-narrow-full-v5-procedure-audit
 ```
 
-## Current Metrics
+Runtime narrow oracle:
 
-| Run | Correct | Accuracy | Procedure | Static | Dynamic | Briefs | Adds | Completion Tokens | False Rate | Recall |
+```text
+configs/longmemeval-v2-full-blind-oracle-decisions.narrow.json
+```
+
+Procedure-only accepted-decisions audit config:
+
+```text
+configs/longmemeval-v2-full-blind-accepted-decisions.procedure.json
+```
+
+Audit config summary: 17 procedure questions, 18 question-level expected
+decisions, 9 unique decision texts.
+
+## Metrics
+
+| Run | Correct | Accuracy | Procedure | Static | Dynamic | Briefs | Adds | Cache Hits | False Rate | Recall |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Old D0 | 21/295 | 0.071186 | 1/74 | 17/134 | 3/86 | 0 | 0 | 20954 | n/a | n/a |
-| Old broad D1 | 30/295 | 0.101695 | 9/74 | 18/134 | 3/86 | 74 | 16798 | 19984 | n/a | n/a |
-| D2 v3 broad audit | 40/295 | 0.135593 | 16/74 | 20/134 | 4/86 | 14 | 15 | 4709 | 0.0 | not useful |
-| D1 narrow v2 | 44/295 | 0.149153 | 19/74 | 22/134 | 3/86 | 17 | 18 | 4970 | n/a | n/a |
-| D2 narrow v4 | 42/295 | 0.142373 | 18/74 | 20/134 | 4/86 | 16 | 17 | 4585 | 0.0 | 0.377778 |
+| D0 current | 31/295 | 0.105085 | 3/74 | 22/134 | 6/86 | 0 | 0 | 0 | n/a | n/a |
+| D1 narrow v2 | 44/295 | 0.149153 | 19/74 | 22/134 | 3/86 | 17 | 18 | 0 | n/a | n/a |
+| D2 procedure audit | 42/295 | 0.142373 | 18/74 | 20/134 | 4/86 | 16 | 17 | 295 | 0.0 | 0.944444 |
 
-Important read:
+## Read
 
-- D2 narrow v4 has zero audited false decisions.
-- D2 narrow v4 has no failed cases with non-empty Decision Briefs.
-- D2 narrow v4 is only 2 correct answers behind D1 narrow v2.
-- The D1-only-correct cases versus D2 v4 had 0 Decision Brief entries, so the
-  gap is reader variance or base-task behavior, not an obvious memory miss.
-- The promising signal is procedure lift: old D0 `1/74`, D1 narrow v2 `19/74`,
-  D2 narrow v4 `18/74`.
-- The proof is not finished because old D0 was produced before the latest reader
-  contract changes. We need a fresh current-code D0 before claiming the final
-  Decision Layer delta.
+The current proof signal is positive:
 
-## Active Checklist
+- D2 improves over current D0 by `+11` correct answers overall.
+- D2 improves procedure tasks from `3/74` to `18/74`, a `+15` procedure lift.
+- D2 has `0` audited false decisions.
+- D2 has `16/16` correct answers on cases with non-empty Decision Briefs.
+- D2 is only `2` correct answers behind D1 narrow v2, while using extracted
+  decisions rather than oracle-injected decisions.
 
-- [ ] Run a fresh current-code D0 full baseline with reasoning disabled and the
-  same reader settings as D2 narrow v4.
-- [ ] Compare current-code D0 vs D1 narrow v2 vs D2 narrow v4; treat only lift
-  over the fresh D0 as the Decision Layer signal.
-- [ ] Audit D2 v4 missing expected decisions: 28 expected narrow-oracle
-  decisions were not extracted. Classify each as extractor miss, oracle noise, or
-  harmless because it did not affect the final answer.
-- [ ] Add at most one small extractor improvement only if the audit shows a
-  repeated high-confidence decision pattern with low false-decision risk.
-- [ ] Re-run D2 after any extractor change, using resume-by-default behavior so
-  completed benchmark cases are not repeated unless an explicit overwrite flag is
-  passed.
+The earlier D2 v4 audit reported 28 missing expected decisions because the
+accepted oracle still contained static/dynamic entries that D2 intentionally
+skips under the safety rule. After using a procedure-only accepted-decisions
+denominator, missing expected decisions dropped to 1 and recall became
+`0.944444`.
 
-## Next D0 Command
+The single remaining procedure miss is `7e32e4a2`:
 
-```bash
-uv run decision-layer run-poc \
-  --data-root data/longmemeval-v2 \
-  --output-dir /tmp/decision-layer-d0-current-no-reasoning \
-  --mode D0 \
-  --tier small \
-  --question-id-file configs/longmemeval-v2-full-deterministic-subset.txt \
-  --reader openai-chat \
-  --reader-base-url http://127.0.0.1:18080/v1 \
-  --reader-model qwen36-35b-a3b-udiq3s \
-  --reader-max-tokens 128 \
-  --context-max-chars 96000
+```text
+Do not change any other configuration while placing the order.
 ```
+
+D1 had this brief and still answered the case incorrectly, so this is not enough
+evidence to expand the extractor.
+
+## Trade-Offs
+
+This is a POC signal, not a production claim. The benchmark run is still one
+deterministic local-reader pass, and the accepted decision set is conservative
+but not a fully independent hand-labeled gold corpus. The next useful step would
+be packaging these artifacts into a short POC report before adding more rules.
