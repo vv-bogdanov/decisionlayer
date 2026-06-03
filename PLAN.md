@@ -123,7 +123,7 @@ Interpretation:
 - [ ] Download or prepare the dataset outside the runner.
 - [x] Inspect schema and task categories.
 - [ ] Select a small reproducible subset.
-- [ ] Save dataset path, row count, subset IDs, and hash in a manifest.
+- [x] Save dataset path, row count, subset IDs, and hash in a manifest.
 
 ### 2. Baseline Run: D0
 

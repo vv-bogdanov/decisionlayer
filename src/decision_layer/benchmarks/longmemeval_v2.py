@@ -133,6 +133,12 @@ def select_questions(
     limit: int | None,
     question_ids: set[str] | None,
 ) -> tuple[LongMemEvalV2Question, ...]:
+    if question_ids is not None:
+        missing = sorted(question_ids - set(questions) | (question_ids - set(haystacks)))
+        if missing:
+            preview = ", ".join(missing[:5])
+            raise ValueError(f"unknown question ids requested: {preview}")
+
     selected = []
     for question_id in sorted(haystacks):
         if question_ids is not None and question_id not in question_ids:

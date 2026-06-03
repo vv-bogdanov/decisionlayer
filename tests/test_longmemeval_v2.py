@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from decision_layer.benchmarks.longmemeval_v2 import load_longmemeval_v2_examples
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures" / "longmemeval_v2"
@@ -29,3 +31,12 @@ def test_load_longmemeval_v2_subset_by_question_id() -> None:
     assert len(examples) == 1
     assert examples[0].question.id == "q_workflow"
     assert examples[0].trajectories[0].id == "traj_ticket_1"
+
+
+def test_load_longmemeval_v2_rejects_unknown_question_id() -> None:
+    with pytest.raises(ValueError, match="unknown question ids requested"):
+        load_longmemeval_v2_examples(
+            FIXTURE_ROOT,
+            tier="small",
+            question_ids={"missing"},
+        )

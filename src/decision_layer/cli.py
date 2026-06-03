@@ -40,6 +40,7 @@ def main(argv: list[str] | None = None) -> int:
     run_poc_parser.add_argument("--mode", choices=["D0", "D1", "D2"], required=True)
     run_poc_parser.add_argument("--tier", default="small")
     run_poc_parser.add_argument("--limit", type=int)
+    run_poc_parser.add_argument("--question-id", action="append", default=[])
     run_poc_parser.add_argument("--oracle-decisions")
 
     run_suite_parser = subparsers.add_parser("run-suite")
@@ -47,6 +48,7 @@ def main(argv: list[str] | None = None) -> int:
     run_suite_parser.add_argument("--output-dir", required=True)
     run_suite_parser.add_argument("--tier", default="small")
     run_suite_parser.add_argument("--limit", type=int)
+    run_suite_parser.add_argument("--question-id", action="append", default=[])
     run_suite_parser.add_argument("--oracle-decisions")
 
     args = parser.parse_args(argv)
@@ -92,6 +94,7 @@ def main(argv: list[str] | None = None) -> int:
                 mode=cast(PocMode, args.mode),
                 tier=args.tier,
                 limit=args.limit,
+                question_ids=tuple(args.question_id),
                 oracle_decisions_path=Path(args.oracle_decisions)
                 if args.oracle_decisions
                 else None,
@@ -106,6 +109,7 @@ def main(argv: list[str] | None = None) -> int:
                 output_dir=Path(args.output_dir),
                 tier=args.tier,
                 limit=args.limit,
+                question_ids=tuple(args.question_id),
                 oracle_decisions_path=Path(args.oracle_decisions)
                 if args.oracle_decisions
                 else None,

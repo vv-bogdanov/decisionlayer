@@ -56,3 +56,26 @@ def test_run_poc_suite_writes_comparison_report(tmp_path: Path) -> None:
     assert (tmp_path / "D1" / "metrics.json").exists()
     assert (tmp_path / "D2" / "metrics.json").exists()
     assert "Decision Layer POC Suite Report" in (tmp_path / "report.md").read_text(encoding="utf-8")
+
+
+def test_run_poc_manifest_records_explicit_subset(tmp_path: Path) -> None:
+    output_dir = tmp_path / "D0"
+    run_poc(
+        PocConfig(
+            data_root=FIXTURE_ROOT,
+            output_dir=output_dir,
+            mode="D0",
+            question_ids=("q_workflow",),
+        )
+    )
+
+    manifest = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
+    config = json.loads((output_dir / "config.json").read_text(encoding="utf-8"))
+
+    assert manifest["source_question_rows"] == 2
+    assert manifest["source_haystack_entries"] == 2
+    assert manifest["selected_question_count"] == 1
+    assert manifest["question_ids"] == ["q_workflow"]
+    assert manifest["requested_question_ids"] == ["q_workflow"]
+    assert manifest["selected_trajectory_count"] == 1
+    assert config["question_ids"] == ["q_workflow"]

@@ -31,6 +31,6 @@ uv run decision-layer --state /tmp/decision-state.json brief
 uv run decision-layer run-suite \
   --data-root tests/fixtures/longmemeval_v2 \
   --output-dir /tmp/decision-layer-poc \
-  --limit 1 \
+  --question-id q_static \
   --oracle-decisions tests/fixtures/longmemeval_v2/oracle_decisions.json
 ```

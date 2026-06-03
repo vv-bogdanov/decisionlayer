@@ -24,6 +24,7 @@ class PocConfig:
     mode: PocMode
     tier: str = "small"
     limit: int | None = None
+    question_ids: tuple[str, ...] = ()
     oracle_decisions_path: Path | None = None
 
 
@@ -41,6 +42,7 @@ class PocSuiteConfig:
     output_dir: Path
     tier: str = "small"
     limit: int | None = None
+    question_ids: tuple[str, ...] = ()
     oracle_decisions_path: Path | None = None
 
 
@@ -56,6 +58,7 @@ def run_poc(config: PocConfig) -> PocResult:
         config.data_root,
         tier=config.tier,
         limit=config.limit,
+        question_ids=set(config.question_ids) if config.question_ids else None,
     )
     oracle_decisions = load_oracle_decisions(config.oracle_decisions_path)
     extractor = RuleBasedDecisionExtractor()
@@ -118,6 +121,7 @@ def run_poc_suite(config: PocSuiteConfig) -> PocSuiteResult:
                 mode=mode,
                 tier=config.tier,
                 limit=config.limit,
+                question_ids=config.question_ids,
                 oracle_decisions_path=config.oracle_decisions_path,
             )
         )
@@ -277,6 +281,7 @@ def config_to_dict(config: PocConfig) -> dict[str, object]:
         "mode": config.mode,
         "tier": config.tier,
         "limit": config.limit,
+        "question_ids": list(config.question_ids),
         "oracle_decisions_path": str(config.oracle_decisions_path)
         if config.oracle_decisions_path
         else None,
@@ -292,12 +297,21 @@ def build_manifest(
         "mode": config.mode,
         "tier": config.tier,
         "data_root": str(config.data_root),
+        "source_question_rows": count_jsonl_rows(config.data_root / "questions.jsonl"),
+        "source_haystack_entries": count_haystack_entries(
+            config.data_root / "haystacks" / f"lme_v2_{config.tier}.json"
+        ),
         "questions_sha256": file_sha256(config.data_root / "questions.jsonl"),
         "haystack_sha256": file_sha256(
             config.data_root / "haystacks" / f"lme_v2_{config.tier}.json"
         ),
         "examples": len(examples),
+        "selected_question_count": len(examples),
         "question_ids": [example.question.id for example in examples],
+        "requested_question_ids": list(config.question_ids),
+        "selected_trajectory_count": len(
+            {trajectory_id for example in examples for trajectory_id in example.trajectory_ids}
+        ),
     }
 
 
@@ -381,6 +395,17 @@ def write_jsonl(path: Path, rows: list[dict[str, object]]) -> None:
 
 def file_sha256(path: Path) -> str:
     return sha256(path.read_bytes()).hexdigest()
+
+
+def count_jsonl_rows(path: Path) -> int:
+    return sum(1 for line in path.read_text(encoding="utf-8").splitlines() if line.strip())
+
+
+def count_haystack_entries(path: Path) -> int:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError(f"haystack file must contain an object: {path}")
+    return len(data)
 
 
 def normalize(text: str) -> str:
