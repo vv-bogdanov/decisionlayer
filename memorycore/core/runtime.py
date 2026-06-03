@@ -189,8 +189,8 @@ class MemoryRuntime:
             fact = selected_fact.item
             assert isinstance(fact, Fact)
             fact_tokens = len(fact.text.split())
-            if selected and used + fact_tokens > max_tokens:
-                break
+            if used + fact_tokens > max_tokens:
+                continue
             selected.append(selected_fact)
             used += fact_tokens
         return selected
