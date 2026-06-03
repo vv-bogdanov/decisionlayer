@@ -131,3 +131,18 @@ The adapter should not:
 - depend on PyTorch;
 - implement the official reader model;
 - implement SOTA memory backends.
+
+## Local Scoring Scope
+
+The POC scorer implements the deterministic LongMemEval-V2 answer checks used
+by the downloaded questions:
+
+- `norm_phrase_set_match`
+- `norm_phrase_set_match_ordered`
+- `mc_choice_match`
+- `mc_choice_set_match`
+
+The scorer marks `llm_abstention_checker` and `llm_gotchas_checker` as
+unsupported unless an evaluator backend is added. Runs report
+`scorable_examples` and `unsupported_examples`, so judge-only questions do not
+silently become exact-match scores.

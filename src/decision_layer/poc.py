@@ -12,6 +12,7 @@ from decision_layer.benchmarks.longmemeval_v2 import (
     load_longmemeval_v2_examples,
 )
 from decision_layer.core import DecisionState, add_decision, render_decision_brief
+from decision_layer.evaluation import score_answer
 from decision_layer.extraction import RuleBasedDecisionExtractor, SourceMessage
 from decision_layer.readers import ReaderKind, ReaderRequest, build_reader
 
@@ -104,7 +105,11 @@ def run_poc(config: PocConfig) -> PocResult:
             )
         )
         prediction = reader_result.answer
-        correct = normalize(prediction) == normalize(example.question.answer)
+        evaluation = score_answer(
+            prediction,
+            example.question.answer,
+            example.question.eval_function,
+        )
 
         predictions.append(
             {
@@ -112,9 +117,13 @@ def run_poc(config: PocConfig) -> PocResult:
                 "mode": config.mode,
                 "question": example.question.question,
                 "question_type": example.question.question_type,
+                "eval_function": example.question.eval_function,
                 "expected_answer": example.question.answer,
                 "prediction": prediction,
-                "correct": correct,
+                "correct": evaluation.correct,
+                "score_supported": evaluation.supported,
+                "score_evaluator": evaluation.evaluator,
+                "score_reason": evaluation.reason,
                 "decision_count": len(brief.decisions),
                 "brief_tokens": brief.token_count,
                 "reader_policy": reader_result.reader_policy,
@@ -239,7 +248,11 @@ def state_text(goal: str, state: dict[str, object]) -> str:
 
 def compute_metrics(predictions: list[dict[str, object]], start: float) -> dict[str, object]:
     total = len(predictions)
-    correct = sum(1 for prediction in predictions if prediction.get("correct") is True)
+    scorable = [
+        prediction for prediction in predictions if prediction.get("score_supported") is True
+    ]
+    scorable_total = len(scorable)
+    correct = sum(1 for prediction in scorable if prediction.get("correct") is True)
     non_empty_briefs = sum(
         1 for prediction in predictions if int_prediction_value(prediction, "decision_count") > 0
     )
@@ -255,7 +268,9 @@ def compute_metrics(predictions: list[dict[str, object]], start: float) -> dict[
     )
     return {
         "examples": total,
-        "accuracy": round(correct / total, 6) if total else 0.0,
+        "scorable_examples": scorable_total,
+        "unsupported_examples": total - scorable_total,
+        "accuracy": round(correct / scorable_total, 6) if scorable_total else 0.0,
         "correct": correct,
         "non_empty_decision_briefs": non_empty_briefs,
         "avg_brief_tokens": round(
@@ -401,6 +416,8 @@ def render_report(config: PocConfig, result: PocResult) -> str:
         "- benchmark: `longmemeval_v2`",
         f"- tier: `{config.tier}`",
         f"- examples: `{result.metrics['examples']}`",
+        f"- scorable_examples: `{result.metrics['scorable_examples']}`",
+        f"- unsupported_examples: `{result.metrics['unsupported_examples']}`",
         f"- accuracy: `{result.metrics['accuracy']}`",
         f"- non_empty_decision_briefs: `{result.metrics['non_empty_decision_briefs']}`",
         f"- avg_brief_tokens: `{result.metrics['avg_brief_tokens']}`",

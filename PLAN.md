@@ -193,7 +193,8 @@ Golden cases:
 
 Benchmark metrics:
 
-- [ ] Accuracy / QA score.
+- [x] Accuracy / QA score for deterministic LongMemEval-V2 eval functions.
+- [ ] LLM judge scoring for abstention/gotchas if the selected subset needs it.
 - [ ] Evidence quality if available.
 - [x] Prompt tokens.
 - [x] Latency.
