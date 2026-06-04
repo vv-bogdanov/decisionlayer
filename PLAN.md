@@ -172,6 +172,8 @@ must preserve compact implementation decisions.
   subagent tool-call formatting failure; the direct/no-subagent retry resolved
   officially (F2P 1/1, P2P 5/5) with clean verifier and audit. This is
   extractor debugging, not proof evidence for that pair.
+- [x] Select the next fresh SWE-ContextBench pair for proof-run:
+  `psf__requests-1142 -> psf__requests-1144`.
 - [x] Write `reports/swe-contextbench-sphinx865-canary.md`.
 
 Next selected canary: `sphinx-doc__sphinx-10614 -> sphinx-doc__sphinx-865`.
@@ -204,13 +206,28 @@ install/venv attempts; D2 failed because automatic extraction lost the
 needs less brittle required-term matching because D1 used `split('#')[-1]`
 instead of the literal `rsplit` term.
 
+Next selected proof pair: `psf__requests-1142 -> psf__requests-1144`.
+Reason: the related task is small (F2P 1, P2P 5), the base accepted patch
+touches only `requests/models.py`, and the reusable operational decision is
+compact: `prepare_content_length()` should not add `Content-Length: 0` for
+bodyless `GET` or `HEAD` requests, while still setting it for bodyless methods
+that can carry a body. Related hidden patch/tests were not inspected during
+selection.
+
 ## Active Checklist
 
 - [ ] Do not start the 5-pair mini-slice until a fresh canary shows clean D2
   signal under the revised operational-brief policy.
-- [ ] Select the next fresh SWE-ContextBench pair for proof-run after the
-  successful D2 diagnostic. Save only small selection metadata in this
-  repository.
+- [ ] Prepare D1 manual and D2 automatic Operational Decision Briefs for
+  `psf__requests-1142 -> psf__requests-1144` from base-task artifacts only,
+  using `configs/swe-contextbench-operational-extractor-prompt.md` for D2.
+- [ ] Run a gold/reference grading preflight for `psf__requests-1144`.
+- [ ] Run clean D0/D1/D2 on `psf__requests-1144` with sanitized single-commit
+  workspaces, `decision-layer run-opencode-canary`, `--audit-json`,
+  `--progress-log`, `--fail-on-dirty-audit`, verifier JSON, and official
+  grading.
+- [ ] Write `reports/swe-contextbench-requests-canary.md` with the result table,
+  audit, patch diagnosis, and recommendation.
 - [ ] If a clean canary shows signal and D2 has no false decisions, select a
   5-pair mini-slice and save only the small selection metadata in this
   repository.
