@@ -55,6 +55,9 @@ resume after failures:
 - official grading log, timing, and report JSON
 - skip completed agent/grading steps by default; use an explicit overwrite flag
   only when intentionally rerunning
+- if OpenCode stalls, use `--agent-backend codex` as a separate measurement lane
+  under `/home/dev/benchmarks/swe-contextbench/agent-runs/mini-slice-codex`;
+  do not mix backends inside one reported D0/D1/D2 comparison
 
 Hard agent rules stay in force:
 
