@@ -328,7 +328,7 @@ def check_hardened_image(image: str, args: argparse.Namespace) -> dict[str, Any]
         return {"name": "hardened_image", "ok": False, "detail": "docker not found"}
     except subprocess.TimeoutExpired:
         return {"name": "hardened_image", "ok": False, "detail": "docker inspect timeout"}
-    if inspect.returncode == 0:
+    if inspect.returncode == 0 and args.preflight_docker != "pull":
         return {"name": "hardened_image", "ok": True, "detail": "local"}
     if args.preflight_docker == "local":
         return {

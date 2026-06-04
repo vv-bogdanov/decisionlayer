@@ -211,7 +211,10 @@ Use this contract for the next wider run before looking at its grading results:
 
 - [ ] Prepare a publishable lane with authenticated/prebuilt SWE-ContextBench
   image pulls. If local rebuilt images are used again, label the run as
-  diagnostic only.
+  diagnostic only. Current blocker: `--preflight-docker pull` correctly checks
+  Docker Hub now, but unauthenticated pulls are rate-limited. User action needed:
+  run `docker login` with an account that has available pull quota, then rerun
+  pull preflight.
 - [ ] If another repeat is run, keep the headline lane to `D0` vs `D1G` and use
   the same backend/model/reasoning.
 - [ ] If `D2` is revisited, add a narrow application guard that forces extracted

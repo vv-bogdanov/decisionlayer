@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import importlib.machinery
 import importlib.util
+import subprocess
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RUNNER = PROJECT_ROOT / "scripts" / "run-swe-contextbench-mini-slice"
@@ -58,3 +59,29 @@ def test_d1ga_prompt_respects_applicability_gate(tmp_path: Path) -> None:
 
     assert "Decision application guard:" not in prompt
     assert "Decision Brief" not in prompt
+
+
+def test_preflight_pull_checks_remote_even_when_image_is_local(monkeypatch) -> None:
+    runner = load_runner()
+    calls = []
+
+    def fake_run(command, **_kwargs):
+        calls.append(command)
+        if command[:3] == ["docker", "image", "inspect"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if command[:2] == ["docker", "pull"]:
+            return subprocess.CompletedProcess(command, 0, "pulled", "")
+        raise AssertionError(command)
+
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+
+    result = runner.check_hardened_image(
+        "jiayuanz3/swecontextbench:example.repo-1",
+        SimpleNamespace(preflight_docker="pull", preflight_timeout_seconds=1.0),
+    )
+
+    assert result == {"name": "hardened_image", "ok": True, "detail": "pulled"}
+    assert calls == [
+        ["docker", "image", "inspect", "jiayuanz3/swecontextbench:example.repo-1"],
+        ["docker", "pull", "jiayuanz3/swecontextbench:example.repo-1"],
+    ]
