@@ -1,4 +1,4 @@
-# Decision Layer POC Result
+# Decision Layer POC Result and Next Plan
 
 ## Goal
 
@@ -100,5 +100,76 @@ evidence to expand the extractor.
 
 This is a POC signal, not a production claim. The benchmark run is still one
 deterministic local-reader pass, and the accepted decision set is conservative
-but not a fully independent hand-labeled gold corpus. The next useful step would
-be packaging these artifacts into a short POC report before adding more rules.
+but not a fully independent hand-labeled gold corpus.
+
+## Next Goal
+
+Turn the repository into a publishable, reproducible research artifact, then
+move the next benchmark track toward coding-agent tasks. Do not expand the
+extractor before the repo can be cited and the current result can be reproduced.
+
+## Publishable Repo Checklist
+
+- [ ] Write `docs/research-report.md` with hypothesis, methodology, result
+  tables, case studies, limitations, and recommendations.
+- [ ] Write `docs/reproducibility.md` with exact setup, data preparation,
+  commands, local llama.cpp assumptions, expected metrics, and artifact paths.
+- [ ] Write `docs/decision-layer-design.md` explaining the core/plugin boundary,
+  D0/D1/D2 definitions, authority rules, and why facts/history/RAG are not
+  Decision Layer state.
+- [ ] Update `README.md` so a new reader can understand what this is, what it is
+  not, how to run smoke tests, and how to reproduce the current POC result.
+- [ ] Add `LICENSE` before publishing. Prefer Apache-2.0 or MIT.
+- [ ] Add `CITATION.cff` with project name, authors, repository URL placeholder,
+  and version/date.
+- [ ] Add a minimal CI workflow for `pytest`, `ruff`, `ruff format --check`, and
+  `mypy`.
+- [ ] Clean repository noise before publishing: remove editor/cache artifacts
+  from git, verify `.gitignore`, and keep large/generated benchmark artifacts out
+  of the repository.
+- [ ] Add a compact `reports/current-poc-result.md` snapshot so the headline
+  result is visible without reading `/tmp` artifacts.
+- [ ] Add a small reproduction helper script for the current result or a
+  documented smoke equivalent; avoid hiding important benchmark assumptions in
+  shell magic.
+
+## Coding Benchmark Track
+
+The next external benchmark should focus on coding or software-work tasks, not
+another custom synthetic benchmark. Selection criteria:
+
+- [ ] Known external benchmark with public task definitions and citation path.
+- [ ] Runnable with the same backend/model for D0 vs Decision Layer comparison.
+- [ ] Supports resume/cache or can be wrapped safely for long runs.
+- [ ] Has deterministic or inspectable grading.
+- [ ] Lets us measure horizon through task success by human-time bucket, task
+  length, tool-call count, repository size, or multi-step dependency depth.
+- [ ] Has a natural place for Decision Layer interventions: accepted
+  requirements, constraints, implementation decisions, prior failed attempts, or
+  project-specific procedures.
+
+Candidate order:
+
+1. **SWE-bench Lite/Verified or SWE-bench Live small slice**: best known coding
+   benchmark family and easiest to explain, but may require harness integration
+   work before Decision Layer has a clean insertion point.
+2. **WildClawBench**: native-runtime CLI/coding-style agent tasks with real
+   tools and containerized grading; promising for long-horizon agent loops.
+3. **RoadmapBench**: explicitly long-horizon software development across version
+   upgrades; strong fit for decisions/constraints, likely heavier to run.
+4. **TheAgentCompany coding subset**: realistic workplace tasks including
+   coding, communication, and file/tool use; heavier environment setup.
+5. **METR-style time-horizon methodology**: use as the measurement model even if
+   we cannot run their private task suite. Report success by task-duration proxy,
+   not only aggregate accuracy.
+
+## Next Implementation Checklist
+
+- [ ] Finish publishable repo cleanup before adding new benchmark code.
+- [ ] Create a benchmark-selection note comparing SWE-bench, WildClawBench,
+  RoadmapBench, TheAgentCompany, and METR-style horizon analysis.
+- [ ] Pick one coding benchmark slice for the next POC based on setup cost,
+  reproducibility, and Decision Layer insertion quality.
+- [ ] Define D0/D2 harness integration for the selected coding benchmark.
+- [ ] Run a small canary coding slice before any overnight/full run.
+- [ ] Only after the canary shows signal, prepare a larger coding benchmark run.
