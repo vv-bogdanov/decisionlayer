@@ -83,6 +83,17 @@ Non-decisions:
 
 ## Canary Plan
 
+Preflight status:
+
+- SWE-bench local checkout and Python package install succeeded outside this
+  repository under `/home/dev/benchmarks/SWE-bench`.
+- Official SWE-bench gold-patch evaluation for `sympy__sympy-20590` completed
+  successfully: 1/1 resolved, 0 errors.
+- Docker Python access requires
+  `DOCKER_HOST=unix:///run/user/1000/docker.sock` on this machine.
+
+The next canary must test Decision Layer behavior:
+
 1. Select 5-10 coding tasks with deterministic tests.
 2. Run D0 once per task.
 3. Run D2 once per task with the same backend/model.

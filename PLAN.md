@@ -171,5 +171,7 @@ Candidate order:
 - [x] Pick one coding benchmark slice for the next POC based on setup cost,
   reproducibility, and Decision Layer insertion quality.
 - [x] Define D0/D2 harness integration for the selected coding benchmark.
-- [ ] Run a small canary coding slice before any overnight/full run.
+- [x] Run an official SWE-bench gold-patch harness preflight before adding
+  benchmark integration code.
+- [ ] Run a small D0/D2 coding-agent canary slice before any overnight/full run.
 - [ ] Only after the canary shows signal, prepare a larger coding benchmark run.
