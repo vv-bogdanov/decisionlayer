@@ -75,6 +75,7 @@ def main(argv: list[str] | None = None) -> int:
     verify_patch_parser.add_argument("--require-term", action="append", default=[])
     verify_patch_parser.add_argument("--require-file", action="append", default=[])
     verify_patch_parser.add_argument("--allow-file", action="append", default=[])
+    verify_patch_parser.add_argument("--flag-benchmark-noise", action="store_true")
 
     run_canary_parser = subparsers.add_parser("run-opencode-canary")
     run_canary_parser.add_argument("--workspace", required=True)
@@ -93,6 +94,7 @@ def main(argv: list[str] | None = None) -> int:
     run_canary_parser.add_argument("--require-term", action="append", default=[])
     run_canary_parser.add_argument("--require-file", action="append", default=[])
     run_canary_parser.add_argument("--allow-file", action="append", default=[])
+    run_canary_parser.add_argument("--flag-benchmark-noise", action="store_true")
     run_canary_parser.add_argument("--fail-on-dirty-audit", action="store_true")
 
     args = parser.parse_args(argv)
@@ -190,6 +192,7 @@ def main(argv: list[str] | None = None) -> int:
             required_terms=tuple(args.require_term),
             required_files=tuple(args.require_file),
             allowed_files=tuple(args.allow_file),
+            flag_benchmark_noise=args.flag_benchmark_noise,
         )
         print(json.dumps(verification.to_dict(), ensure_ascii=False))
         return 0 if verification.ok else 1
@@ -212,6 +215,7 @@ def main(argv: list[str] | None = None) -> int:
                 required_terms=tuple(args.require_term),
                 required_files=tuple(args.require_file),
                 allowed_files=tuple(args.allow_file),
+                flag_benchmark_noise=args.flag_benchmark_noise,
                 fail_on_dirty_audit=args.fail_on_dirty_audit,
             )
         )

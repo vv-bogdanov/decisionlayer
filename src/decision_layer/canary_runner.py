@@ -61,6 +61,7 @@ class CanaryRunConfig:
     required_terms: tuple[str, ...] = ()
     required_files: tuple[str, ...] = ()
     allowed_files: tuple[str, ...] = ()
+    flag_benchmark_noise: bool = False
     extra_env: dict[str, str] | None = None
     fail_on_dirty_audit: bool = False
 
@@ -371,6 +372,7 @@ def maybe_verify_patch(config: CanaryRunConfig, patch_text: str) -> PatchVerific
         config.required_terms
         or config.required_files
         or config.allowed_files
+        or config.flag_benchmark_noise
         or config.verifier_json_path is not None
     )
     if not should_verify:
@@ -380,6 +382,7 @@ def maybe_verify_patch(config: CanaryRunConfig, patch_text: str) -> PatchVerific
         required_terms=config.required_terms,
         required_files=config.required_files,
         allowed_files=config.allowed_files,
+        flag_benchmark_noise=config.flag_benchmark_noise,
     )
     if config.verifier_json_path is not None:
         config.verifier_json_path.write_text(

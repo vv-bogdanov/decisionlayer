@@ -38,6 +38,24 @@ def test_verify_patch_flags_missing_terms_and_unexpected_files() -> None:
     assert result.missing_required_terms == ("is_simple_tuple",)
     assert result.required_files_present == ("sphinx/pycode/ast.py",)
     assert result.unexpected_files == ("sphinx/domains/python.py",)
+    assert result.test_files == ()
+    assert result.benchmark_noise_files == ()
+
+
+def test_verify_patch_flags_test_files_as_benchmark_noise() -> None:
+    patch = """diff --git a/tests/test_backend_svg.py b/tests/test_backend_svg.py
+--- a/tests/test_backend_svg.py
++++ b/tests/test_backend_svg.py
+@@ -1,2 +1,3 @@
++def test_new_behavior():
++    pass
+"""
+
+    result = verify_patch(patch, flag_benchmark_noise=True)
+
+    assert result.ok is False
+    assert result.test_files == ("tests/test_backend_svg.py",)
+    assert result.benchmark_noise_files == ("tests/test_backend_svg.py",)
 
 
 def test_cli_verify_patch_returns_nonzero_on_failed_check(

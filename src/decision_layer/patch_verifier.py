@@ -7,6 +7,8 @@ from dataclasses import dataclass
 class PatchVerificationResult:
     ok: bool
     touched_files: tuple[str, ...]
+    test_files: tuple[str, ...]
+    benchmark_noise_files: tuple[str, ...]
     matched_required_terms: tuple[str, ...]
     missing_required_terms: tuple[str, ...]
     required_files_present: tuple[str, ...]
@@ -17,6 +19,8 @@ class PatchVerificationResult:
         return {
             "ok": self.ok,
             "touched_files": list(self.touched_files),
+            "test_files": list(self.test_files),
+            "benchmark_noise_files": list(self.benchmark_noise_files),
             "matched_required_terms": list(self.matched_required_terms),
             "missing_required_terms": list(self.missing_required_terms),
             "required_files_present": list(self.required_files_present),
@@ -31,9 +35,12 @@ def verify_patch(
     required_terms: tuple[str, ...] = (),
     required_files: tuple[str, ...] = (),
     allowed_files: tuple[str, ...] = (),
+    flag_benchmark_noise: bool = False,
 ) -> PatchVerificationResult:
     touched_files = parse_touched_files(patch_text)
     normalized_patch = patch_text.lower()
+    test_files = tuple(path for path in touched_files if is_test_file(path))
+    benchmark_noise_files = test_files if flag_benchmark_noise else ()
 
     matched_required_terms = tuple(
         term for term in required_terms if term.lower() in normalized_patch
@@ -50,10 +57,17 @@ def verify_patch(
         if allowed_files
         else ()
     )
-    ok = not missing_required_terms and not missing_required_files and not unexpected_files
+    ok = (
+        not missing_required_terms
+        and not missing_required_files
+        and not unexpected_files
+        and not benchmark_noise_files
+    )
     return PatchVerificationResult(
         ok=ok,
         touched_files=touched_files,
+        test_files=test_files,
+        benchmark_noise_files=benchmark_noise_files,
         matched_required_terms=matched_required_terms,
         missing_required_terms=missing_required_terms,
         required_files_present=required_files_present,
@@ -89,3 +103,18 @@ def normalize_diff_path(path: str) -> str | None:
     if path.startswith("b/"):
         return path[2:]
     return path
+
+
+def is_test_file(path: str) -> bool:
+    parts = path.split("/")
+    filename = parts[-1] if parts else path
+    stem = filename.rsplit(".", 1)[0]
+    if any(part in {"test", "tests", "testing"} for part in parts[:-1]):
+        return True
+    return (
+        filename.startswith("test_")
+        or filename.endswith("_test.py")
+        or filename.endswith(".test.js")
+        or stem.startswith("test_")
+        or stem.endswith("_test")
+    )

@@ -345,6 +345,7 @@ def run_opencode_agent_mode(
         str(args.timeout_seconds),
         "--opencode-bin",
         args.opencode_bin,
+        "--flag-benchmark-noise",
         "--fail-on-dirty-audit",
     ]
     env = os.environ.copy()
@@ -444,7 +445,7 @@ def run_codex_agent_mode(
     elapsed = time.perf_counter() - started
     patch_text = read_workspace_diff(workspace, env)
     patch_path.write_text(patch_text, encoding="utf-8")
-    verifier = verify_patch(patch_text)
+    verifier = verify_patch(patch_text, flag_benchmark_noise=True)
     write_json(verifier_path, verifier.to_dict())
     audit = audit_agent_logs(log_path, raw_paths=[stderr_path])
     write_json(audit_path, audit)

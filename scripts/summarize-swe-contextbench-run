@@ -1,0 +1,217 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
+
+from decision_layer.patch_verifier import verify_patch  # noqa: E402
+
+MODES = ("D0", "D1", "D2")
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Summarize a SWE-ContextBench D0/D1/D2 artifact directory."
+    )
+    parser.add_argument("--artifact-root", type=Path, required=True)
+    parser.add_argument("--config", type=Path)
+    parser.add_argument("--format", choices=["markdown", "json"], default="markdown")
+    args = parser.parse_args(argv)
+
+    artifact_root = args.artifact_root.resolve()
+    summary = summarize_run(artifact_root, args.config)
+    if args.format == "json":
+        print(json.dumps(summary, ensure_ascii=False, indent=2))
+    else:
+        print(render_markdown(summary))
+    return 0
+
+
+def summarize_run(artifact_root: Path, config_path: Path | None) -> dict[str, Any]:
+    pair_ids = load_pair_ids(artifact_root, config_path)
+    rows = []
+    for pair_id in pair_ids:
+        pair_dir = artifact_root / pair_id
+        for mode in MODES:
+            rows.append(summarize_mode(pair_id, pair_dir, mode))
+    totals = summarize_totals(rows)
+    return {
+        "artifact_root": str(artifact_root),
+        "config": str(config_path.resolve()) if config_path else None,
+        "pairs": pair_ids,
+        "totals": totals,
+        "rows": rows,
+    }
+
+
+def load_pair_ids(artifact_root: Path, config_path: Path | None) -> list[str]:
+    if config_path is not None:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        return [item["related_instance_id"] for item in config.get("pairs", [])]
+    return sorted(
+        path.name
+        for path in artifact_root.iterdir()
+        if path.is_dir() and (path / "logs").exists()
+    )
+
+
+def summarize_mode(pair_id: str, pair_dir: Path, mode: str) -> dict[str, Any]:
+    mode_name = mode.lower()
+    logs_dir = pair_dir / "logs"
+    patch_path = pair_dir / "patches" / f"{mode_name}.patch"
+    agent = load_json_or_none(logs_dir / f"{mode_name}_result.json") or {}
+    grading = load_json_or_none(logs_dir / f"{mode_name}_grading_result.json") or {}
+    verifier = recompute_verifier(patch_path)
+    official = summarize_official(pair_id, grading)
+    return {
+        "pair": pair_id,
+        "mode": mode,
+        "agent_ok": agent.get("ok"),
+        "agent_seconds": agent.get("elapsed_seconds"),
+        "patch_chars": len(patch_path.read_text(encoding="utf-8")) if patch_path.exists() else 0,
+        "touched_files": verifier["touched_files"],
+        "test_files": verifier["test_files"],
+        "benchmark_noise_files": verifier["benchmark_noise_files"],
+        "verifier_ok": verifier["ok"],
+        "official_ok": grading.get("ok"),
+        "patch_applied": official["patch_applied"],
+        "f2p_success": official["f2p_success"],
+        "f2p_total": official["f2p_total"],
+        "p2p_success": official["p2p_success"],
+        "p2p_total": official["p2p_total"],
+        "resolved": official["resolved"],
+    }
+
+
+def recompute_verifier(patch_path: Path) -> dict[str, Any]:
+    patch_text = patch_path.read_text(encoding="utf-8") if patch_path.exists() else ""
+    return verify_patch(patch_text, flag_benchmark_noise=True).to_dict()
+
+
+def summarize_official(pair_id: str, grading: dict[str, Any]) -> dict[str, Any]:
+    instance = grading.get(pair_id) if isinstance(grading.get(pair_id), dict) else {}
+    tests_status = instance.get("tests_status") or {}
+    f2p = count_tests(tests_status.get("FAIL_TO_PASS") or {})
+    p2p = count_tests(tests_status.get("PASS_TO_PASS") or {})
+    resolved_ids = grading.get("resolved_ids") or []
+    return {
+        "resolved": bool(instance.get("resolved")) or pair_id in resolved_ids,
+        "patch_applied": instance.get("patch_applied"),
+        "f2p_success": f2p[0],
+        "f2p_total": f2p[1],
+        "p2p_success": p2p[0],
+        "p2p_total": p2p[1],
+    }
+
+
+def count_tests(status: dict[str, Any]) -> tuple[int | None, int | None]:
+    if not status:
+        return None, None
+    success = len(status.get("success") or [])
+    failure = len(status.get("failure") or [])
+    return success, success + failure
+
+
+def summarize_totals(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    totals: dict[str, Any] = {}
+    for mode in MODES:
+        mode_rows = [row for row in rows if row["mode"] == mode]
+        graded_rows = [row for row in mode_rows if row["resolved"] is not None]
+        totals[mode] = {
+            "resolved": sum(1 for row in graded_rows if row["resolved"]),
+            "graded": len(graded_rows),
+            "agent_ok": sum(1 for row in mode_rows if row["agent_ok"] is True),
+            "agent_total": len(mode_rows),
+            "benchmark_noise": sum(1 for row in mode_rows if row["benchmark_noise_files"]),
+        }
+    return totals
+
+
+def render_markdown(summary: dict[str, Any]) -> str:
+    lines = [
+        "# SWE-ContextBench Run Summary",
+        "",
+        f"Artifact root: `{summary['artifact_root']}`",
+        "",
+        "## Totals",
+        "",
+        "| Mode | Resolved | Agent ok | Benchmark-noise patches |",
+        "| --- | ---: | ---: | ---: |",
+    ]
+    for mode in MODES:
+        totals = summary["totals"][mode]
+        lines.append(
+            "| {mode} | {resolved}/{graded} | {agent_ok}/{agent_total} | {noise} |".format(
+                mode=mode,
+                resolved=totals["resolved"],
+                graded=totals["graded"],
+                agent_ok=totals["agent_ok"],
+                agent_total=totals["agent_total"],
+                noise=totals["benchmark_noise"],
+            )
+        )
+    lines.extend(
+        [
+            "",
+            "## Rows",
+            "",
+            "| Pair | Mode | Agent ok | Agent s | Patch chars | Test files | Applied | F2P | P2P | Resolved |",
+            "| --- | --- | --- | ---: | ---: | ---: | --- | ---: | ---: | --- |",
+        ]
+    )
+    for row in summary["rows"]:
+        lines.append(
+            "| {pair} | {mode} | {agent_ok} | {agent_seconds} | {patch_chars} | {test_files} | "
+            "{patch_applied} | {f2p} | {p2p} | {resolved} |".format(
+                pair=f"`{row['pair']}`",
+                mode=row["mode"],
+                agent_ok=yn(row["agent_ok"]),
+                agent_seconds=fmt(row["agent_seconds"]),
+                patch_chars=row["patch_chars"],
+                test_files=len(row["test_files"]),
+                patch_applied=yn(row["patch_applied"]),
+                f2p=fraction(row["f2p_success"], row["f2p_total"]),
+                p2p=fraction(row["p2p_success"], row["p2p_total"]),
+                resolved=yn(row["resolved"]),
+            )
+        )
+    return "\n".join(lines)
+
+
+def load_json_or_none(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return data if isinstance(data, dict) else None
+
+
+def fraction(success: Any, total: Any) -> str:
+    if success is None or total is None:
+        return "n/a"
+    return f"{success}/{total}"
+
+
+def yn(value: Any) -> str:
+    if value is True:
+        return "yes"
+    if value is False:
+        return "no"
+    return "n/a"
+
+
+def fmt(value: Any) -> str:
+    if isinstance(value, float):
+        return f"{value:.2f}"
+    if isinstance(value, int):
+        return str(value)
+    return "n/a"
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
