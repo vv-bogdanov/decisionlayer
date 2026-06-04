@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import json
 import os
+import re
 import shutil
 import subprocess
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,6 +28,19 @@ BLOCKED_COMMANDS = (
     "virtualenv",
 )
 PYTHON_COMMANDS = ("python", "python3", "python3.11", "python3.12", "python3.13", "python3.14")
+BLOCKED_OUTPUT_RE = re.compile(
+    r"blocked (?:git subcommand|command|python module)|permission requested|auto-rejecting",
+    re.IGNORECASE,
+)
+FORBIDDEN_COMMAND_RE = re.compile(
+    r"(?:^|[;&|]\s*)(?:\S*/)?git\b(?=[^;&|]*\b(?:log|show|blame)\b)"
+    r"|(?:^|[;&|]\s*)(?:sudo\s+)?"
+    r"(?:\S*/)?(?:apt|apt-get|brew|curl|npm|pip|pip3|pipx|pkexec|uv|virtualenv)\b"
+    r"|(?:^|[;&|]\s*)(?:\S*/)?python(?:3(?:\.\d+)?)?\s+-m\s+"
+    r"(?:ensurepip|pip|venv|virtualenv)\b",
+    re.IGNORECASE,
+)
+SUBAGENT_EVENT_RE = re.compile(r'"(?:tool|name)"\s*:\s*"task"|"subagent"', re.IGNORECASE)
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,10 +56,38 @@ class CanaryRunConfig:
     timeout_seconds: float = 600.0
     opencode_bin: str = "opencode"
     verifier_json_path: Path | None = None
+    audit_json_path: Path | None = None
+    progress_path: Path | None = None
     required_terms: tuple[str, ...] = ()
     required_files: tuple[str, ...] = ()
     allowed_files: tuple[str, ...] = ()
     extra_env: dict[str, str] | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CanaryLogAudit:
+    command_count: int
+    forbidden_command_count: int
+    forbidden_command_examples: tuple[str, ...]
+    blocked_output_count: int
+    blocked_output_examples: tuple[str, ...]
+    error_count: int
+    error_examples: tuple[str, ...]
+    subagent_mentions: int
+    malformed_log_lines: int
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "command_count": self.command_count,
+            "forbidden_command_count": self.forbidden_command_count,
+            "forbidden_command_examples": list(self.forbidden_command_examples),
+            "blocked_output_count": self.blocked_output_count,
+            "blocked_output_examples": list(self.blocked_output_examples),
+            "error_count": self.error_count,
+            "error_examples": list(self.error_examples),
+            "subagent_mentions": self.subagent_mentions,
+            "malformed_log_lines": self.malformed_log_lines,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +99,7 @@ class CanaryRunResult:
     stderr_bytes: int
     patch_chars: int
     verifier: PatchVerificationResult | None = None
+    audit: CanaryLogAudit | None = None
 
     @property
     def ok(self) -> bool:
@@ -76,6 +121,8 @@ class CanaryRunResult:
         }
         if self.verifier is not None:
             data["verifier"] = self.verifier.to_dict()
+        if self.audit is not None:
+            data["audit"] = self.audit.to_dict()
         return data
 
 
@@ -89,6 +136,9 @@ def run_opencode_canary(config: CanaryRunConfig) -> CanaryRunResult:
     config.patch_path.parent.mkdir(parents=True, exist_ok=True)
     if config.verifier_json_path is not None:
         config.verifier_json_path.parent.mkdir(parents=True, exist_ok=True)
+    if config.audit_json_path is not None:
+        config.audit_json_path.parent.mkdir(parents=True, exist_ok=True)
+    reset_progress_log(config.progress_path)
 
     prompt = prompt_path.read_text(encoding="utf-8")
     env = build_guarded_env(config.guard_bin, config.extra_env)
@@ -105,6 +155,16 @@ def run_opencode_canary(config: CanaryRunConfig) -> CanaryRunResult:
         prompt,
     ]
 
+    emit_progress(
+        config.progress_path,
+        "started",
+        workspace=str(workspace),
+        prompt=str(prompt_path),
+        log=str(config.log_path),
+        stderr=str(config.stderr_path),
+        model=config.model,
+        timeout_seconds=config.timeout_seconds,
+    )
     start = time.perf_counter()
     exit_status = "0"
     timed_out = False
@@ -127,15 +187,50 @@ def run_opencode_canary(config: CanaryRunConfig) -> CanaryRunResult:
             exit_status = "timeout"
             timed_out = True
     elapsed_seconds = time.perf_counter() - start
+    emit_progress(
+        config.progress_path,
+        "opencode_finished",
+        exit_status=exit_status,
+        elapsed_seconds=round(elapsed_seconds, 2),
+        timed_out=timed_out,
+    )
 
     patch_text = read_workspace_diff(workspace, env)
     config.patch_path.write_text(patch_text, encoding="utf-8")
+    emit_progress(
+        config.progress_path,
+        "patch_saved",
+        patch=str(config.patch_path),
+        patch_chars=len(patch_text),
+    )
     verifier = maybe_verify_patch(config, patch_text)
+    if verifier is not None:
+        emit_progress(
+            config.progress_path,
+            "verifier_finished",
+            verifier_ok=verifier.ok,
+            verifier_json=str(config.verifier_json_path) if config.verifier_json_path else None,
+        )
+    audit = audit_opencode_log(config.log_path)
+    if config.audit_json_path is not None:
+        config.audit_json_path.write_text(
+            json.dumps(audit.to_dict(), ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    emit_progress(
+        config.progress_path,
+        "audit_finished",
+        audit_json=str(config.audit_json_path) if config.audit_json_path else None,
+        forbidden_command_count=audit.forbidden_command_count,
+        blocked_output_count=audit.blocked_output_count,
+        error_count=audit.error_count,
+        subagent_mentions=audit.subagent_mentions,
+    )
     config.time_path.write_text(
         f"elapsed_seconds={elapsed_seconds:.2f}\nexit_status={exit_status}\n",
         encoding="utf-8",
     )
-    return CanaryRunResult(
+    result = CanaryRunResult(
         exit_status=exit_status,
         elapsed_seconds=elapsed_seconds,
         timed_out=timed_out,
@@ -143,7 +238,16 @@ def run_opencode_canary(config: CanaryRunConfig) -> CanaryRunResult:
         stderr_bytes=config.stderr_path.stat().st_size if config.stderr_path.exists() else 0,
         patch_chars=len(patch_text),
         verifier=verifier,
+        audit=audit,
     )
+    emit_progress(
+        config.progress_path,
+        "finished",
+        ok=result.ok,
+        elapsed_seconds=round(result.elapsed_seconds, 2),
+        patch_chars=result.patch_chars,
+    )
+    return result
 
 
 def ensure_canary_guard_bin(guard_bin: Path) -> None:
@@ -255,13 +359,117 @@ def maybe_verify_patch(config: CanaryRunConfig, patch_text: str) -> PatchVerific
         allowed_files=config.allowed_files,
     )
     if config.verifier_json_path is not None:
-        import json
-
         config.verifier_json_path.write_text(
             json.dumps(verifier.to_dict(), ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
     return verifier
+
+
+def audit_opencode_log(log_path: Path) -> CanaryLogAudit:
+    command_count = 0
+    forbidden_command_count = 0
+    forbidden_command_examples: list[str] = []
+    blocked_output_count = 0
+    blocked_output_examples: list[str] = []
+    error_count = 0
+    error_examples: list[str] = []
+    subagent_mentions = 0
+    malformed_log_lines = 0
+
+    if not log_path.exists():
+        return CanaryLogAudit(0, 0, (), 0, (), 0, (), 0, 0)
+
+    for line in log_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            malformed_log_lines += 1
+            if BLOCKED_OUTPUT_RE.search(line):
+                blocked_output_count += 1
+                append_example(blocked_output_examples, line)
+            continue
+
+        event_text = json.dumps(event, ensure_ascii=False)
+        if SUBAGENT_EVENT_RE.search(event_text):
+            subagent_mentions += 1
+
+        state = event_state(event)
+        command = event_command(state)
+        if command is not None:
+            command_count += 1
+            if FORBIDDEN_COMMAND_RE.search(command):
+                forbidden_command_count += 1
+                append_example(forbidden_command_examples, command)
+
+        output = state.get("output")
+        if isinstance(output, str) and BLOCKED_OUTPUT_RE.search(output):
+            blocked_output_count += 1
+            append_example(blocked_output_examples, output)
+
+        error = state.get("error")
+        if isinstance(error, str) and error:
+            error_count += 1
+            append_example(error_examples, error)
+
+    return CanaryLogAudit(
+        command_count=command_count,
+        forbidden_command_count=forbidden_command_count,
+        forbidden_command_examples=tuple(forbidden_command_examples),
+        blocked_output_count=blocked_output_count,
+        blocked_output_examples=tuple(blocked_output_examples),
+        error_count=error_count,
+        error_examples=tuple(error_examples),
+        subagent_mentions=subagent_mentions,
+        malformed_log_lines=malformed_log_lines,
+    )
+
+
+def event_state(event: object) -> dict[str, object]:
+    if not isinstance(event, dict):
+        return {}
+    part = event.get("part")
+    if not isinstance(part, dict):
+        return {}
+    state = part.get("state")
+    if not isinstance(state, dict):
+        return {}
+    return state
+
+
+def event_command(state: dict[str, object]) -> str | None:
+    raw_input = state.get("input")
+    if not isinstance(raw_input, dict):
+        return None
+    command = raw_input.get("command") or raw_input.get("cmd")
+    return command if isinstance(command, str) else None
+
+
+def append_example(examples: list[str], value: str, *, limit: int = 8) -> None:
+    if len(examples) >= limit:
+        return
+    normalized = " ".join(value.split())
+    examples.append(normalized[:240])
+
+
+def reset_progress_log(progress_path: Path | None) -> None:
+    if progress_path is None:
+        return
+    progress_path.parent.mkdir(parents=True, exist_ok=True)
+    progress_path.write_text("", encoding="utf-8")
+
+
+def emit_progress(progress_path: Path | None, event: str, **fields: object) -> None:
+    payload: dict[str, object] = {
+        "event": event,
+        "time_unix": round(time.time(), 3),
+    }
+    payload.update({key: value for key, value in fields.items() if value is not None})
+    line = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+    print(f"[canary] {line}", file=sys.stderr, flush=True)
+    if progress_path is not None:
+        with progress_path.open("a", encoding="utf-8") as file:
+            file.write(line + "\n")
 
 
 def count_lines(path: Path) -> int:

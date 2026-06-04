@@ -85,6 +85,8 @@ def main(argv: list[str] | None = None) -> int:
     run_canary_parser.add_argument("--time", required=True)
     run_canary_parser.add_argument("--patch", required=True)
     run_canary_parser.add_argument("--verifier-json")
+    run_canary_parser.add_argument("--audit-json")
+    run_canary_parser.add_argument("--progress-log")
     run_canary_parser.add_argument("--model", default="llama.cpp/qwen36-35b-a3b-udiq3s")
     run_canary_parser.add_argument("--timeout-seconds", type=float, default=600.0)
     run_canary_parser.add_argument("--opencode-bin", default="opencode")
@@ -201,6 +203,8 @@ def main(argv: list[str] | None = None) -> int:
                 time_path=Path(args.time),
                 patch_path=Path(args.patch),
                 verifier_json_path=Path(args.verifier_json) if args.verifier_json else None,
+                audit_json_path=Path(args.audit_json) if args.audit_json else None,
+                progress_path=Path(args.progress_log) if args.progress_log else None,
                 model=args.model,
                 timeout_seconds=args.timeout_seconds,
                 opencode_bin=args.opencode_bin,

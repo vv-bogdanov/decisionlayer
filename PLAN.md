@@ -152,6 +152,16 @@ must preserve compact implementation decisions.
   install loops; official Docker grading is the source of truth.
 - [x] Select one more fresh SWE-ContextBench pair after runner hardening:
   `sphinx-doc__sphinx-10614 -> sphinx-doc__sphinx-865`.
+- [x] Prepare D1 manual and D2 automatic Operational Decision Briefs for
+  `sphinx-doc__sphinx-10614 -> sphinx-doc__sphinx-865` from base-task artifacts
+  only.
+- [x] Run the selected one-pair D0/D1/D2 canary with
+  `decision-layer run-opencode-canary`, verifier JSON, guard audit, official
+  grading, and a concise result report.
+- [x] Add canary runner progress/audit logging for future long runs:
+  `--progress-log` writes stage events, and `--audit-json` summarizes commands,
+  blocked outputs, errors, and subagent mentions.
+- [x] Write `reports/swe-contextbench-sphinx865-canary.md`.
 
 Next selected canary: `sphinx-doc__sphinx-10614 -> sphinx-doc__sphinx-865`.
 Reason: the related task is small (F2P 1, P2P 5), the base accepted patch
@@ -175,16 +185,27 @@ installs/history commands, and regressed one PASS_TO_PASS test. D2 used the
 auto brief but produced an over-broad patch that broke verifier setup. This is a
 promising direction signal, not publishable evidence.
 
+Sphinx-865 canary result: useful manual D1 signal, but not enough to start the
+mini-slice. D0 failed (F2P 0/1, P2P 5/5), D1 resolved (F2P 1/1, P2P 5/5), and
+D2 failed (F2P 0/1, P2P 5/5). D1 was audit-dirty because guard-bin blocked
+install/venv attempts; D2 failed because automatic extraction lost the
+`internal is false -> URI fragment is graph key` decision. The verifier also
+needs less brittle required-term matching because D1 used `split('#')[-1]`
+instead of the literal `rsplit` term.
+
 ## Active Checklist
 
-- [ ] Do not start the 5-pair mini-slice until a fresh canary shows clean D1 or
-  D2 signal under the revised operational-brief policy.
-- [ ] Prepare D1 manual and D2 automatic Operational Decision Briefs for
-  `sphinx-doc__sphinx-10614 -> sphinx-doc__sphinx-865` from base-task artifacts
-  only.
-- [ ] Run the selected clean one-pair D0/D1/D2 canary with
-  `decision-layer run-opencode-canary`, verifier JSON, guard audit, official
-  grading, and a concise result report.
+- [ ] Do not start the 5-pair mini-slice until a fresh canary shows clean D2
+  signal under the revised operational-brief policy.
+- [ ] Tighten the D2 extractor prompt/schema so conditional implementation
+  decisions survive summarization, especially "when X is false/true, use Y"
+  rules and graph/key/argument mappings.
+- [ ] Tighten canary prompts and audit rules so any forbidden install/venv/git
+  history attempt marks the run dirty even when guard-bin blocks it.
+- [ ] Run a diagnostic D2 retry on `sphinx-doc__sphinx-865` after extractor
+  changes. Count it only as extractor debugging, not proof.
+- [ ] Select the next fresh SWE-ContextBench pair only after the D2 diagnostic
+  preserves the critical Sphinx-865 decision without false decisions.
 - [ ] If a clean canary shows signal and D2 has no false decisions, select a
   5-pair mini-slice and save only the small selection metadata in this
   repository.
@@ -213,5 +234,6 @@ Completed and historical work is recorded outside this active plan:
 - `reports/swe-contextbench-xarray-canary.md`
 - `reports/swe-contextbench-sphinx-canary.md`
 - `reports/swe-contextbench-django-canary.md`
+- `reports/swe-contextbench-sphinx865-canary.md`
 - `docs/research-report.md`
 - `docs/coding-benchmark-selection.md`

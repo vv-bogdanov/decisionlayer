@@ -90,6 +90,8 @@ def test_run_opencode_canary_writes_artifacts_and_uses_dir(tmp_path: Path) -> No
             time_path=tmp_path / "logs" / "run.time",
             patch_path=tmp_path / "patches" / "run.patch",
             verifier_json_path=tmp_path / "logs" / "verifier.json",
+            audit_json_path=tmp_path / "logs" / "audit.json",
+            progress_path=tmp_path / "logs" / "progress.jsonl",
             opencode_bin=str(fake_opencode),
             timeout_seconds=5,
             required_terms=("changed",),
@@ -103,6 +105,14 @@ def test_run_opencode_canary_writes_artifacts_and_uses_dir(tmp_path: Path) -> No
     assert f"--dir\n{workspace.resolve()}" in args
     assert "--dangerously-skip-permissions" in args
     assert json.loads((tmp_path / "logs" / "verifier.json").read_text(encoding="utf-8"))["ok"]
+    audit = json.loads((tmp_path / "logs" / "audit.json").read_text(encoding="utf-8"))
+    assert audit["forbidden_command_count"] == 1
+    assert audit["blocked_output_count"] == 1
+    progress = (tmp_path / "logs" / "progress.jsonl").read_text(encoding="utf-8")
+    assert '"event": "started"' in progress
+    assert '"event": "finished"' in progress
+    assert result.audit is not None
+    assert result.audit.forbidden_command_count == 1
     assert "changed" in (tmp_path / "patches" / "run.patch").read_text(encoding="utf-8")
     assert "exit_status=0" in (tmp_path / "logs" / "run.time").read_text(encoding="utf-8")
 
@@ -202,7 +212,10 @@ def write_fake_opencode(path: Path, args_path: Path) -> Path:
         f"Path({str(args_path)!r}).write_text('\\n'.join(sys.argv[1:]), encoding='utf-8')\n"
         "workspace = Path(sys.argv[sys.argv.index('--dir') + 1])\n"
         "(workspace / 'target.txt').write_text('changed\\n', encoding='utf-8')\n"
-        "print(json.dumps({'type': 'text', 'part': {'text': 'done'}}))\n",
+        "print(json.dumps({'type': 'text', 'part': {'text': 'done'}}))\n"
+        "print(json.dumps({'type': 'tool', 'part': {'state': {'input': "
+        "{'command': 'python3 -m pip install pytest'}, "
+        "'output': 'blocked python module: pip'}}}))\n",
         encoding="utf-8",
     )
     path.chmod(0o755)
