@@ -1,10 +1,11 @@
-# Current Plan: Publishable Coding Proof
+# Current Plan: Next Coding Proof Iteration
 
 ## Goal
 
-Turn the current Decision Layer POC into a clean, publishable coding-benchmark
-proof: same backend/model, known external benchmark, transparent artifacts, and
-clear D0 vs D1 vs D2 comparisons.
+Tighten the Decision Layer coding proof after the completed 20-pair
+SWE-ContextBench run. The goal is now to remove benchmark noise, avoid invalid
+instances, and test applicability-gated Decision Briefs instead of blind prompt
+injection.
 
 This remains a POC. Do not build a product platform, REST API, UI, vector DB,
 custom judge, or custom benchmark unless it is directly needed for D0/D1/D2
@@ -12,15 +13,32 @@ measurement.
 
 ## Current Evidence
 
-The 5-pair SWE-ContextBench mini-slice is complete. Report:
+Completed reports:
 
 ```text
 reports/swe-contextbench-mini.md
+reports/swe-contextbench-large.md
 ```
 
-D1 showed signal on the mini-slice: D0 resolved 1/5, D1 resolved 3/5, and D2
-resolved 1/5. This supports a larger coding-focused run, but D2 extraction is
-not yet good enough to claim automatic Decision Layer quality.
+Mini-slice:
+
+```text
+D0 1/5
+D1 3/5
+D2 1/5
+```
+
+Large slice, excluding three infrastructure-invalid Matplotlib pairs:
+
+```text
+D0 9/17
+D1 8/17
+D2 7/17
+```
+
+D1 produced two concrete uplift cases, but also three regressions. D2 produced
+no uplift. The next iteration should test whether applicability gating can keep
+the uplift while avoiding regressions.
 
 ## Rules
 
@@ -40,18 +58,15 @@ Keep these constraints for all next proof runs:
 
 ## Active Checklist
 
-- [ ] Add a machine-generated summary command for mini/larger SWE-ContextBench
-  artifact directories so tables are reproducible from JSON.
-- [ ] Tighten proof patch verification to flag test-file edits and other
-  benchmark-noise changes before official grading.
-- [ ] Improve the D2 extractor prompt using only base-task artifacts and the five
-  completed mini-slice diagnoses; target transferable operational decisions,
-  explicit scope, and less base-specific trivia.
-- [ ] Predeclare a larger SWE-ContextBench coding slice, about 20 Verified
-  related pairs, with metadata committed before agent runs.
-- [ ] Prepare D1 manual briefs for the larger slice without looking at related
-  hidden patches/tests or grading outcomes.
-- [ ] Run D0/D1/D2 on the larger slice with Codex Spark low-reasoning as the
-  primary lane and resume/cache enabled.
-- [ ] Write the publishable research artifact with methodology, artifact paths,
-  full tables, limitations, and the D1-vs-D2 interpretation.
+- [ ] Add benchmark-pair preflight checks: hardened Docker image availability,
+  no prior diagnostic contamination, and config/schema validation.
+- [ ] Add a hard proof-run prompt rule and verifier gate that rejects test-file
+  edits for reported aggregate claims.
+- [ ] Add an applicability gate for Decision Brief injection, starting with a
+  simple D1 manual relevance label and then a D2 automatic scope check.
+- [ ] Predeclare a replacement follow-up slice with the invalid Matplotlib pairs
+  removed and fewer baseline-obvious tasks.
+- [ ] Run D0/D1/D2 plus gated-D1 on the follow-up slice with Codex Spark
+  low-reasoning and resume/cache enabled.
+- [ ] Write the next report comparing blind D1 vs gated D1 vs D2, with strict
+  clean and official metrics separated.

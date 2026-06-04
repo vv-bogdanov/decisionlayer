@@ -80,6 +80,8 @@ def summarize_mode(pair_id: str, pair_dir: Path, mode: str) -> dict[str, Any]:
         "benchmark_noise_files": verifier["benchmark_noise_files"],
         "verifier_ok": verifier["ok"],
         "official_ok": grading.get("ok"),
+        "grade_error": official["error"],
+        "infrastructure_error": official["infrastructure_error"],
         "patch_applied": official["patch_applied"],
         "f2p_success": official["f2p_success"],
         "f2p_total": official["f2p_total"],
@@ -98,6 +100,8 @@ def summarize_official(pair_id: str, grading: dict[str, Any]) -> dict[str, Any]:
     if not grading:
         return {
             "resolved": None,
+            "error": None,
+            "infrastructure_error": False,
             "patch_applied": None,
             "f2p_success": None,
             "f2p_total": None,
@@ -109,14 +113,24 @@ def summarize_official(pair_id: str, grading: dict[str, Any]) -> dict[str, Any]:
     f2p = count_tests(tests_status.get("FAIL_TO_PASS") or {})
     p2p = count_tests(tests_status.get("PASS_TO_PASS") or {})
     resolved_ids = grading.get("resolved_ids") or []
+    error = instance.get("error") if isinstance(instance.get("error"), str) else None
     return {
         "resolved": bool(instance.get("resolved")) or pair_id in resolved_ids,
+        "error": error,
+        "infrastructure_error": is_infrastructure_error(error),
         "patch_applied": instance.get("patch_applied"),
         "f2p_success": f2p[0],
         "f2p_total": f2p[1],
         "p2p_success": p2p[0],
         "p2p_total": p2p[1],
     }
+
+
+def is_infrastructure_error(error: str | None) -> bool:
+    if not error:
+        return False
+    lowered = error.lower()
+    return "hardened image not found" in lowered or "image not found" in lowered
 
 
 def count_tests(status: dict[str, Any]) -> tuple[int | None, int | None]:
@@ -131,13 +145,18 @@ def summarize_totals(rows: list[dict[str, Any]]) -> dict[str, Any]:
     totals: dict[str, Any] = {}
     for mode in MODES:
         mode_rows = [row for row in rows if row["mode"] == mode]
-        graded_rows = [row for row in mode_rows if row["official_ok"] is not None]
+        graded_rows = [
+            row
+            for row in mode_rows
+            if row["official_ok"] is not None and not row["infrastructure_error"]
+        ]
         totals[mode] = {
             "resolved": sum(1 for row in graded_rows if row["resolved"]),
             "graded": len(graded_rows),
             "agent_ok": sum(1 for row in mode_rows if row["agent_ok"] is True),
             "agent_total": len(mode_rows),
             "benchmark_noise": sum(1 for row in mode_rows if row["benchmark_noise_files"]),
+            "infrastructure_errors": sum(1 for row in mode_rows if row["infrastructure_error"]),
         }
     return totals
 
@@ -150,19 +169,20 @@ def render_markdown(summary: dict[str, Any]) -> str:
         "",
         "## Totals",
         "",
-        "| Mode | Resolved | Agent ok | Benchmark-noise patches |",
-        "| --- | ---: | ---: | ---: |",
+        "| Mode | Resolved | Agent ok | Benchmark-noise patches | Infra errors |",
+        "| --- | ---: | ---: | ---: | ---: |",
     ]
     for mode in MODES:
         totals = summary["totals"][mode]
         lines.append(
-            "| {mode} | {resolved}/{graded} | {agent_ok}/{agent_total} | {noise} |".format(
+            "| {mode} | {resolved}/{graded} | {agent_ok}/{agent_total} | {noise} | {infra} |".format(
                 mode=mode,
                 resolved=totals["resolved"],
                 graded=totals["graded"],
                 agent_ok=totals["agent_ok"],
                 agent_total=totals["agent_total"],
                 noise=totals["benchmark_noise"],
+                infra=totals["infrastructure_errors"],
             )
         )
     lines.extend(
@@ -170,14 +190,14 @@ def render_markdown(summary: dict[str, Any]) -> str:
             "",
             "## Rows",
             "",
-            "| Pair | Mode | Agent ok | Agent s | Patch chars | Test files | Applied | F2P | P2P | Resolved |",
-            "| --- | --- | --- | ---: | ---: | ---: | --- | ---: | ---: | --- |",
+            "| Pair | Mode | Agent ok | Agent s | Patch chars | Test files | Applied | F2P | P2P | Resolved | Grade error |",
+            "| --- | --- | --- | ---: | ---: | ---: | --- | ---: | ---: | --- | --- |",
         ]
     )
     for row in summary["rows"]:
         lines.append(
             "| {pair} | {mode} | {agent_ok} | {agent_seconds} | {patch_chars} | {test_files} | "
-            "{patch_applied} | {f2p} | {p2p} | {resolved} |".format(
+            "{patch_applied} | {f2p} | {p2p} | {resolved} | {grade_error} |".format(
                 pair=f"`{row['pair']}`",
                 mode=row["mode"],
                 agent_ok=yn(row["agent_ok"]),
@@ -188,6 +208,7 @@ def render_markdown(summary: dict[str, Any]) -> str:
                 f2p=fraction(row["f2p_success"], row["f2p_total"]),
                 p2p=fraction(row["p2p_success"], row["p2p_total"]),
                 resolved=yn(row["resolved"]),
+                grade_error=fmt_error(row["grade_error"]),
             )
         )
     return "\n".join(lines)
@@ -220,6 +241,12 @@ def fmt(value: Any) -> str:
     if isinstance(value, int):
         return str(value)
     return "n/a"
+
+
+def fmt_error(value: Any) -> str:
+    if not isinstance(value, str) or not value:
+        return ""
+    return value.replace("|", "/")[:80]
 
 
 if __name__ == "__main__":

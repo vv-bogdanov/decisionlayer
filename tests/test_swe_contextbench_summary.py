@@ -56,6 +56,46 @@ def test_summarize_swe_contextbench_run_outputs_totals(tmp_path: Path) -> None:
         check=True,
     )
 
-    assert "| D0 | 1/1 | 1/1 | 1 |" in result.stdout
-    assert "| D1 | 0/0 | 0/1 | 0 |" in result.stdout
+    assert "| D0 | 1/1 | 1/1 | 1 | 0 |" in result.stdout
+    assert "| D1 | 0/0 | 0/1 | 0 | 0 |" in result.stdout
     assert f"| `{pair}` | D0 | yes | 1.25 |" in result.stdout
+
+
+def test_summarize_swe_contextbench_run_excludes_infra_errors(tmp_path: Path) -> None:
+    pair = "example__repo-2"
+    pair_dir = tmp_path / pair
+    (pair_dir / "logs").mkdir(parents=True)
+    (pair_dir / "patches").mkdir()
+    (pair_dir / "logs" / "d0_result.json").write_text(
+        json.dumps({"ok": True, "elapsed_seconds": 1.0}),
+        encoding="utf-8",
+    )
+    (pair_dir / "logs" / "d0_grading_result.json").write_text(
+        json.dumps(
+            {
+                "ok": True,
+                "resolved_ids": [],
+                pair: {
+                    "resolved": False,
+                    "error": "Hardened image not found for instance: example__repo-2",
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROJECT_ROOT / "scripts" / "summarize-swe-contextbench-run"),
+            "--artifact-root",
+            str(tmp_path),
+        ],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    assert "| D0 | 0/0 | 1/1 | 0 | 1 |" in result.stdout
+    assert "Hardened image not found" in result.stdout
