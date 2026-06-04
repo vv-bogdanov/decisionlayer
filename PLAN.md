@@ -173,5 +173,24 @@ Candidate order:
 - [x] Define D0/D2 harness integration for the selected coding benchmark.
 - [x] Run an official SWE-bench gold-patch harness preflight before adding
   benchmark integration code.
-- [ ] Run a small D0/D2 coding-agent canary slice before any overnight/full run.
-- [ ] Only after the canary shows signal, prepare a larger coding benchmark run.
+- [x] Run a small D0/D2 coding-agent canary slice before any overnight/full run.
+- [x] Do not prepare a larger coding benchmark run yet: the one-instance canary
+  validated the pipeline, but D0 and D2 both resolved the task, so there is no
+  Decision Layer separation signal to scale.
+
+## Next Research Direction
+
+The next testing phase should focus on coding tasks, but only after selecting a
+harder slice. Prefer 5-10 SWE-bench-family tasks with durable requirements,
+constraints, or multi-step implementation decisions. The goal is not to show
+that a Decision Brief can solve an easy issue; the goal is to measure whether
+accepted decisions help the same local coding agent stay coherent on longer
+software tasks.
+
+Keep the repository cleanup standard from this plan:
+
+- generated benchmark workspaces stay outside the repository
+- official harness reports are referenced, not vendored
+- new code is added only if it directly supports D0/D2 measurement
+- every coding run records D0/D2 commands, patches, official grading, and
+  Decision Brief contents

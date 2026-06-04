@@ -75,9 +75,17 @@ The generated SWE-bench report is outside this repository:
 ## Interpretation
 
 The external coding benchmark harness is runnable on this machine. The next
-step is not a full run. The next step is a D0/D2 coding-agent canary on a tiny
-SWE-bench-family slice with the same backend/model and an explicit Decision
-Layer sidecar.
+step was a D0/D2 coding-agent canary on the same instance with the same
+backend/model and an explicit Decision Layer brief.
+
+Follow-up result:
+
+```text
+reports/swebench-d0-d2-canary.md
+```
+
+Both D0 and D2 resolved the instance, so the follow-up validates the pipeline
+but does not show Decision Layer lift.
 
 ## Caveats
 

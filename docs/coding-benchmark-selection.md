@@ -92,7 +92,20 @@ Preflight status:
 - Docker Python access requires
   `DOCKER_HOST=unix:///run/user/1000/docker.sock` on this machine.
 
-The next canary must test Decision Layer behavior:
+Agent canary status:
+
+- D0 local OpenCode + llama.cpp produced a valid patch for
+  `sympy__sympy-20590`.
+- D2 local OpenCode + llama.cpp with a compact accepted Decision Brief produced
+  a valid patch for the same instance.
+- Both D0 and D2 were graded by the official SWE-bench harness and both
+  resolved the instance: 1/1, 0 errors.
+- Result report: `reports/swebench-d0-d2-canary.md`.
+
+Interpretation: the pipeline is ready, but the selected instance is too easy to
+show Decision Layer separation because D0 solved it without help.
+
+The next canary must test Decision Layer behavior on a harder slice:
 
 1. Select 5-10 coding tasks with deterministic tests.
 2. Run D0 once per task.
@@ -105,6 +118,10 @@ The next canary must test Decision Layer behavior:
    - number of accepted decisions
    - false decision audit
 5. Continue only if D2 shows a signal without introducing false decisions.
+
+Task selection should prefer coding issues with durable requirements,
+constraints, or multi-step implementation choices. Avoid tasks where the final
+patch is directly implied by one obvious line in the issue text.
 
 ## External Sources
 
