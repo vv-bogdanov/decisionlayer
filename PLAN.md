@@ -174,6 +174,17 @@ must preserve compact implementation decisions.
   extractor debugging, not proof evidence for that pair.
 - [x] Select the next fresh SWE-ContextBench pair for proof-run:
   `psf__requests-1142 -> psf__requests-1144`.
+- [x] Prepare D1 manual and D2 automatic Operational Decision Briefs for
+  `psf__requests-1142 -> psf__requests-1144` from base-task artifacts only.
+- [x] Run a gold/reference grading preflight for `psf__requests-1144`.
+- [x] Run clean D0/D1/D2 on `psf__requests-1144` with sanitized single-commit
+  workspaces, `decision-layer run-opencode-canary`, `--audit-json`,
+  `--progress-log`, `--fail-on-dirty-audit`, verifier JSON, and official
+  grading.
+- [x] Write `reports/swe-contextbench-requests-canary.md`.
+- [x] Satisfy the mini-slice gate with a clean D2 signal:
+  D0 failed officially, D2 resolved officially, D2 verifier passed, D2 audit was
+  clean, and P2P stayed 5/5.
 - [x] Write `reports/swe-contextbench-sphinx865-canary.md`.
 
 Next selected canary: `sphinx-doc__sphinx-10614 -> sphinx-doc__sphinx-865`.
@@ -214,23 +225,15 @@ bodyless `GET` or `HEAD` requests, while still setting it for bodyless methods
 that can carry a body. Related hidden patch/tests were not inspected during
 selection.
 
+Requests canary result: clean D2 proof signal. D0 changed `requests/utils.py`
+and failed (F2P 0/1, P2P 5/5). D1 and D2 both changed `requests/models.py`,
+passed verifier/audit, and resolved officially (F2P 1/1, P2P 5/5). This is the
+first canary that clears the gate for a preselected 5-pair mini-slice.
+
 ## Active Checklist
 
-- [ ] Do not start the 5-pair mini-slice until a fresh canary shows clean D2
-  signal under the revised operational-brief policy.
-- [ ] Prepare D1 manual and D2 automatic Operational Decision Briefs for
-  `psf__requests-1142 -> psf__requests-1144` from base-task artifacts only,
-  using `configs/swe-contextbench-operational-extractor-prompt.md` for D2.
-- [ ] Run a gold/reference grading preflight for `psf__requests-1144`.
-- [ ] Run clean D0/D1/D2 on `psf__requests-1144` with sanitized single-commit
-  workspaces, `decision-layer run-opencode-canary`, `--audit-json`,
-  `--progress-log`, `--fail-on-dirty-audit`, verifier JSON, and official
-  grading.
-- [ ] Write `reports/swe-contextbench-requests-canary.md` with the result table,
-  audit, patch diagnosis, and recommendation.
-- [ ] If a clean canary shows signal and D2 has no false decisions, select a
-  5-pair mini-slice and save only the small selection metadata in this
-  repository.
+- [ ] Select a predeclared 5-pair SWE-ContextBench mini-slice and save only the
+  small selection metadata in this repository.
 - [ ] Run the 5-pair D0/D1/D2 mini-slice with resume/cache so completed pairs
   are not rerun after failures.
 - [ ] Write `reports/swe-contextbench-mini.md` with the result table, analysis,
@@ -257,5 +260,6 @@ Completed and historical work is recorded outside this active plan:
 - `reports/swe-contextbench-sphinx-canary.md`
 - `reports/swe-contextbench-django-canary.md`
 - `reports/swe-contextbench-sphinx865-canary.md`
+- `reports/swe-contextbench-requests-canary.md`
 - `docs/research-report.md`
 - `docs/coding-benchmark-selection.md`
