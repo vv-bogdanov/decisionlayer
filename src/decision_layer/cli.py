@@ -93,6 +93,7 @@ def main(argv: list[str] | None = None) -> int:
     run_canary_parser.add_argument("--require-term", action="append", default=[])
     run_canary_parser.add_argument("--require-file", action="append", default=[])
     run_canary_parser.add_argument("--allow-file", action="append", default=[])
+    run_canary_parser.add_argument("--fail-on-dirty-audit", action="store_true")
 
     args = parser.parse_args(argv)
     state_path = Path(args.state)
@@ -211,6 +212,7 @@ def main(argv: list[str] | None = None) -> int:
                 required_terms=tuple(args.require_term),
                 required_files=tuple(args.require_file),
                 allowed_files=tuple(args.allow_file),
+                fail_on_dirty_audit=args.fail_on_dirty_audit,
             )
         )
         print(json.dumps(canary_result.to_dict(), ensure_ascii=False))

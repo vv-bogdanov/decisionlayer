@@ -61,6 +61,8 @@ Avoid:
 - When keep_attrs is True for xr.where(cond, x, y), pass a callable to apply_ufunc that selects attrs[1], the attrs from x, not cond.
 - For parser-created unevaluated calls, EvaluateFalseTransformer is the extension point; parser-only changes may still need function doit/eval path checks.
 - When deconstructing an expression alias, use the shortest import path accepted by Django migrations, not the module where the class happens to live.
+- For external inheritance-diagram refs where `internal` is false, derive the graph key from the `refuri` fragment after `#`, not from `reftitle`.
+- For local inheritance-diagram `refid` anchors in SVG output, use `current_filename + '#' + refid`; do not prefix `../`.
 ```
 
 ## Bad Examples
@@ -71,7 +73,11 @@ Avoid:
 - The hidden test is test_where_attrs.
 - Apply the exact following diff: ...
 - Maybe use a callable if needed.
+- For external references, extract the URI fragment if `reftitle` is not available.
 ```
+
+The last bad example is too lossy: it invents an "if reftitle is not available"
+condition and drops the actual accepted condition, `internal is false`.
 
 ## D2 Extraction Schema
 
@@ -85,6 +91,10 @@ D2 extractors should produce strict JSON:
       "type": "implementation_decision",
       "authority": "base_accepted_patch",
       "source_evidence": "Base patch converts keep_attrs=True to a callable before apply_ufunc.",
+      "critical_details": [
+        "condition: keep_attrs is True",
+        "mapping: attrs[1] is selected"
+      ],
       "risk": "low"
     }
   ],
@@ -152,6 +162,19 @@ Rules:
   implementation commitments.
 - Preserve implementation-critical details: argument mapping, operator choice,
   extension point, callable/index choice, invariant, fallback/default policy.
+- Preserve conditions exactly. If the source says "when X is false, use Y",
+  the decision must keep "when X is false"; do not rewrite it as "if Z is not
+  available" or a generic requirement.
+- Preserve branch behavior. If accepted code has different behavior for two
+  branches, emit separate short decisions for each branch when both matter.
+- Preserve key/value mappings and identity mappings: graph key, URL, argument
+  index, source object, target object, and negative prefixes/suffixes.
+- Preserve exact code identifiers only when they carry the decision, such as
+  `internal`, `refuri`, `current_filename`, `attrs[1]`, or an accepted extension
+  point file/function.
+- Include `critical_details` for each decision: 1-5 short phrases that a patch
+  verifier or manual audit can use to check whether the agent preserved the
+  decision.
 - Do not copy raw patch hunks. Do not include file locations unless the file is
   the accepted extension point.
 - Better reject an uncertain item than create a false decision.
@@ -165,6 +188,7 @@ Schema:
       "type": "requirement|constraint|implementation_decision|failure_derived_constraint|procedure",
       "authority": "base_issue|base_hint|base_accepted_patch|user_instruction|manual_api",
       "source_evidence": "short source explanation",
+      "critical_details": ["short condition/mapping/operator detail"],
       "risk": "low|medium|high"
     }
   ],
@@ -225,6 +249,9 @@ decision-layer run-opencode-canary \
   --time logs/d1_opencode_time.txt \
   --patch patches/d1.patch \
   --verifier-json logs/d1_verifier.json \
+  --audit-json logs/d1_audit.json \
+  --progress-log logs/d1_progress.jsonl \
+  --fail-on-dirty-audit \
   --require-term stable_topological_sort \
   --require-file django/forms/widgets.py \
   --allow-file django/forms/widgets.py
@@ -232,12 +259,17 @@ decision-layer run-opencode-canary \
 
 The wrapper always passes `opencode run --dir`, enables noninteractive
 permission skip, writes timeout-safe timing markers, captures the final patch,
-runs optional patch verification, and creates guards for install, virtualenv,
-privilege, network-fetch, and git-history commands.
+runs optional patch verification, writes optional audit/progress logs, and
+creates guards for install, virtualenv, privilege, network-fetch, and
+git-history commands.
 
 Agent prompts should say that missing local dependencies are not a reason to
 install packages or create virtual environments. The agent may skip local tests
 and rely on the official Docker grader as the source of truth.
+
+For counted proof runs, use `--fail-on-dirty-audit` so blocked install,
+virtualenv, or git-history attempts mark the run dirty even if the patch and
+official grading later succeed.
 
 Before official grading, run a lightweight patch/brief verifier when the brief
 contains critical implementation commitments. The verifier should fail fast if

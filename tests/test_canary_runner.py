@@ -117,6 +117,32 @@ def test_run_opencode_canary_writes_artifacts_and_uses_dir(tmp_path: Path) -> No
     assert "exit_status=0" in (tmp_path / "logs" / "run.time").read_text(encoding="utf-8")
 
 
+def test_run_opencode_canary_can_fail_on_dirty_audit(tmp_path: Path) -> None:
+    workspace = init_git_workspace(tmp_path / "workspace")
+    prompt_path = tmp_path / "prompt.txt"
+    prompt_path.write_text("Fix the file.", encoding="utf-8")
+    fake_opencode = write_fake_opencode(tmp_path / "opencode", tmp_path / "opencode.args")
+
+    result = run_opencode_canary(
+        CanaryRunConfig(
+            workspace=workspace,
+            prompt_path=prompt_path,
+            guard_bin=tmp_path / "guard-bin",
+            log_path=tmp_path / "logs" / "run.jsonl",
+            stderr_path=tmp_path / "logs" / "run.stderr",
+            time_path=tmp_path / "logs" / "run.time",
+            patch_path=tmp_path / "patches" / "run.patch",
+            opencode_bin=str(fake_opencode),
+            timeout_seconds=5,
+            fail_on_dirty_audit=True,
+        )
+    )
+
+    assert result.audit is not None
+    assert result.audit.is_dirty is True
+    assert result.ok is False
+
+
 def test_run_opencode_canary_writes_timeout_marker(tmp_path: Path) -> None:
     workspace = init_git_workspace(tmp_path / "workspace")
     prompt_path = tmp_path / "prompt.txt"

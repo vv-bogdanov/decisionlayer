@@ -62,6 +62,7 @@ class CanaryRunConfig:
     required_files: tuple[str, ...] = ()
     allowed_files: tuple[str, ...] = ()
     extra_env: dict[str, str] | None = None
+    fail_on_dirty_audit: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,8 +77,20 @@ class CanaryLogAudit:
     subagent_mentions: int
     malformed_log_lines: int
 
+    @property
+    def is_dirty(self) -> bool:
+        return any(
+            (
+                self.forbidden_command_count,
+                self.blocked_output_count,
+                self.error_count,
+                self.malformed_log_lines,
+            )
+        )
+
     def to_dict(self) -> dict[str, object]:
         return {
+            "is_dirty": self.is_dirty,
             "command_count": self.command_count,
             "forbidden_command_count": self.forbidden_command_count,
             "forbidden_command_examples": list(self.forbidden_command_examples),
@@ -100,12 +113,15 @@ class CanaryRunResult:
     patch_chars: int
     verifier: PatchVerificationResult | None = None
     audit: CanaryLogAudit | None = None
+    fail_on_dirty_audit: bool = False
 
     @property
     def ok(self) -> bool:
         if self.timed_out:
             return False
         if self.exit_status != "0":
+            return False
+        if self.fail_on_dirty_audit and self.audit is not None and self.audit.is_dirty:
             return False
         return self.verifier is None or self.verifier.ok
 
@@ -118,6 +134,7 @@ class CanaryRunResult:
             "log_lines": self.log_lines,
             "stderr_bytes": self.stderr_bytes,
             "patch_chars": self.patch_chars,
+            "fail_on_dirty_audit": self.fail_on_dirty_audit,
         }
         if self.verifier is not None:
             data["verifier"] = self.verifier.to_dict()
@@ -239,6 +256,7 @@ def run_opencode_canary(config: CanaryRunConfig) -> CanaryRunResult:
         patch_chars=len(patch_text),
         verifier=verifier,
         audit=audit,
+        fail_on_dirty_audit=config.fail_on_dirty_audit,
     )
     emit_progress(
         config.progress_path,
