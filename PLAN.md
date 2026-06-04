@@ -143,6 +143,13 @@ must preserve compact implementation decisions.
 - [x] Select and run another fresh SWE-ContextBench pair:
   `django__django-11019 -> django__django-30153`.
 - [x] Write `reports/swe-contextbench-django-canary.md`.
+- [x] Harden the canary runner before another pair:
+  `decision-layer run-opencode-canary` requires `opencode --dir`, uses
+  permission-skip plus guard-bin, blocks git history regardless of option
+  order, blocks install/venv commands, writes timeout-safe timing, saves the
+  patch, and emits structured verifier JSON.
+- [x] Update agent prompt guidance so local dependency failures do not trigger
+  install loops; official Docker grading is the source of truth.
 
 Sphinx canary result: no clean Decision Layer signal. D0, D1, and D2 all
 resolved `sphinx-doc__sphinx-8052`, but all non-gold variants regressed the same
@@ -162,12 +169,6 @@ promising direction signal, not publishable evidence.
 
 - [ ] Do not start the 5-pair mini-slice until a fresh canary shows clean D1 or
   D2 signal under the revised operational-brief policy.
-- [ ] Harden the canary runner before another pair: require `opencode --dir`,
-  permission-skip plus guard-bin, git history blocking regardless of option
-  order, install/venv blocking, structured verifier JSON, and timeout-safe
-  timing writes.
-- [ ] Update agent prompts so local dependency failures do not trigger install
-  loops; official Docker grading is the source of truth.
 - [ ] Select one more fresh SWE-ContextBench pair only after runner hardening.
 - [ ] If a clean canary shows signal and D2 has no false decisions, select a
   5-pair mini-slice and save only the small selection metadata in this

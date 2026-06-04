@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from typing import cast
 
+from decision_layer.canary_runner import CanaryRunConfig, run_opencode_canary
 from decision_layer.core import (
     DecisionState,
     add_decision,
@@ -74,6 +75,22 @@ def main(argv: list[str] | None = None) -> int:
     verify_patch_parser.add_argument("--require-term", action="append", default=[])
     verify_patch_parser.add_argument("--require-file", action="append", default=[])
     verify_patch_parser.add_argument("--allow-file", action="append", default=[])
+
+    run_canary_parser = subparsers.add_parser("run-opencode-canary")
+    run_canary_parser.add_argument("--workspace", required=True)
+    run_canary_parser.add_argument("--prompt", required=True)
+    run_canary_parser.add_argument("--guard-bin", required=True)
+    run_canary_parser.add_argument("--log", required=True)
+    run_canary_parser.add_argument("--stderr", required=True)
+    run_canary_parser.add_argument("--time", required=True)
+    run_canary_parser.add_argument("--patch", required=True)
+    run_canary_parser.add_argument("--verifier-json")
+    run_canary_parser.add_argument("--model", default="llama.cpp/qwen36-35b-a3b-udiq3s")
+    run_canary_parser.add_argument("--timeout-seconds", type=float, default=600.0)
+    run_canary_parser.add_argument("--opencode-bin", default="opencode")
+    run_canary_parser.add_argument("--require-term", action="append", default=[])
+    run_canary_parser.add_argument("--require-file", action="append", default=[])
+    run_canary_parser.add_argument("--allow-file", action="append", default=[])
 
     args = parser.parse_args(argv)
     state_path = Path(args.state)
@@ -173,6 +190,27 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(json.dumps(verification.to_dict(), ensure_ascii=False))
         return 0 if verification.ok else 1
+    if args.command == "run-opencode-canary":
+        canary_result = run_opencode_canary(
+            CanaryRunConfig(
+                workspace=Path(args.workspace),
+                prompt_path=Path(args.prompt),
+                guard_bin=Path(args.guard_bin),
+                log_path=Path(args.log),
+                stderr_path=Path(args.stderr),
+                time_path=Path(args.time),
+                patch_path=Path(args.patch),
+                verifier_json_path=Path(args.verifier_json) if args.verifier_json else None,
+                model=args.model,
+                timeout_seconds=args.timeout_seconds,
+                opencode_bin=args.opencode_bin,
+                required_terms=tuple(args.require_term),
+                required_files=tuple(args.require_file),
+                allowed_files=tuple(args.allow_file),
+            )
+        )
+        print(json.dumps(canary_result.to_dict(), ensure_ascii=False))
+        return 0 if canary_result.ok else 1
     raise AssertionError(f"unhandled command: {args.command}")
 
 

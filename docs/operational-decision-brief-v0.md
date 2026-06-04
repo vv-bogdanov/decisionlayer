@@ -213,6 +213,32 @@ process raises a timeout exception.
 Command guards must block forbidden git history subcommands regardless of option
 order, for example both `git log` and `git -C path log`.
 
+Use the hardened canary wrapper for OpenCode proof runs:
+
+```text
+decision-layer run-opencode-canary \
+  --workspace /path/to/sanitized-checkout \
+  --prompt prompts/d1_task.md \
+  --guard-bin guard-bin \
+  --log logs/d1_opencode.jsonl \
+  --stderr logs/d1_opencode.stderr \
+  --time logs/d1_opencode_time.txt \
+  --patch patches/d1.patch \
+  --verifier-json logs/d1_verifier.json \
+  --require-term stable_topological_sort \
+  --require-file django/forms/widgets.py \
+  --allow-file django/forms/widgets.py
+```
+
+The wrapper always passes `opencode run --dir`, enables noninteractive
+permission skip, writes timeout-safe timing markers, captures the final patch,
+runs optional patch verification, and creates guards for install, virtualenv,
+privilege, network-fetch, and git-history commands.
+
+Agent prompts should say that missing local dependencies are not a reason to
+install packages or create virtual environments. The agent may skip local tests
+and rely on the official Docker grader as the source of truth.
+
 Before official grading, run a lightweight patch/brief verifier when the brief
 contains critical implementation commitments. The verifier should fail fast if
 required terms or files are absent from the generated patch, or if the patch
