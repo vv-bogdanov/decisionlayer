@@ -57,4 +57,5 @@ def test_summarize_swe_contextbench_run_outputs_totals(tmp_path: Path) -> None:
     )
 
     assert "| D0 | 1/1 | 1/1 | 1 |" in result.stdout
+    assert "| D1 | 0/0 | 0/1 | 0 |" in result.stdout
     assert f"| `{pair}` | D0 | yes | 1.25 |" in result.stdout
