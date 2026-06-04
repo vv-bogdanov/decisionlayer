@@ -446,7 +446,7 @@ def run_codex_agent_mode(
     patch_path.write_text(patch_text, encoding="utf-8")
     verifier = verify_patch(patch_text)
     write_json(verifier_path, verifier.to_dict())
-    audit = audit_jsonl_log(log_path, stderr_path)
+    audit = audit_agent_logs(log_path, raw_paths=[stderr_path])
     write_json(audit_path, audit)
     time_path.write_text(
         f"elapsed_seconds={elapsed:.2f}\nexit_status={exit_status}\n",
@@ -722,7 +722,7 @@ def run_logged(
     return result
 
 
-def audit_jsonl_log(*paths: Path) -> dict[str, Any]:
+def audit_agent_logs(jsonl_path: Path, *, raw_paths: list[Path]) -> dict[str, Any]:
     command_count = 0
     forbidden_command_count = 0
     forbidden_command_examples: list[str] = []
@@ -732,10 +732,8 @@ def audit_jsonl_log(*paths: Path) -> dict[str, Any]:
     error_examples: list[str] = []
     malformed_log_lines = 0
 
-    for path in paths:
-        if not path.exists():
-            continue
-        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+    if jsonl_path.exists():
+        for line in jsonl_path.read_text(encoding="utf-8", errors="replace").splitlines():
             try:
                 event = json.loads(line)
             except json.JSONDecodeError:
@@ -758,6 +756,14 @@ def audit_jsonl_log(*paths: Path) -> dict[str, Any]:
                 if "error" in normalized_key and value.strip():
                     error_count += 1
                     append_example(error_examples, value)
+
+    for path in raw_paths:
+        if not path.exists():
+            continue
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            if BLOCKED_OUTPUT_RE.search(line):
+                blocked_output_count += 1
+                append_example(blocked_output_examples, line)
 
     is_dirty = any(
         (
