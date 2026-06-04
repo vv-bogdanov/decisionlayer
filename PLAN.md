@@ -82,11 +82,37 @@ Artifact root:
 /home/dev/benchmarks/swe-contextbench/agent-runs/swe-contextbench-followup-gated-slice-codex
 ```
 
+Agent status:
+
+```text
+D0  7/7 agent ok, 0 benchmark-noise patches
+D1  7/7 agent ok, 0 benchmark-noise patches
+D1G 7/7 agent ok, 0 benchmark-noise patches
+D2  7/7 agent ok, 0 benchmark-noise patches
+```
+
+Grading status:
+
+The first grading attempt exposed two SWE-ContextBench harness constraints:
+
+- `evaluation.sh` is not safe to run concurrently because it writes shared
+  `batch_dataset.json` and `batch_predictions.json` files.
+- `run_evaluation` removes the original hardened instance image by default,
+  which breaks grading multiple modes for the same instance unless
+  `--no-remove-instance-image` is used.
+
+The local runner now serializes grading and calls the official Python modules
+with `--no-remove-instance-image`. The 7 hardened images had already been
+removed by the earlier grading attempt, and Docker Hub currently returns an
+unauthenticated pull rate-limit error. Do not interpret the current official
+follow-up totals until images are restored and grading is rerun.
+
 ## Active Checklist
 
-- [ ] Run `D0,D1,D1G,D2` on the follow-up slice with Codex Spark
-  low-reasoning and resume/cache enabled.
-- [ ] Grade the follow-up slice with official SWE-ContextBench Docker grading.
+- [ ] Restore the 7 follow-up hardened Docker images after Docker Hub rate limit
+  reset or after `docker login`.
+- [ ] Rerun follow-up official grading with cached agent patches:
+  `scripts/run-swe-contextbench-mini-slice --config configs/swe-contextbench-followup-gated-slice.json --phase grade --modes D0,D1,D1G,D2 --agent-backend codex --grading-timeout-seconds 2400 --overwrite`.
 - [ ] Summarize the run with `--modes D0,D1,D1G,D2`.
 - [ ] Write the next report comparing blind D1 vs gated D1 vs D2, with strict
   clean and official metrics separated.
