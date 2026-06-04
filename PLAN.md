@@ -185,11 +185,30 @@ Keep these constraints for all next proof runs:
 - no edits to tests, fixtures, benchmark files, docs, or generated artifacts
 - no product platform work unless it directly improves the proof
 
+## Publishable Metric Contract
+
+Use this contract for the next wider run before looking at its grading results:
+
+- headline comparison: `D0` vs `D1G`
+- headline score: official SWE-ContextBench resolved count after excluding
+  infrastructure-error rows
+- hygiene exclusion: any agent patch that touches tests, fixtures, benchmark
+  files, docs, or generated artifacts must be reported separately and excluded
+  from the clean paired view
+- variance report: include per-run totals and pair matrix, not only aggregate
+  totals
+- gate report: split `D1G` pairs into `apply` and `skip`; do not count skipped
+  pairs as memory value
+- P2P caveats: report any official resolved row whose PASS_TO_PASS count is not
+  full, but do not silently change the official headline score after results are
+  known
+- model control: same backend, model, reasoning effort, timeout, and runner
+  version inside each compared lane
+- image control: publishable lane should use prebuilt or authenticated-pulled
+  SWE-ContextBench images; local rebuilt images are diagnostic only
+
 ## Active Checklist
 
-- [ ] Predeclare publishable-run metrics before the next wider run: official
-  resolved total, verifier-noise exclusion, infra-error exclusion, and how P2P
-  caveats are reported.
 - [ ] Prepare a publishable lane with authenticated/prebuilt SWE-ContextBench
   image pulls. If local rebuilt images are used again, label the run as
   diagnostic only.
