@@ -20,6 +20,7 @@ reports/swe-contextbench-mini.md
 reports/swe-contextbench-large.md
 reports/swe-contextbench-followup-gated.md
 reports/swe-contextbench-repeat-variance.md
+reports/swe-contextbench-d0-d1g-large.md
 ```
 
 Mini-slice:
@@ -80,6 +81,20 @@ public-artifact preflight: 17/17
 local Docker image preflight: 17/17 after local diagnostic image rebuild
 ```
 
+First larger D0 vs D1G diagnostic:
+
+```text
+config=configs/swe-contextbench-d0-d1g-large-slice.json
+artifact_root=/home/dev/benchmarks/swe-contextbench/agent-runs/swe-contextbench-d0-d1g-large-slice-codex
+
+D0  10/17
+D1G 10/17
+
+agent_ok=17/17 for both modes
+benchmark-noise patches=0
+infra_errors=0
+```
+
 Important caveat: the follow-up official grading used local images rebuilt with
 the official SWE-ContextBench `build_instance.py` module after Docker Hub
 rate-limited prebuilt image pulls. Treat it as a diagnostic recovery run, not a
@@ -87,11 +102,15 @@ publishable prebuilt-image lane.
 
 ## Interpretation
 
-The Decision Layer signal is still plausible, and `D1G` is now the best
-headline lane for the next coding proof. The repeat diagnostic also confirms
-agent variance clearly. On `scikit-learn__scikit-learn-25763`, `D0` and `D1G`
-had the same effective prompt because the gate skipped the Decision Brief, but
-`D1G` solved 3/3 while `D0` solved 1/3. Do not count that pair as memory value.
+The Decision Layer signal is still plausible, but narrower than the 7-pair
+repeat made it look. `D1G` remains the best lane to test, but the first larger
+diagnostic showed no net delta: D0 and D1G both solved 10/17 and matched on
+every pair.
+
+The repeat diagnostic also confirms agent variance clearly. On
+`scikit-learn__scikit-learn-25763`, `D0` and `D1G` had the same effective prompt
+because the gate skipped the Decision Brief, but `D1G` solved 3/3 while `D0`
+solved 1/3. Do not count that pair as memory value.
 
 The cleanest positive signal is still exact decision transfer. In
 `django__django-11858` and `sympy__sympy-20567`, D1G solved 3/3 while D0 solved
@@ -125,7 +144,7 @@ Keep these constraints for all next proof runs:
 - [ ] Prefer authenticated/prebuilt SWE-ContextBench image pulls for the
   publishable lane. If local rebuilt images are used again, label the run as
   diagnostic only.
-- [ ] Run the larger slice as `D0` vs `D1G` with repeat variance. Do not include
-  `D1` or `D2` in the headline lane.
+- [ ] Run at least one more larger-slice `D0` vs `D1G` repeat before making an
+  aggregate claim. Do not include `D1` or `D2` in the headline lane.
 - [ ] If `D2` is revisited, add a narrow application guard that forces extracted
   decisions to map to the target fix point before prompt injection.
