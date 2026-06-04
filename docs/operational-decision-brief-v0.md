@@ -203,6 +203,16 @@ rerunning completed cases:
 - blocked-command audit or guard-bin logs;
 - official grading report and grading timing.
 
+For OpenCode-based runs, pass the benchmark checkout with `--dir` explicitly.
+The process working directory alone is not a reliable guarantee that tool calls
+will run inside the intended checkout.
+
+Timeout wrappers must write timing and exit-status markers even when the agent
+process raises a timeout exception.
+
+Command guards must block forbidden git history subcommands regardless of option
+order, for example both `git log` and `git -C path log`.
+
 Before official grading, run a lightweight patch/brief verifier when the brief
 contains critical implementation commitments. The verifier should fail fast if
 required terms or files are absent from the generated patch, or if the patch
