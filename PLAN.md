@@ -150,6 +150,16 @@ must preserve compact implementation decisions.
   patch, and emits structured verifier JSON.
 - [x] Update agent prompt guidance so local dependency failures do not trigger
   install loops; official Docker grading is the source of truth.
+- [x] Select one more fresh SWE-ContextBench pair after runner hardening:
+  `sphinx-doc__sphinx-10614 -> sphinx-doc__sphinx-865`.
+
+Next selected canary: `sphinx-doc__sphinx-10614 -> sphinx-doc__sphinx-865`.
+Reason: the related task is small (F2P 1, P2P 5), the base accepted patch
+touches only `sphinx/ext/inheritance_diagram.py`, and the reusable operational
+decision is concrete: inheritance-diagram links must use the resolved `refuri`
+without adding SVG-specific `../` prefixes, while external intersphinx refs use
+the URI fragment as the graph node key. Related hidden patch/tests were not
+inspected during selection.
 
 Sphinx canary result: no clean Decision Layer signal. D0, D1, and D2 all
 resolved `sphinx-doc__sphinx-8052`, but all non-gold variants regressed the same
@@ -169,7 +179,12 @@ promising direction signal, not publishable evidence.
 
 - [ ] Do not start the 5-pair mini-slice until a fresh canary shows clean D1 or
   D2 signal under the revised operational-brief policy.
-- [ ] Select one more fresh SWE-ContextBench pair only after runner hardening.
+- [ ] Prepare D1 manual and D2 automatic Operational Decision Briefs for
+  `sphinx-doc__sphinx-10614 -> sphinx-doc__sphinx-865` from base-task artifacts
+  only.
+- [ ] Run the selected clean one-pair D0/D1/D2 canary with
+  `decision-layer run-opencode-canary`, verifier JSON, guard audit, official
+  grading, and a concise result report.
 - [ ] If a clean canary shows signal and D2 has no false decisions, select a
   5-pair mini-slice and save only the small selection metadata in this
   repository.
