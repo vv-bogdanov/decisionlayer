@@ -1,0 +1,810 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+import urllib.request
+from pathlib import Path
+from typing import Any
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_BENCHMARK_ROOT = Path("/home/dev/benchmarks/swe-contextbench")
+DEFAULT_CONFIG = PROJECT_ROOT / "configs" / "swe-contextbench-mini-slice.json"
+DEFAULT_OPENCODE_MODEL = "llama.cpp/qwen36-35b-a3b-udiq3s"
+DEFAULT_EXTRACT_MODEL = "qwen36-35b-a3b-udiq3s"
+DEFAULT_EXTRACT_BASE_URL = "http://127.0.0.1:18080/v1"
+MODES = ("D0", "D1", "D2")
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Prepare and run the predeclared SWE-ContextBench mini-slice."
+    )
+    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    parser.add_argument("--benchmark-root", type=Path, default=DEFAULT_BENCHMARK_ROOT)
+    parser.add_argument("--artifact-root", type=Path)
+    parser.add_argument("--phase", choices=["prepare", "agents", "grade", "all"], default="all")
+    parser.add_argument("--modes", default=",".join(MODES))
+    parser.add_argument("--max-pairs", type=int)
+    parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--opencode-bin", default="opencode")
+    parser.add_argument("--opencode-model", default=DEFAULT_OPENCODE_MODEL)
+    parser.add_argument("--timeout-seconds", type=float, default=600.0)
+    parser.add_argument("--extract-base-url", default=DEFAULT_EXTRACT_BASE_URL)
+    parser.add_argument("--extract-model", default=DEFAULT_EXTRACT_MODEL)
+    parser.add_argument("--extract-timeout-seconds", type=float, default=180.0)
+    parser.add_argument("--grading-timeout-seconds", type=float, default=1800.0)
+    args = parser.parse_args(argv)
+
+    config = load_json(args.config)
+    benchmark_root = args.benchmark_root.resolve()
+    artifact_root = (args.artifact_root or benchmark_root / "agent-runs" / "mini-slice").resolve()
+    progress_path = artifact_root / "mini-slice-progress.jsonl"
+    artifact_root.mkdir(parents=True, exist_ok=True)
+
+    selected_modes = parse_modes(args.modes)
+    pairs = list(config["pairs"])
+    if args.max_pairs is not None:
+        pairs = pairs[: args.max_pairs]
+
+    emit(
+        progress_path,
+        "run_started",
+        phase=args.phase,
+        pair_count=len(pairs),
+        modes=list(selected_modes),
+        artifact_root=str(artifact_root),
+    )
+
+    failures = 0
+    if phase_includes(args.phase, "prepare"):
+        for pair in pairs:
+            try:
+                prepare_pair_artifacts(pair, benchmark_root, artifact_root, args, progress_path)
+            except Exception as exc:
+                failures += 1
+                emit_failure(progress_path, "prepare_failed", pair, exc)
+
+    if phase_includes(args.phase, "agents"):
+        for pair in pairs:
+            ensure_pair_artifacts(pair, benchmark_root, artifact_root, args, progress_path)
+            for mode in selected_modes:
+                try:
+                    result = run_agent_mode(pair, mode, benchmark_root, artifact_root, args, progress_path)
+                    if not result.get("ok", False):
+                        failures += 1
+                except Exception as exc:
+                    failures += 1
+                    emit_failure(progress_path, "agent_failed", pair, exc, mode=mode)
+
+    if phase_includes(args.phase, "grade"):
+        for pair in pairs:
+            for mode in selected_modes:
+                try:
+                    result = run_grading_mode(pair, mode, benchmark_root, artifact_root, args, progress_path)
+                    if not result.get("ok", False):
+                        failures += 1
+                except Exception as exc:
+                    failures += 1
+                    emit_failure(progress_path, "grading_failed", pair, exc, mode=mode)
+
+    emit(progress_path, "run_finished", failures=failures)
+    return 1 if failures else 0
+
+
+def phase_includes(phase: str, step: str) -> bool:
+    return phase == "all" or phase == step
+
+
+def parse_modes(raw_modes: str) -> tuple[str, ...]:
+    modes = tuple(mode.strip().upper() for mode in raw_modes.split(",") if mode.strip())
+    invalid = [mode for mode in modes if mode not in MODES]
+    if invalid:
+        raise SystemExit(f"Unknown mode(s): {', '.join(invalid)}")
+    return modes
+
+
+def load_json(path: Path) -> Any:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def write_json(path: Path, data: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def prepare_pair_artifacts(
+    pair: dict[str, Any],
+    benchmark_root: Path,
+    artifact_root: Path,
+    args: argparse.Namespace,
+    progress_path: Path,
+) -> None:
+    pair_dir = pair_artifact_dir(artifact_root, pair)
+    for name in ("briefs", "diagnostics", "logs", "patches", "prompts"):
+        (pair_dir / name).mkdir(parents=True, exist_ok=True)
+
+    related = load_related_case(benchmark_root, pair["related_instance_id"])
+    base = load_experience(benchmark_root, pair["base_instance_id"])
+    write_if_needed(
+        pair_dir / "diagnostics" / "related_public_artifact.json",
+        json.dumps(public_related_artifact(related), ensure_ascii=False, indent=2) + "\n",
+        args.overwrite,
+    )
+    write_if_needed(
+        pair_dir / "diagnostics" / "base_public_artifact.json",
+        json.dumps(base_public_artifact(base), ensure_ascii=False, indent=2) + "\n",
+        args.overwrite,
+    )
+
+    base_artifacts_text = render_base_artifacts_text(base)
+    write_if_needed(
+        pair_dir / "prompts" / "d2_extract_operational_base_artifacts.md",
+        base_artifacts_text,
+        args.overwrite,
+    )
+    write_if_needed(
+        pair_dir / "briefs" / "d1_manual_operational_brief.md",
+        render_d1_brief(pair),
+        args.overwrite,
+    )
+    prepare_d2_brief(pair, base_artifacts_text, pair_dir, args, progress_path)
+
+    for mode in MODES:
+        write_if_needed(
+            pair_dir / "prompts" / f"{mode.lower()}_task.md",
+            render_task_prompt(pair, related, pair_dir, mode),
+            args.overwrite,
+        )
+
+    emit(
+        progress_path,
+        "pair_prepared",
+        pair=pair["related_instance_id"],
+        base=pair["base_instance_id"],
+        pair_dir=str(pair_dir),
+    )
+
+
+def ensure_pair_artifacts(
+    pair: dict[str, Any],
+    benchmark_root: Path,
+    artifact_root: Path,
+    args: argparse.Namespace,
+    progress_path: Path,
+) -> None:
+    prompt_path = pair_artifact_dir(artifact_root, pair) / "prompts" / "d0_task.md"
+    if args.overwrite or not prompt_path.exists():
+        prepare_pair_artifacts(pair, benchmark_root, artifact_root, args, progress_path)
+
+
+def prepare_d2_brief(
+    pair: dict[str, Any],
+    base_artifacts_text: str,
+    pair_dir: Path,
+    args: argparse.Namespace,
+    progress_path: Path,
+) -> None:
+    brief_path = pair_dir / "briefs" / "d2_auto_operational_brief.md"
+    parsed_path = pair_dir / "logs" / "d2_extract_operational_parsed.json"
+    if brief_path.exists() and parsed_path.exists() and not args.overwrite:
+        emit(progress_path, "d2_extract_skipped", pair=pair["related_instance_id"], reason="cached")
+        return
+
+    template = (PROJECT_ROOT / "configs" / "swe-contextbench-operational-extractor-prompt.md").read_text(
+        encoding="utf-8"
+    )
+    prompt = template.replace("{{BASE_TASK_ARTIFACTS}}", base_artifacts_text)
+    prompt_path = pair_dir / "prompts" / "d2_extract_operational.md"
+    prompt_path.write_text(prompt, encoding="utf-8")
+
+    emit(
+        progress_path,
+        "d2_extract_started",
+        pair=pair["related_instance_id"],
+        base_url=args.extract_base_url,
+        model=args.extract_model,
+    )
+    raw_response, content = call_llm_chat(
+        base_url=args.extract_base_url,
+        model=args.extract_model,
+        prompt=prompt,
+        timeout_seconds=args.extract_timeout_seconds,
+    )
+    write_json(pair_dir / "logs" / "d2_extract_operational_raw.json", raw_response)
+    (pair_dir / "logs" / "d2_extract_operational_content.txt").write_text(
+        content,
+        encoding="utf-8",
+    )
+    parsed = extract_json_object(content)
+    validate_extractor_result(parsed)
+    write_json(parsed_path, parsed)
+    brief_path.write_text(render_d2_brief(pair, parsed, args), encoding="utf-8")
+    emit(
+        progress_path,
+        "d2_extract_finished",
+        pair=pair["related_instance_id"],
+        decision_count=len(parsed.get("decisions", [])),
+        rejected_count=len(parsed.get("rejected", [])),
+    )
+
+
+def run_agent_mode(
+    pair: dict[str, Any],
+    mode: str,
+    benchmark_root: Path,
+    artifact_root: Path,
+    args: argparse.Namespace,
+    progress_path: Path,
+) -> dict[str, Any]:
+    pair_dir = pair_artifact_dir(artifact_root, pair)
+    mode_name = mode.lower()
+    result_path = pair_dir / "logs" / f"{mode_name}_result.json"
+    if result_path.exists() and not args.overwrite:
+        emit(progress_path, "agent_skipped", pair=pair["related_instance_id"], mode=mode, reason="cached")
+        return load_json(result_path)
+
+    related = load_related_case(benchmark_root, pair["related_instance_id"])
+    workspace = pair_dir / f"{mode_name}_workspace"
+    prepare_workspace(
+        repo=related["repo"],
+        commit=related["base_commit"],
+        benchmark_root=benchmark_root,
+        workspace=workspace,
+        log_path=pair_dir / "logs" / f"{mode_name}_workspace.log",
+        progress_path=progress_path,
+        pair_id=pair["related_instance_id"],
+        mode=mode,
+    )
+
+    emit(
+        progress_path,
+        "agent_started",
+        pair=pair["related_instance_id"],
+        mode=mode,
+        workspace=str(workspace),
+    )
+    command = [
+        sys.executable,
+        "-m",
+        "decision_layer.cli",
+        "run-opencode-canary",
+        "--workspace",
+        str(workspace),
+        "--prompt",
+        str(pair_dir / "prompts" / f"{mode_name}_task.md"),
+        "--guard-bin",
+        str(pair_dir / "guard-bin"),
+        "--log",
+        str(pair_dir / "logs" / f"{mode_name}_opencode.jsonl"),
+        "--stderr",
+        str(pair_dir / "logs" / f"{mode_name}_opencode.stderr"),
+        "--time",
+        str(pair_dir / "logs" / f"{mode_name}_opencode_time.txt"),
+        "--patch",
+        str(pair_dir / "patches" / f"{mode_name}.patch"),
+        "--verifier-json",
+        str(pair_dir / "logs" / f"{mode_name}_verifier.json"),
+        "--audit-json",
+        str(pair_dir / "logs" / f"{mode_name}_audit.json"),
+        "--progress-log",
+        str(pair_dir / "logs" / f"{mode_name}_progress.jsonl"),
+        "--model",
+        args.opencode_model,
+        "--timeout-seconds",
+        str(args.timeout_seconds),
+        "--opencode-bin",
+        args.opencode_bin,
+        "--fail-on-dirty-audit",
+    ]
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(PROJECT_ROOT / "src") + os.pathsep + env.get("PYTHONPATH", "")
+    started = time.perf_counter()
+    completed = subprocess.run(command, env=env, capture_output=True, text=True, check=False)
+    elapsed = time.perf_counter() - started
+    (pair_dir / "logs" / f"{mode_name}_runner.stderr").write_text(
+        completed.stderr,
+        encoding="utf-8",
+    )
+    result = parse_runner_stdout(completed.stdout)
+    result["cli_exit_code"] = completed.returncode
+    result["runner_elapsed_seconds"] = round(elapsed, 2)
+    result["ok"] = completed.returncode == 0 and bool(result.get("ok", False))
+    write_json(result_path, result)
+    emit(
+        progress_path,
+        "agent_finished",
+        pair=pair["related_instance_id"],
+        mode=mode,
+        ok=result["ok"],
+        cli_exit_code=completed.returncode,
+        elapsed_seconds=round(elapsed, 2),
+        patch=str(pair_dir / "patches" / f"{mode_name}.patch"),
+    )
+    return result
+
+
+def run_grading_mode(
+    pair: dict[str, Any],
+    mode: str,
+    benchmark_root: Path,
+    artifact_root: Path,
+    args: argparse.Namespace,
+    progress_path: Path,
+) -> dict[str, Any]:
+    pair_dir = pair_artifact_dir(artifact_root, pair)
+    mode_name = mode.lower()
+    result_path = pair_dir / "logs" / f"{mode_name}_grading_result.json"
+    if result_path.exists() and not args.overwrite:
+        emit(progress_path, "grading_skipped", pair=pair["related_instance_id"], mode=mode, reason="cached")
+        return load_json(result_path)
+
+    patch_path = pair_dir / "patches" / f"{mode_name}.patch"
+    if not patch_path.exists():
+        result = {"ok": False, "error": f"missing patch: {patch_path}"}
+        write_json(result_path, result)
+        return result
+
+    related_id = pair["related_instance_id"]
+    prediction_dir = pair_dir / "predictions" / mode_name
+    prediction_dir.mkdir(parents=True, exist_ok=True)
+    prediction = {
+        related_id: {
+            "model_name_or_path": f"opencode-mini-{mode_name}",
+            "instance_id": related_id,
+            "model_patch": patch_path.read_text(encoding="utf-8"),
+        }
+    }
+    write_json(prediction_dir / f"{related_id}_preds.json", prediction)
+
+    harness_root = benchmark_root / "SWEContextBench"
+    run_id = f"decision-layer-mini-{sanitize_id(related_id)}-{mode_name}"
+    log_path = pair_dir / "logs" / f"{mode_name}_grading.log"
+    emit(
+        progress_path,
+        "grading_started",
+        pair=related_id,
+        mode=mode,
+        run_id=run_id,
+        prediction_dir=str(prediction_dir),
+    )
+    started = time.perf_counter()
+    with log_path.open("w", encoding="utf-8") as log:
+        completed = subprocess.run(
+            ["bash", "evaluation.sh", run_id, "verified", str(prediction_dir)],
+            cwd=harness_root,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            timeout=args.grading_timeout_seconds,
+            check=False,
+        )
+    elapsed = time.perf_counter() - started
+    (pair_dir / "logs" / f"{mode_name}_grading_time.txt").write_text(
+        f"elapsed_seconds={elapsed:.2f}\nexit_status={completed.returncode}\n",
+        encoding="utf-8",
+    )
+
+    official_result_path = harness_root / f"{run_id}.json"
+    if official_result_path.exists():
+        result = load_json(official_result_path)
+        result["ok"] = completed.returncode == 0
+        result["run_id"] = run_id
+        result["elapsed_seconds"] = round(elapsed, 2)
+    else:
+        result = {
+            "ok": False,
+            "run_id": run_id,
+            "elapsed_seconds": round(elapsed, 2),
+            "exit_status": completed.returncode,
+            "error": f"official result missing: {official_result_path}",
+        }
+    write_json(result_path, result)
+    emit(
+        progress_path,
+        "grading_finished",
+        pair=related_id,
+        mode=mode,
+        ok=result.get("ok", False),
+        resolved=related_id in result.get("resolved_ids", []),
+        elapsed_seconds=round(elapsed, 2),
+        result=str(result_path),
+    )
+    return result
+
+
+def prepare_workspace(
+    *,
+    repo: str,
+    commit: str,
+    benchmark_root: Path,
+    workspace: Path,
+    log_path: Path,
+    progress_path: Path,
+    pair_id: str,
+    mode: str,
+) -> None:
+    repo_cache = benchmark_root / "repos" / repo.replace("/", "__")
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    emit(progress_path, "workspace_prepare_started", pair=pair_id, mode=mode, workspace=str(workspace))
+    with log_path.open("w", encoding="utf-8") as log:
+        if not (repo_cache / ".git").exists():
+            repo_cache.parent.mkdir(parents=True, exist_ok=True)
+            run_logged(
+                ["git", "clone", "--filter=blob:none", "--no-checkout", repo_url(repo), str(repo_cache)],
+                cwd=benchmark_root,
+                log=log,
+            )
+        fetch_commit(repo_cache, commit, log)
+        if workspace.exists():
+            safe_rmtree(workspace, benchmark_root / "agent-runs")
+        run_logged(["git", "clone", "--no-hardlinks", str(repo_cache), str(workspace)], cwd=benchmark_root, log=log)
+        run_logged(["git", "-C", str(workspace), "checkout", "--detach", commit], cwd=benchmark_root, log=log)
+        safe_rmtree(workspace / ".git", workspace)
+        run_logged(["git", "-C", str(workspace), "init"], cwd=benchmark_root, log=log)
+        run_logged(["git", "-C", str(workspace), "config", "user.email", "poc@example.local"], cwd=benchmark_root, log=log)
+        run_logged(["git", "-C", str(workspace), "config", "user.name", "Decision Layer POC"], cwd=benchmark_root, log=log)
+        run_logged(["git", "-C", str(workspace), "add", "-A"], cwd=benchmark_root, log=log)
+        run_logged(["git", "-C", str(workspace), "commit", "-m", "sanitized base"], cwd=benchmark_root, log=log)
+    emit(progress_path, "workspace_prepare_finished", pair=pair_id, mode=mode, workspace=str(workspace))
+
+
+def fetch_commit(repo_cache: Path, commit: str, log: Any) -> None:
+    result = run_logged(
+        ["git", "-C", str(repo_cache), "cat-file", "-e", f"{commit}^{{commit}}"],
+        cwd=repo_cache,
+        log=log,
+        check=False,
+    )
+    if result.returncode == 0:
+        return
+    result = run_logged(
+        ["git", "-C", str(repo_cache), "fetch", "--filter=blob:none", "--depth=1", "origin", commit],
+        cwd=repo_cache,
+        log=log,
+        check=False,
+    )
+    if result.returncode == 0:
+        return
+    run_logged(["git", "-C", str(repo_cache), "fetch", "--filter=blob:none", "origin"], cwd=repo_cache, log=log)
+
+
+def run_logged(
+    command: list[str],
+    *,
+    cwd: Path,
+    log: Any,
+    check: bool = True,
+) -> subprocess.CompletedProcess[str]:
+    log.write("$ " + " ".join(command) + "\n")
+    log.flush()
+    result = subprocess.run(
+        command,
+        cwd=cwd,
+        stdout=log,
+        stderr=subprocess.STDOUT,
+        text=True,
+        check=False,
+    )
+    log.write(f"[exit {result.returncode}]\n")
+    log.flush()
+    if check and result.returncode != 0:
+        raise RuntimeError(f"command failed with exit {result.returncode}: {' '.join(command)}")
+    return result
+
+
+def safe_rmtree(path: Path, allowed_root: Path) -> None:
+    resolved = path.resolve()
+    allowed = allowed_root.resolve()
+    if resolved == allowed or allowed not in resolved.parents:
+        raise RuntimeError(f"refusing to remove path outside {allowed}: {resolved}")
+    shutil.rmtree(resolved)
+
+
+def call_llm_chat(
+    *,
+    base_url: str,
+    model: str,
+    prompt: str,
+    timeout_seconds: float,
+) -> tuple[dict[str, Any], str]:
+    url = base_url.rstrip("/") + "/chat/completions"
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0,
+        "max_tokens": 2048,
+    }
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+        raw = json.loads(response.read().decode("utf-8"))
+    choices = raw.get("choices")
+    if not choices:
+        raise RuntimeError("llama.cpp response has no choices")
+    message = choices[0].get("message") or {}
+    content = message.get("content")
+    if not isinstance(content, str):
+        raise RuntimeError("llama.cpp response has no message content")
+    return raw, content
+
+
+def extract_json_object(content: str) -> dict[str, Any]:
+    stripped = content.strip()
+    if stripped.startswith("```"):
+        lines = stripped.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        stripped = "\n".join(lines).strip()
+    candidates = [stripped]
+    first = stripped.find("{")
+    last = stripped.rfind("}")
+    if first >= 0 and last > first:
+        candidates.append(stripped[first : last + 1])
+    for candidate in candidates:
+        try:
+            data = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(data, dict):
+            return data
+    raise RuntimeError("extractor did not return parseable JSON object")
+
+
+def validate_extractor_result(data: dict[str, Any]) -> None:
+    if not isinstance(data.get("decisions"), list):
+        raise RuntimeError("extractor JSON missing list key: decisions")
+    if not isinstance(data.get("rejected"), list):
+        raise RuntimeError("extractor JSON missing list key: rejected")
+    for item in data["decisions"]:
+        if not isinstance(item, dict) or not isinstance(item.get("text"), str):
+            raise RuntimeError("extractor decision is missing text")
+
+
+def render_base_artifacts_text(base: dict[str, Any]) -> str:
+    return "\n".join(
+        [
+            f"Base source task: {base['instance_id']}",
+            "Base problem statement:",
+            (base.get("problem_statement") or "").strip(),
+            "",
+            "Base hints:",
+            (base.get("hints_text") or "").strip(),
+            "",
+            "Base accepted patch:",
+            (base.get("patch") or "").strip(),
+            "",
+        ]
+    )
+
+
+def render_d1_brief(pair: dict[str, Any]) -> str:
+    return "\n".join(
+        [
+            "# D1 Manual Operational Decision Brief",
+            "",
+            f"Source task: `{pair['base_instance_id']}`",
+            "",
+            "Allowed source artifacts: base public problem, base hints, and base accepted patch.",
+            "",
+            "Decisions:",
+            "",
+            f"- {pair['expected_reusable_decision']}",
+            "",
+            "Audit:",
+            "",
+            "- No related hidden patch, hidden tests, final answer, or grading result was used.",
+            "- The related public issue text is used only in the shared task prompt.",
+            "",
+        ]
+    )
+
+
+def render_d2_brief(pair: dict[str, Any], parsed: dict[str, Any], args: argparse.Namespace) -> str:
+    lines = [
+        "# D2 Automatic Operational Decision Brief",
+        "",
+        f"Source task: `{pair['base_instance_id']}`",
+        "",
+        "Extractor: `configs/swe-contextbench-operational-extractor-prompt.md` via direct",
+        f"llama.cpp `/v1/chat/completions`, model `{args.extract_model}`, temperature 0.",
+        "",
+        "Decisions:",
+        "",
+    ]
+    decisions = parsed.get("decisions", [])
+    if decisions:
+        for item in decisions:
+            lines.append(f"- {item['text']}")
+    else:
+        lines.append("- None")
+    lines.extend(["", "Critical details:", ""])
+    if decisions:
+        for item in decisions:
+            lines.append(f"- `{item['text']}`")
+            for detail in item.get("critical_details", []):
+                lines.append(f"  - {detail}")
+    else:
+        lines.append("- None")
+    lines.extend(["", "Rejected:", ""])
+    rejected = parsed.get("rejected", [])
+    if rejected:
+        for item in rejected:
+            text = item.get("text", "")
+            reason = item.get("reason", "")
+            lines.append(f"- {text}: {reason}")
+    else:
+        lines.append("- None")
+    lines.extend(
+        [
+            "",
+            "Audit:",
+            "",
+            "- No related hidden patch, hidden tests, final answer, or grading result was included in the extraction prompt.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def render_task_prompt(
+    pair: dict[str, Any],
+    related: dict[str, Any],
+    pair_dir: Path,
+    mode: str,
+) -> str:
+    repo_name = related["repo"].split("/")[-1]
+    lines = [
+        f"You are fixing {repo_name} in this sanitized single-commit checkout.",
+        "",
+        "Hard rules:",
+        "- Work in this checkout only.",
+        "- Do not use the OpenCode task/explore subagent.",
+        "- Do not run git log, git show, or git blame.",
+        "- Do not install packages, create virtualenvs, or use pip, uv, sudo, or pkexec.",
+        "- If local dependencies are missing, skip local tests and rely on official Docker grading.",
+        "- Make the smallest source change that fixes the issue.",
+        "- Preserve existing behavior outside the issue.",
+        "",
+        "Issue:",
+        (related.get("problem_statement") or "").strip(),
+    ]
+    hints = (related.get("hints_text") or "").strip()
+    if hints:
+        lines.extend(["", "Public hints/discussion:", hints])
+    decisions = prompt_decisions(pair, pair_dir, mode)
+    if decisions is not None:
+        lines.extend(["", "Decision Brief", "", "Relevant operational decisions:"])
+        lines.extend(f"- {decision}" for decision in decisions)
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def prompt_decisions(pair: dict[str, Any], pair_dir: Path, mode: str) -> list[str] | None:
+    if mode == "D0":
+        return None
+    if mode == "D1":
+        return [pair["expected_reusable_decision"]]
+    parsed = load_json(pair_dir / "logs" / "d2_extract_operational_parsed.json")
+    decisions = [item["text"] for item in parsed.get("decisions", []) if isinstance(item, dict)]
+    return decisions or ["No accepted operational decisions were extracted from the base task."]
+
+
+def parse_runner_stdout(stdout: str) -> dict[str, Any]:
+    try:
+        data = json.loads(stdout)
+    except json.JSONDecodeError:
+        return {"ok": False, "stdout": stdout}
+    if not isinstance(data, dict):
+        return {"ok": False, "stdout": stdout}
+    return data
+
+
+def load_related_case(benchmark_root: Path, instance_id: str) -> dict[str, Any]:
+    path = benchmark_root / "SWEContextBench" / "cases" / "SWEContextBench Verified" / f"{instance_id}.json"
+    data = load_json(path)
+    if not isinstance(data, dict):
+        raise RuntimeError(f"invalid related case: {path}")
+    return data
+
+
+def load_experience(benchmark_root: Path, instance_id: str) -> dict[str, Any]:
+    experiences = load_json(benchmark_root / "data" / "SWEContextBench_Experience.json")
+    for item in experiences:
+        if item.get("instance_id") == instance_id:
+            return item
+    raise RuntimeError(f"experience not found: {instance_id}")
+
+
+def public_related_artifact(related: dict[str, Any]) -> dict[str, Any]:
+    keys = (
+        "instance_id",
+        "repo",
+        "base_commit",
+        "environment_setup_commit",
+        "created_at",
+        "issue_numbers",
+        "pull_number",
+        "problem_statement",
+        "hints_text",
+    )
+    result = {key: related.get(key) for key in keys}
+    result["FAIL_TO_PASS_count"] = len(related.get("FAIL_TO_PASS", []))
+    result["PASS_TO_PASS_count"] = len(related.get("PASS_TO_PASS", []))
+    return result
+
+
+def base_public_artifact(base: dict[str, Any]) -> dict[str, Any]:
+    keys = (
+        "instance_id",
+        "repo",
+        "base_commit",
+        "problem_statement",
+        "hints_text",
+        "patch",
+    )
+    return {key: base.get(key) for key in keys}
+
+
+def pair_artifact_dir(artifact_root: Path, pair: dict[str, Any]) -> Path:
+    return artifact_root / pair["related_instance_id"]
+
+
+def repo_url(repo: str) -> str:
+    return f"https://github.com/{repo}.git"
+
+
+def sanitize_id(value: str) -> str:
+    return value.replace("/", "__").replace(":", "_")
+
+
+def write_if_needed(path: Path, content: str, overwrite: bool) -> None:
+    if path.exists() and not overwrite:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
+def emit(progress_path: Path, event: str, **fields: Any) -> None:
+    progress_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "event": event,
+        "time_unix": round(time.time(), 3),
+    }
+    payload.update(fields)
+    line = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+    print(f"[mini-slice] {line}", file=sys.stderr, flush=True)
+    with progress_path.open("a", encoding="utf-8") as file:
+        file.write(line + "\n")
+
+
+def emit_failure(
+    progress_path: Path,
+    event: str,
+    pair: dict[str, Any],
+    exc: Exception,
+    *,
+    mode: str | None = None,
+) -> None:
+    fields: dict[str, Any] = {
+        "pair": pair.get("related_instance_id"),
+        "error_type": type(exc).__name__,
+        "error": str(exc),
+    }
+    if mode is not None:
+        fields["mode"] = mode
+    emit(progress_path, event, **fields)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

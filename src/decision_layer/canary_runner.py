@@ -367,7 +367,12 @@ def read_workspace_diff(workspace: Path, env: dict[str, str]) -> str:
 
 
 def maybe_verify_patch(config: CanaryRunConfig, patch_text: str) -> PatchVerificationResult | None:
-    should_verify = bool(config.required_terms or config.required_files or config.allowed_files)
+    should_verify = bool(
+        config.required_terms
+        or config.required_files
+        or config.allowed_files
+        or config.verifier_json_path is not None
+    )
     if not should_verify:
         return None
     verifier = verify_patch(

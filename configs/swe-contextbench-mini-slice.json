@@ -1,0 +1,83 @@
+{
+  "benchmark": "SWE-ContextBench",
+  "subset": "SWEContextBench Verified",
+  "purpose": "Predeclared 5-pair mini-slice for D0 vs D1 vs D2 Decision Layer proof runs.",
+  "selection_rules": [
+    "Use the related public issue text for the shared task prompt.",
+    "Use only the base experience public problem, hints, and accepted patch for D1/D2 decisions.",
+    "Do not inspect the related hidden patch, related hidden tests, final answers, or grading result before the run.",
+    "Prefer small related tasks with a compact reusable implementation decision."
+  ],
+  "pairs": [
+    {
+      "base_instance_id": "sympy__sympy-12419",
+      "related_instance_id": "sympy__sympy-12426",
+      "repo": "sympy/sympy",
+      "related_f2p": 1,
+      "related_p2p": 2,
+      "base_patch_files": [
+        "sympy/matrices/expressions/matexpr.py"
+      ],
+      "related_public_summary": "DiagonalMatrix[i, j] returns 0 for symbolic indexing; the issue says it is similar to the Identity matrix symbolic-entry bug.",
+      "expected_reusable_decision": "For symbolic matrix entry equality, do not treat unknown equality as false. Use Eq(i, j): true -> one, false -> zero, unknown -> symbolic KroneckerDelta.",
+      "selection_reason": "Small one-test related task; base patch is one file; the reusable decision is an operator-level symbolic equality rule.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "matplotlib__matplotlib-24637",
+      "related_instance_id": "matplotlib__matplotlib-15087",
+      "repo": "matplotlib/matplotlib",
+      "related_f2p": 1,
+      "related_p2p": 4,
+      "base_patch_files": [
+        "lib/matplotlib/offsetbox.py"
+      ],
+      "related_public_summary": "Artist gid values should be passed to the SVG renderer for figure, axis, ticks, legend, and other artists.",
+      "expected_reusable_decision": "Propagate artist gid by wrapping the artist draw body in renderer.open_group(class_name, gid=self.get_gid()) and renderer.close_group(class_name).",
+      "selection_reason": "Small renderer-behavior task; base patch is one file; the reusable decision is a concrete draw-group placement rule.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "django__django-11239",
+      "related_instance_id": "django__django-28322",
+      "repo": "django/django",
+      "related_f2p": 1,
+      "related_p2p": 4,
+      "base_patch_files": [
+        "django/db/backends/postgresql/client.py"
+      ],
+      "related_public_summary": "The MySQL dbshell command should support configured client TLS certificate and key parameters.",
+      "expected_reusable_decision": "For dbshell mutual TLS, read configured backend SSL certificate options and pass them to the native client through that backend's command/env mechanism.",
+      "selection_reason": "Cross-backend transfer from PostgreSQL to MySQL; base patch is one file; the decision is compact but not a full answer.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "django__django-16502",
+      "related_instance_id": "django__django-29343",
+      "repo": "django/django",
+      "related_f2p": 1,
+      "related_p2p": 4,
+      "base_patch_files": [
+        "django/core/servers/basehttp.py"
+      ],
+      "related_public_summary": "Development static file serving fails with connection reset on HEAD requests.",
+      "expected_reusable_decision": "For runserver HEAD requests, consume the response iterator without writing the body; do not force Content-Length: 0, and do not close persistent connections only because HEAD omits Content-Length.",
+      "selection_reason": "Same subsystem and HTTP method semantics; base patch is one file; the decision includes precise protocol constraints.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "sphinx-doc__sphinx-7440",
+      "related_instance_id": "sphinx-doc__sphinx-7418",
+      "repo": "sphinx-doc/sphinx",
+      "related_f2p": 1,
+      "related_p2p": 12,
+      "base_patch_files": [
+        "sphinx/domains/std.py"
+      ],
+      "related_public_summary": "Glossary terms that differ only by case are incorrectly treated as duplicate terms.",
+      "expected_reusable_decision": "Glossary term objects and term cross-reference targets must preserve original case; do not lowercase term keys when registering or resolving glossary terms.",
+      "selection_reason": "Single-file base patch; the reusable decision is exact, compact, and easy to audit for false content.",
+      "hidden_related_patch_or_tests_inspected": false
+    }
+  ]
+}
