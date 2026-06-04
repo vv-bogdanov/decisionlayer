@@ -850,6 +850,7 @@ def call_llm_chat(
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0,
         "max_tokens": 2048,
+        "response_format": {"type": "json_object"},
     }
     request = urllib.request.Request(
         url,
@@ -890,7 +891,52 @@ def extract_json_object(content: str) -> dict[str, Any]:
             continue
         if isinstance(data, dict):
             return data
+    recovered_decisions = recover_json_array_value(stripped, "decisions")
+    if recovered_decisions is not None:
+        return {"decisions": recovered_decisions, "rejected": []}
     raise RuntimeError("extractor did not return parseable JSON object")
+
+
+def recover_json_array_value(content: str, key: str) -> list[Any] | None:
+    key_pos = content.find(json.dumps(key))
+    if key_pos < 0:
+        return None
+    array_start = content.find("[", key_pos)
+    if array_start < 0:
+        return None
+    array_end = find_matching_json_bracket(content, array_start)
+    if array_end is None:
+        return None
+    try:
+        value = json.loads(content[array_start : array_end + 1])
+    except json.JSONDecodeError:
+        return None
+    return value if isinstance(value, list) else None
+
+
+def find_matching_json_bracket(content: str, start: int) -> int | None:
+    depth = 0
+    in_string = False
+    escaped = False
+    for index in range(start, len(content)):
+        char = content[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == "[":
+            depth += 1
+        elif char == "]":
+            depth -= 1
+            if depth == 0:
+                return index
+    return None
 
 
 def validate_extractor_result(data: dict[str, Any]) -> None:
