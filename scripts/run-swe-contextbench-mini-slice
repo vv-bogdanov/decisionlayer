@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import shutil
@@ -756,15 +757,20 @@ def run_grading_mode(
         prediction_dir=str(prediction_dir),
     )
     started = time.perf_counter()
-    with log_path.open("w", encoding="utf-8") as log:
-        completed = subprocess.run(
-            ["bash", "evaluation.sh", run_id, "verified", str(prediction_dir)],
-            cwd=harness_root,
-            stdout=log,
-            stderr=subprocess.STDOUT,
-            timeout=args.grading_timeout_seconds,
-            check=False,
-        )
+    lock_path = harness_root / ".decision-layer-grading.lock"
+    emit(progress_path, "grading_lock_waiting", pair=related_id, mode=mode, lock=str(lock_path))
+    with lock_path.open("w", encoding="utf-8") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        emit(progress_path, "grading_lock_acquired", pair=related_id, mode=mode)
+        with log_path.open("w", encoding="utf-8") as log:
+            completed = subprocess.run(
+                ["bash", "evaluation.sh", run_id, "verified", str(prediction_dir)],
+                cwd=harness_root,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                timeout=args.grading_timeout_seconds,
+                check=False,
+            )
     elapsed = time.perf_counter() - started
     (pair_dir / "logs" / f"{mode_name}_grading_time.txt").write_text(
         f"elapsed_seconds={elapsed:.2f}\nexit_status={completed.returncode}\n",
