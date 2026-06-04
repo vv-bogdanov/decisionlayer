@@ -1,4 +1,4 @@
-# Current Plan: SWE-ContextBench Mini-Slice
+# Current Plan: SWE-ContextBench Canary Follow-Up
 
 ## Goal
 
@@ -82,23 +82,42 @@ Secondary signal:
 - if D0 and D2 resolve the same tasks, D2 reduces average wall time or tool
   calls by at least 20% without adding false decisions.
 
-## Active Checklist
+## Completed Canary
 
-- [ ] Verify the official SWE-ContextBench dataset/harness location, license,
+- [x] Verify the official SWE-ContextBench dataset/harness location, license,
   schema, and grading path.
-- [ ] Create an external workspace under
+- [x] Create an external workspace under
   `/home/dev/benchmarks/swe-contextbench`; keep generated repos, logs, patches,
   and official reports out of this repository.
-- [ ] Select one base -> related pair for an infrastructure canary and document
+- [x] Select one base -> related pair for an infrastructure canary and document
   why it has reusable context.
-- [ ] Run a gold or official-reference grading preflight for that pair, if the
-  benchmark provides one.
-- [ ] Run D0/D1/D2 on the one-pair canary with local OpenCode + llama.cpp and
+- [x] Run a gold or official-reference grading preflight for that pair.
+- [x] Run D0/D1/D2 on the one-pair canary with local OpenCode + llama.cpp and
   strict no-install command rules.
-- [ ] Write `reports/swe-contextbench-canary.md` with commands, artifacts,
+- [x] Add diagnostic logs/variants for the canary, including alternative local
+  agents and a self/gold-informed sanity check.
+- [x] Write `reports/swe-contextbench-canary.md` with commands, artifacts,
   Decision Briefs, patches, grading, and caveats.
-- [ ] If the canary is runnable, select a 5-pair mini-slice and save only the
-  small selection metadata in this repository.
+
+Canary result: stop rule triggered. D1 had no signal on
+`sympy__sympy-24661 -> sympy__sympy-20571`, because the manual brief led agents
+to a parser-only fix while the resolving patch also required `sign.doit()`.
+
+## Active Checklist
+
+- [ ] Do not start the 5-pair mini-slice until a replacement canary or revised
+  brief policy shows D1 signal.
+- [ ] Select a replacement base -> related pair where the base artifact contains
+  all decisions needed by the related task, not only a partial parser-side
+  decision.
+- [ ] Add structured event logging for future agent runs:
+  `opencode run --format json`, wall-clock timing, diff snapshots, and official
+  grading logs per variant.
+- [ ] Decide whether "accepted diagnostic observations" are allowed Decision
+  Brief content, and define the authority rule before using them.
+- [ ] Rerun a one-pair canary with D0/D1/D2 and the improved logging policy.
+- [ ] If D1 shows signal and D2 has no false decisions, select a 5-pair
+  mini-slice and save only the small selection metadata in this repository.
 - [ ] Prepare D1 manual Decision Briefs from base-task artifacts only; do not
   inspect related-task answers while writing them.
 - [ ] Prepare D2 automatic Decision Briefs from the same base-task artifacts.
