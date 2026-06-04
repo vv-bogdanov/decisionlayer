@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import cast
 
@@ -13,6 +14,7 @@ from decision_layer.core import (
     render_decision_brief,
     replace_decision,
 )
+from decision_layer.patch_verifier import verify_patch
 from decision_layer.poc import (
     DEFAULT_CONTEXT_MAX_CHARS,
     PocConfig,
@@ -64,6 +66,14 @@ def main(argv: list[str] | None = None) -> int:
     add_reader_arguments(run_suite_parser)
     run_suite_parser.add_argument("--oracle-decisions")
     run_suite_parser.add_argument("--accepted-decisions")
+
+    verify_patch_parser = subparsers.add_parser("verify-patch")
+    verify_patch_parser.add_argument(
+        "--patch", required=True, help="Path to a unified diff, or '-'."
+    )
+    verify_patch_parser.add_argument("--require-term", action="append", default=[])
+    verify_patch_parser.add_argument("--require-file", action="append", default=[])
+    verify_patch_parser.add_argument("--allow-file", action="append", default=[])
 
     args = parser.parse_args(argv)
     state_path = Path(args.state)
@@ -151,6 +161,18 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(json.dumps(suite_result.metrics, ensure_ascii=False))
         return 0
+    if args.command == "verify-patch":
+        patch_text = (
+            sys.stdin.read() if args.patch == "-" else Path(args.patch).read_text(encoding="utf-8")
+        )
+        verification = verify_patch(
+            patch_text,
+            required_terms=tuple(args.require_term),
+            required_files=tuple(args.require_file),
+            allowed_files=tuple(args.allow_file),
+        )
+        print(json.dumps(verification.to_dict(), ensure_ascii=False))
+        return 0 if verification.ok else 1
     raise AssertionError(f"unhandled command: {args.command}")
 
 

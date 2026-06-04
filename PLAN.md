@@ -137,6 +137,9 @@ must preserve compact implementation decisions.
 - [x] Add the proof-run hygiene rule: coding proof workspaces must be sanitized
   single-commit repos so agents cannot use future git history.
 - [x] Write `reports/swe-contextbench-sphinx-canary.md`.
+- [x] Add a lightweight patch/brief verifier for canaries:
+  `decision-layer verify-patch` checks required patch terms, required touched
+  files, and unexpected files before expensive official grading.
 
 Sphinx canary result: no clean Decision Layer signal. D0, D1, and D2 all
 resolved `sphinx-doc__sphinx-8052`, but all non-gold variants regressed the same
@@ -149,9 +152,6 @@ logs, timing, diffs, guard audits, and official grading reports for each run.
 
 - [ ] Do not start the 5-pair mini-slice until a fresh canary shows clean D1 or
   D2 signal under the revised operational-brief policy.
-- [ ] Add a lightweight patch/brief verifier for canaries: before official
-  grading, check whether critical brief decisions are reflected in the generated
-  patch and flag over-broad touched files.
 - [ ] Select one more fresh SWE-ContextBench base -> related pair only after the
   verifier/logging protocol is ready.
 - [ ] Run another clean one-pair D0/D1/D2 canary in sanitized single-commit

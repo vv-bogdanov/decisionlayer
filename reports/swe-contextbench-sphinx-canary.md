@@ -126,6 +126,21 @@ ignored it and made only the tuple-rendering change. D2 extracted a more
 operational brief and the agent attempted to use it, but the implementation was
 too broad and still missed the existing P2P expectation.
 
+After adding `decision-layer verify-patch`, the generated Sphinx patches were
+checked post-hoc with this narrow rule:
+
+```text
+--require-term visit_Subscript
+--require-term is_simple_tuple
+--require-file sphinx/pycode/ast.py
+--allow-file sphinx/pycode/ast.py
+```
+
+The verifier flags D1 as missing both required terms, and flags D2 for touching
+`sphinx/domains/python.py` outside the allowlist. This would not prove a patch is
+correct, but it would have caught both observed brief-adherence failures before
+official grading.
+
 The useful result is methodological: proof runs must sanitize git history and
 record structured logs, timings, diffs, and grading output per variant. Without
 that, a local coding agent can accidentally use repository history as hidden

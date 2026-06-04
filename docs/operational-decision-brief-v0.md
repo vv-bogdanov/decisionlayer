@@ -203,6 +203,22 @@ rerunning completed cases:
 - blocked-command audit or guard-bin logs;
 - official grading report and grading timing.
 
+Before official grading, run a lightweight patch/brief verifier when the brief
+contains critical implementation commitments. The verifier should fail fast if
+required terms or files are absent from the generated patch, or if the patch
+touches files outside a narrow allowlist.
+
+Example:
+
+```text
+decision-layer verify-patch \
+  --patch patch.diff \
+  --require-term visit_Subscript \
+  --require-term is_simple_tuple \
+  --require-file sphinx/pycode/ast.py \
+  --allow-file sphinx/pycode/ast.py
+```
+
 Alternative local agents or subagents are useful for diagnosis, but they should
 not replace the predeclared D0/D1/D2 runner in the proof table unless the whole
 slice is rerun with that same runner and model.
