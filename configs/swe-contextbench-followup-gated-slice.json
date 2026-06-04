@@ -1,0 +1,142 @@
+{
+  "benchmark": "SWE-ContextBench",
+  "subset": "SWEContextBench Verified",
+  "purpose": "Predeclared 7-pair diagnostic follow-up slice for D0 vs D1 vs D1G vs D2 after the 20-pair large run. This slice is not a new blind aggregate; it tests whether manual applicability gating keeps useful D1 transfer while reducing prompt-injection regressions.",
+  "derived_from": "configs/swe-contextbench-large-slice.json",
+  "selection_rules": [
+    "Use the related public issue text for the shared task prompt.",
+    "Use only the base experience public problem, hints, and accepted patch for D1/D2 decisions.",
+    "Do not inspect the related hidden patch, related hidden tests, final answers, or grading result when preparing prompts.",
+    "Exclude infrastructure-invalid Matplotlib pairs from the previous run.",
+    "Exclude pairs whose hardened Docker images are unavailable after preflight.",
+    "Exclude prior patch-application failure pairs from the previous run.",
+    "Keep fewer baseline-obvious tasks and focus on pairs that diagnose D1 uplift, D1 regression, or hard transfer."
+  ],
+  "excluded_prior_related_ids": [
+    "sympy__sympy-20571",
+    "pydata__xarray-4141",
+    "sphinx-doc__sphinx-8052",
+    "sphinx-doc__sphinx-865",
+    "psf__requests-1144",
+    "django__django-30153",
+    "sympy__sympy-12426",
+    "matplotlib__matplotlib-15087",
+    "django__django-28322",
+    "django__django-29343",
+    "sphinx-doc__sphinx-7418"
+  ],
+  "pairs": [
+    {
+      "base_instance_id": "django__django-12125",
+      "related_instance_id": "django__django-27914",
+      "repo": "django/django",
+      "related_f2p": 2,
+      "related_p2p": 12,
+      "base_patch_files": [
+        "django/db/migrations/serializer.py"
+      ],
+      "related_public_summary": "makemigrations serializes nested field classes as top-level module classes.",
+      "expected_reusable_decision": "For migration serialization of nested Python classes, serialize class paths with __qualname__, not __name__, so inner class qualifiers are preserved.",
+      "selection_reason": "Hard transfer case from the same serializer behavior.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue is another nested-class migration serialization failure.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "django__django-12125",
+      "related_instance_id": "django__django-11858",
+      "repo": "django/django",
+      "related_f2p": 1,
+      "related_p2p": 45,
+      "base_patch_files": [
+        "django/db/migrations/serializer.py"
+      ],
+      "related_public_summary": "makemigrations produces an incorrect import path for an inner class used in a model field.",
+      "expected_reusable_decision": "For migration serialization of nested Python classes, serialize class paths with __qualname__, not __name__, so inner class qualifiers are preserved.",
+      "selection_reason": "Prior D1 uplift case; useful for checking whether gating keeps the positive transfer.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue is directly in the same nested-class serialization family.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "scikit-learn__scikit-learn-26323",
+      "related_instance_id": "scikit-learn__scikit-learn-25763",
+      "repo": "scikit-learn/scikit-learn",
+      "related_f2p": 1,
+      "related_p2p": 45,
+      "base_patch_files": [
+        "sklearn/compose/_column_transformer.py"
+      ],
+      "related_public_summary": "IsotonicRegression prediction breaks with transform_output='pandas'.",
+      "expected_reusable_decision": "When an estimator exposes set_output, propagate the transform output config to every nested estimator that produces transformed output, including non-drop and non-passthrough remainder estimators.",
+      "selection_reason": "Prior D1 regression case; the base decision is adjacent but likely too broad for IsotonicRegression.predict.",
+      "d1_applicability": "skip",
+      "d1_applicability_reason": "The related failure is not about ColumnTransformer propagation to nested transformed-output estimators.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "django__django-13363",
+      "related_instance_id": "django__django-31640",
+      "repo": "django/django",
+      "related_f2p": 2,
+      "related_p2p": 77,
+      "base_patch_files": [
+        "django/db/models/functions/datetime.py"
+      ],
+      "related_public_summary": "TruncDay ignores tzinfo when output_field is DateField.",
+      "expected_reusable_decision": "Datetime truncation and casting SQL that accepts tzinfo must use self.get_tzname(), not the global current timezone name.",
+      "selection_reason": "Hard transfer case from the same datetime truncation timezone contract.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue is in the same datetime truncation/tzinfo behavior family.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "sympy__sympy-20590",
+      "related_instance_id": "sympy__sympy-20567",
+      "repo": "sympy/sympy",
+      "related_f2p": 1,
+      "related_p2p": 22,
+      "base_patch_files": [
+        "sympy/core/_print_helpers.py"
+      ],
+      "related_public_summary": "Symbol instances unexpectedly have __dict__ after a mixin inheritance change.",
+      "expected_reusable_decision": "Mixin classes used by slotted SymPy objects must define __slots__ = () to avoid adding __dict__ to subclasses.",
+      "selection_reason": "Prior D1 regression caused by bad patch placement, not by obvious decision inapplicability.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue is directly about the same slotted mixin memory-layout invariant.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "django__django-14539",
+      "related_instance_id": "django__django-26193",
+      "repo": "django/django",
+      "related_f2p": 1,
+      "related_p2p": 35,
+      "base_patch_files": [
+        "django/utils/html.py"
+      ],
+      "related_public_summary": "urlize includes extra trailing punctuation inside generated links.",
+      "expected_reusable_decision": "When trimming trailing punctuation after HTML unescaping, compute the punctuation count in the unescaped text and slice that many original characters from the end; do not mix escaped and unescaped lengths.",
+      "selection_reason": "Hard transfer case in the same urlize punctuation trimming behavior.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue is another urlize trailing-punctuation trimming failure.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "django__django-15930",
+      "related_instance_id": "django__django-26430",
+      "repo": "django/django",
+      "related_f2p": 2,
+      "related_p2p": 71,
+      "base_patch_files": [
+        "django/db/models/expressions.py"
+      ],
+      "related_public_summary": "Coalesce in aggregations is ignored when EmptyResultSet is raised by an empty __in filter.",
+      "expected_reusable_decision": "In SQL expression contexts that require a predicate, an empty compiled condition string means a match-all filter and must be compiled as Value(True) instead of leaving SQL blank.",
+      "selection_reason": "Hard transfer case in EmptyResultSet/empty-condition expression behavior.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue still involves EmptyResultSet behavior in SQL expression compilation.",
+      "hidden_related_patch_or_tests_inspected": false
+    }
+  ]
+}

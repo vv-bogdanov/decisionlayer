@@ -30,19 +30,25 @@ DEFAULT_OPENCODE_MODEL = "llama.cpp/qwen36-35b-a3b-udiq3s"
 DEFAULT_CODEX_MODEL = "gpt-5.3-codex-spark"
 DEFAULT_EXTRACT_MODEL = "qwen36-35b-a3b-udiq3s"
 DEFAULT_EXTRACT_BASE_URL = "http://127.0.0.1:18080/v1"
-MODES = ("D0", "D1", "D2")
+DEFAULT_MODES = ("D0", "D1", "D2")
+VALID_MODES = ("D0", "D1", "D1G", "D2")
+PROMPT_MODES = VALID_MODES
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Prepare and run a predeclared SWE-ContextBench D0/D1/D2 slice."
+        description="Prepare and run a predeclared SWE-ContextBench Decision Layer slice."
     )
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--benchmark-root", type=Path, default=DEFAULT_BENCHMARK_ROOT)
     parser.add_argument("--artifact-root", type=Path)
     parser.add_argument("--run-name")
-    parser.add_argument("--phase", choices=["prepare", "agents", "grade", "all"], default="all")
-    parser.add_argument("--modes", default=",".join(MODES))
+    parser.add_argument(
+        "--phase",
+        choices=["preflight", "prepare", "agents", "grade", "all"],
+        default="all",
+    )
+    parser.add_argument("--modes", default=",".join(DEFAULT_MODES))
     parser.add_argument("--max-pairs", type=int)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--agent-backend", choices=["opencode", "codex"], default="opencode")
@@ -56,9 +62,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--extract-model", default=DEFAULT_EXTRACT_MODEL)
     parser.add_argument("--extract-timeout-seconds", type=float, default=180.0)
     parser.add_argument("--grading-timeout-seconds", type=float, default=1800.0)
+    parser.add_argument("--preflight-docker", choices=["skip", "local", "pull"], default="skip")
+    parser.add_argument("--preflight-timeout-seconds", type=float, default=300.0)
     args = parser.parse_args(argv)
 
     config = load_json(args.config)
+    if not isinstance(config, dict) or not isinstance(config.get("pairs"), list):
+        raise SystemExit("config must contain a top-level list key: pairs")
     benchmark_root = args.benchmark_root.resolve()
     args.run_name = args.run_name or default_run_name(args.config, args.agent_backend)
     default_artifact_name = args.run_name
@@ -84,6 +94,13 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     failures = 0
+    if phase_includes(args.phase, "preflight"):
+        result = run_preflight(config, pairs, benchmark_root, artifact_root, args, progress_path)
+        if not result["ok"]:
+            failures += result["failure_count"]
+            emit(progress_path, "run_finished", failures=failures)
+            return 1
+
     if phase_includes(args.phase, "prepare"):
         for pair in pairs:
             try:
@@ -135,7 +152,7 @@ def phase_includes(phase: str, step: str) -> bool:
 
 def parse_modes(raw_modes: str) -> tuple[str, ...]:
     modes = tuple(mode.strip().upper() for mode in raw_modes.split(",") if mode.strip())
-    invalid = [mode for mode in modes if mode not in MODES]
+    invalid = [mode for mode in modes if mode not in VALID_MODES]
     if invalid:
         raise SystemExit(f"Unknown mode(s): {', '.join(invalid)}")
     return modes
@@ -148,6 +165,195 @@ def load_json(path: Path) -> Any:
 def write_json(path: Path, data: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def run_preflight(
+    config: dict[str, Any],
+    pairs: list[dict[str, Any]],
+    benchmark_root: Path,
+    artifact_root: Path,
+    args: argparse.Namespace,
+    progress_path: Path,
+) -> dict[str, Any]:
+    emit(
+        progress_path,
+        "preflight_started",
+        pair_count=len(pairs),
+        docker=args.preflight_docker,
+    )
+    excluded_prior_ids = set(config.get("excluded_prior_related_ids") or [])
+    seen_related_ids: set[str] = set()
+    pair_results = []
+
+    for pair in pairs:
+        related_id = str(pair.get("related_instance_id") or "")
+        checks: list[dict[str, Any]] = []
+
+        for key in (
+            "base_instance_id",
+            "related_instance_id",
+            "repo",
+            "expected_reusable_decision",
+        ):
+            check_required_field(pair, key, checks)
+
+        if related_id in seen_related_ids:
+            checks.append({"name": "unique_related_id", "ok": False, "detail": related_id})
+        elif related_id:
+            checks.append({"name": "unique_related_id", "ok": True, "detail": related_id})
+            seen_related_ids.add(related_id)
+
+        if related_id and related_id in excluded_prior_ids:
+            checks.append({"name": "no_prior_diagnostic_contamination", "ok": False})
+        else:
+            checks.append({"name": "no_prior_diagnostic_contamination", "ok": True})
+
+        if pair.get("hidden_related_patch_or_tests_inspected") is False:
+            checks.append({"name": "no_hidden_related_artifacts_inspected", "ok": True})
+        else:
+            checks.append({"name": "no_hidden_related_artifacts_inspected", "ok": False})
+
+        related = load_case_for_preflight(
+            benchmark_root,
+            related_id,
+            checks,
+            loader=load_related_case,
+            check_name="related_case_exists",
+        )
+        base = load_case_for_preflight(
+            benchmark_root,
+            str(pair.get("base_instance_id") or ""),
+            checks,
+            loader=load_experience,
+            check_name="base_experience_exists",
+        )
+        if related and base:
+            repo = pair.get("repo")
+            repos = [related.get("repo"), base.get("repo"), repo]
+            repo_values = {item for item in repos if isinstance(item, str)}
+            checks.append(
+                {
+                    "name": "repo_matches",
+                    "ok": all(isinstance(item, str) for item in repos) and len(repo_values) == 1,
+                    "detail": sorted(repo_values),
+                }
+            )
+
+        image = hardened_image_name(related_id) if related_id else None
+        if image:
+            checks.append(check_hardened_image(image, args))
+
+        ok = all(check["ok"] for check in checks)
+        pair_results.append(
+            {
+                "pair": related_id or None,
+                "base": pair.get("base_instance_id"),
+                "repo": pair.get("repo"),
+                "hardened_image": image,
+                "ok": ok,
+                "checks": checks,
+            }
+        )
+        emit(progress_path, "preflight_pair_finished", pair=related_id, ok=ok)
+
+    result = {
+        "ok": all(item["ok"] for item in pair_results),
+        "failure_count": sum(1 for item in pair_results if not item["ok"]),
+        "docker": args.preflight_docker,
+        "pairs": pair_results,
+    }
+    write_json(artifact_root / "preflight.json", result)
+    emit(
+        progress_path,
+        "preflight_finished",
+        ok=result["ok"],
+        failure_count=result["failure_count"],
+        result=str(artifact_root / "preflight.json"),
+    )
+    return result
+
+
+def check_required_field(
+    pair: dict[str, Any],
+    key: str,
+    checks: list[dict[str, Any]],
+) -> None:
+    value = pair.get(key)
+    checks.append({"name": f"required:{key}", "ok": isinstance(value, str) and bool(value)})
+
+
+def load_case_for_preflight(
+    benchmark_root: Path,
+    instance_id: str,
+    checks: list[dict[str, Any]],
+    *,
+    loader: Any,
+    check_name: str,
+) -> dict[str, Any] | None:
+    if not instance_id:
+        checks.append({"name": check_name, "ok": False, "detail": "empty instance id"})
+        return None
+    try:
+        data = loader(benchmark_root, instance_id)
+    except Exception as exc:
+        checks.append(
+            {
+                "name": check_name,
+                "ok": False,
+                "detail": f"{type(exc).__name__}: {exc}",
+            }
+        )
+        return None
+    checks.append({"name": check_name, "ok": True})
+    return data
+
+
+def hardened_image_name(instance_id: str) -> str:
+    return f"jiayuanz3/swecontextbench:{instance_id.replace('__', '.')}"
+
+
+def check_hardened_image(image: str, args: argparse.Namespace) -> dict[str, Any]:
+    if args.preflight_docker == "skip":
+        return {"name": "hardened_image", "ok": True, "detail": "skipped"}
+    try:
+        inspect = subprocess.run(
+            ["docker", "image", "inspect", image],
+            capture_output=True,
+            text=True,
+            timeout=args.preflight_timeout_seconds,
+            check=False,
+        )
+    except FileNotFoundError:
+        return {"name": "hardened_image", "ok": False, "detail": "docker not found"}
+    except subprocess.TimeoutExpired:
+        return {"name": "hardened_image", "ok": False, "detail": "docker inspect timeout"}
+    if inspect.returncode == 0:
+        return {"name": "hardened_image", "ok": True, "detail": "local"}
+    if args.preflight_docker == "local":
+        return {
+            "name": "hardened_image",
+            "ok": False,
+            "detail": "not found locally",
+            "image": image,
+        }
+    try:
+        pull = subprocess.run(
+            ["docker", "pull", image],
+            capture_output=True,
+            text=True,
+            timeout=args.preflight_timeout_seconds,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return {"name": "hardened_image", "ok": False, "detail": "docker pull timeout"}
+    if pull.returncode == 0:
+        return {"name": "hardened_image", "ok": True, "detail": "pulled"}
+    return {
+        "name": "hardened_image",
+        "ok": False,
+        "detail": (pull.stderr or pull.stdout).strip()[:500],
+        "image": image,
+    }
 
 
 def prepare_pair_artifacts(
@@ -187,7 +393,7 @@ def prepare_pair_artifacts(
     )
     prepare_d2_brief(pair, base_artifacts_text, pair_dir, args, progress_path)
 
-    for mode in MODES:
+    for mode in PROMPT_MODES:
         write_if_needed(
             pair_dir / "prompts" / f"{mode.lower()}_task.md",
             render_task_prompt(pair, related, pair_dir, mode),
@@ -1056,6 +1262,7 @@ def render_task_prompt(
         "- Do not use the OpenCode task/explore subagent.",
         "- Do not run git log, git show, or git blame.",
         "- Do not install packages, create virtualenvs, or use pip, uv, sudo, or pkexec.",
+        "- Do not edit test files, test fixtures, benchmark files, docs, or generated artifacts.",
         (
             "- If local dependencies are missing, skip local tests and rely on official Docker "
             "grading."
@@ -1080,6 +1287,10 @@ def prompt_decisions(pair: dict[str, Any], pair_dir: Path, mode: str) -> list[st
     if mode == "D0":
         return None
     if mode == "D1":
+        return [pair["expected_reusable_decision"]]
+    if mode == "D1G":
+        if str(pair.get("d1_applicability", "apply")).lower() != "apply":
+            return None
         return [pair["expected_reusable_decision"]]
     parsed = load_json(pair_dir / "logs" / "d2_extract_operational_parsed.json")
     decisions = [

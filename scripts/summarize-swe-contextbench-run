@@ -12,7 +12,8 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from decision_layer.patch_verifier import verify_patch  # noqa: E402
 
-MODES = ("D0", "D1", "D2")
+DEFAULT_MODES = ("D0", "D1", "D2")
+VALID_MODES = ("D0", "D1", "D1G", "D2")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -21,11 +22,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--artifact-root", type=Path, required=True)
     parser.add_argument("--config", type=Path)
+    parser.add_argument("--modes", default=",".join(DEFAULT_MODES))
     parser.add_argument("--format", choices=["markdown", "json"], default="markdown")
     args = parser.parse_args(argv)
 
     artifact_root = args.artifact_root.resolve()
-    summary = summarize_run(artifact_root, args.config)
+    modes = parse_modes(args.modes)
+    summary = summarize_run(artifact_root, args.config, modes)
     if args.format == "json":
         print(json.dumps(summary, ensure_ascii=False, indent=2))
     else:
@@ -33,17 +36,30 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-def summarize_run(artifact_root: Path, config_path: Path | None) -> dict[str, Any]:
+def parse_modes(raw_modes: str) -> tuple[str, ...]:
+    modes = tuple(mode.strip().upper() for mode in raw_modes.split(",") if mode.strip())
+    invalid = [mode for mode in modes if mode not in VALID_MODES]
+    if invalid:
+        raise SystemExit(f"Unknown mode(s): {', '.join(invalid)}")
+    return modes
+
+
+def summarize_run(
+    artifact_root: Path,
+    config_path: Path | None,
+    modes: tuple[str, ...],
+) -> dict[str, Any]:
     pair_ids = load_pair_ids(artifact_root, config_path)
     rows = []
     for pair_id in pair_ids:
         pair_dir = artifact_root / pair_id
-        for mode in MODES:
+        for mode in modes:
             rows.append(summarize_mode(pair_id, pair_dir, mode))
-    totals = summarize_totals(rows)
+    totals = summarize_totals(rows, modes)
     return {
         "artifact_root": str(artifact_root),
         "config": str(config_path.resolve()) if config_path else None,
+        "modes": list(modes),
         "pairs": pair_ids,
         "totals": totals,
         "rows": rows,
@@ -141,9 +157,9 @@ def count_tests(status: dict[str, Any]) -> tuple[int | None, int | None]:
     return success, success + failure
 
 
-def summarize_totals(rows: list[dict[str, Any]]) -> dict[str, Any]:
+def summarize_totals(rows: list[dict[str, Any]], modes: tuple[str, ...]) -> dict[str, Any]:
     totals: dict[str, Any] = {}
-    for mode in MODES:
+    for mode in modes:
         mode_rows = [row for row in rows if row["mode"] == mode]
         graded_rows = [
             row
@@ -172,7 +188,7 @@ def render_markdown(summary: dict[str, Any]) -> str:
         "| Mode | Resolved | Agent ok | Benchmark-noise patches | Infra errors |",
         "| --- | ---: | ---: | ---: | ---: |",
     ]
-    for mode in MODES:
+    for mode in summary["modes"]:
         totals = summary["totals"][mode]
         lines.append(
             "| {mode} | {resolved}/{graded} | {agent_ok}/{agent_total} | {noise} | {infra} |".format(

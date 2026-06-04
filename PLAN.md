@@ -56,17 +56,39 @@ Keep these constraints for all next proof runs:
 - no installs, virtualenvs, `pip`, `uv`, `sudo`, or `pkexec`
 - no product platform work unless it directly improves the proof
 
+## Current Follow-Up Setup
+
+The next run uses:
+
+```text
+configs/swe-contextbench-followup-gated-slice.json
+```
+
+This is a 7-pair diagnostic follow-up, not a new blind aggregate. It removes
+the invalid Matplotlib pairs, excludes currently unavailable hardened Docker
+images, and adds `d1_applicability` labels for `D1G`.
+
+Preflight status:
+
+```text
+scripts/run-swe-contextbench-mini-slice \
+  --config configs/swe-contextbench-followup-gated-slice.json \
+  --phase preflight \
+  --agent-backend codex \
+  --preflight-docker local
+
+Result: 7/7 pairs passed.
+Artifact root:
+/home/dev/benchmarks/swe-contextbench/agent-runs/swe-contextbench-followup-gated-slice-codex
+```
+
 ## Active Checklist
 
-- [ ] Add benchmark-pair preflight checks: hardened Docker image availability,
-  no prior diagnostic contamination, and config/schema validation.
-- [ ] Add a hard proof-run prompt rule and verifier gate that rejects test-file
-  edits for reported aggregate claims.
-- [ ] Add an applicability gate for Decision Brief injection, starting with a
-  simple D1 manual relevance label and then a D2 automatic scope check.
-- [ ] Predeclare a replacement follow-up slice with the invalid Matplotlib pairs
-  removed and fewer baseline-obvious tasks.
-- [ ] Run D0/D1/D2 plus gated-D1 on the follow-up slice with Codex Spark
+- [ ] Run `D0,D1,D1G,D2` on the follow-up slice with Codex Spark
   low-reasoning and resume/cache enabled.
+- [ ] Grade the follow-up slice with official SWE-ContextBench Docker grading.
+- [ ] Summarize the run with `--modes D0,D1,D1G,D2`.
 - [ ] Write the next report comparing blind D1 vs gated D1 vs D2, with strict
   clean and official metrics separated.
+- [ ] Decide after the report whether a D2 automatic scope gate is worth adding;
+  do not implement it before the D1G diagnostic signal is clear.
