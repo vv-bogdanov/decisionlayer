@@ -35,11 +35,12 @@ MODES = ("D0", "D1", "D2")
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Prepare and run the predeclared SWE-ContextBench mini-slice."
+        description="Prepare and run a predeclared SWE-ContextBench D0/D1/D2 slice."
     )
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--benchmark-root", type=Path, default=DEFAULT_BENCHMARK_ROOT)
     parser.add_argument("--artifact-root", type=Path)
+    parser.add_argument("--run-name")
     parser.add_argument("--phase", choices=["prepare", "agents", "grade", "all"], default="all")
     parser.add_argument("--modes", default=",".join(MODES))
     parser.add_argument("--max-pairs", type=int)
@@ -59,11 +60,12 @@ def main(argv: list[str] | None = None) -> int:
 
     config = load_json(args.config)
     benchmark_root = args.benchmark_root.resolve()
-    default_artifact_name = "mini-slice" if args.agent_backend == "opencode" else "mini-slice-codex"
+    args.run_name = args.run_name or default_run_name(args.config, args.agent_backend)
+    default_artifact_name = args.run_name
     artifact_root = (
         args.artifact_root or benchmark_root / "agent-runs" / default_artifact_name
     ).resolve()
-    progress_path = artifact_root / "mini-slice-progress.jsonl"
+    progress_path = artifact_root / f"{args.run_name}-progress.jsonl"
     artifact_root.mkdir(parents=True, exist_ok=True)
 
     selected_modes = parse_modes(args.modes)
@@ -74,6 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     emit(
         progress_path,
         "run_started",
+        run_name=args.run_name,
         phase=args.phase,
         pair_count=len(pairs),
         modes=list(selected_modes),
@@ -118,6 +121,12 @@ def main(argv: list[str] | None = None) -> int:
 
     emit(progress_path, "run_finished", failures=failures)
     return 1 if failures else 0
+
+
+def default_run_name(config_path: Path, agent_backend: str) -> str:
+    if config_path.resolve() == DEFAULT_CONFIG.resolve():
+        return "mini-slice" if agent_backend == "opencode" else "mini-slice-codex"
+    return f"{config_path.stem}-{agent_backend}"
 
 
 def phase_includes(phase: str, step: str) -> bool:
@@ -527,7 +536,10 @@ def run_grading_mode(
     write_json(prediction_dir / f"{related_id}_preds.json", prediction)
 
     harness_root = benchmark_root / "SWEContextBench"
-    run_id = f"decision-layer-mini-{args.agent_backend}-{sanitize_id(related_id)}-{mode_name}"
+    run_id = (
+        f"decision-layer-{sanitize_id(args.run_name)}-"
+        f"{args.agent_backend}-{sanitize_id(related_id)}-{mode_name}"
+    )
     log_path = pair_dir / "logs" / f"{mode_name}_grading.log"
     emit(
         progress_path,
@@ -1136,7 +1148,7 @@ def emit(progress_path: Path, event: str, **fields: Any) -> None:
     }
     payload.update(fields)
     line = json.dumps(payload, ensure_ascii=False, sort_keys=True)
-    print(f"[mini-slice] {line}", file=sys.stderr, flush=True)
+    print(f"[contextbench] {line}", file=sys.stderr, flush=True)
     with progress_path.open("a", encoding="utf-8") as file:
         file.write(line + "\n")
 
