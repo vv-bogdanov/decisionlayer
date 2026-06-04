@@ -13,7 +13,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from decision_layer.patch_verifier import verify_patch  # noqa: E402
 
 DEFAULT_MODES = ("D0", "D1", "D2")
-VALID_MODES = ("D0", "D1", "D1G", "D2")
+VALID_MODES = ("D0", "D1", "D1G", "D1GA", "D2")
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -32,7 +32,7 @@ DEFAULT_CODEX_MODEL = "gpt-5.3-codex-spark"
 DEFAULT_EXTRACT_MODEL = "qwen36-35b-a3b-udiq3s"
 DEFAULT_EXTRACT_BASE_URL = "http://127.0.0.1:18080/v1"
 DEFAULT_MODES = ("D0", "D1", "D2")
-VALID_MODES = ("D0", "D1", "D1G", "D2")
+VALID_MODES = ("D0", "D1", "D1G", "D1GA", "D2")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1363,6 +1363,19 @@ def render_task_prompt(
         lines.extend(["", "Public hints/discussion:", hints])
     decisions = prompt_decisions(pair, pair_dir, mode)
     if decisions is not None:
+        if mode == "D1GA":
+            lines.extend(
+                [
+                    "",
+                    "Decision application guard:",
+                    (
+                        "- Before editing, check whether each decision maps to the target "
+                        "issue's concrete failing behavior and source area."
+                    ),
+                    "- If a decision does not map cleanly, ignore it and solve from the issue.",
+                    "- Do not force a decision into a different fix point.",
+                ]
+            )
         lines.extend(["", "Decision Brief", "", "Relevant operational decisions:"])
         lines.extend(f"- {decision}" for decision in decisions)
     return "\n".join(lines).rstrip() + "\n"
@@ -1373,7 +1386,7 @@ def prompt_decisions(pair: dict[str, Any], pair_dir: Path, mode: str) -> list[st
         return None
     if mode == "D1":
         return [pair["expected_reusable_decision"]]
-    if mode == "D1G":
+    if mode in {"D1G", "D1GA"}:
         if str(pair.get("d1_applicability", "apply")).lower() != "apply":
             return None
         return [pair["expected_reusable_decision"]]

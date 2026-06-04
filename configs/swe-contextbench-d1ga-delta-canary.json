@@ -1,0 +1,40 @@
+{
+  "benchmark": "SWE-ContextBench",
+  "subset": "SWEContextBench Verified",
+  "purpose": "D1GA application-guard canary on larger repeat-02 delta cases before any wider guarded-lane run.",
+  "derived_from": "configs/swe-contextbench-d0-d1g-large-slice.json",
+  "selection_rules": [
+    "Use only larger repeat-02 cases where D0 and D1G differed.",
+    "Compare the new D1GA guarded lane against cached D0/D1G artifacts.",
+    "Do not inspect related hidden patches, hidden tests, final answers, or grading results when creating prompts."
+  ],
+  "pairs": [
+    {
+      "base_instance_id": "django__django-14539",
+      "related_instance_id": "django__django-26193",
+      "repo": "django/django",
+      "expected_reusable_decision": "When trimming trailing punctuation after HTML unescaping, compute the punctuation count in the unescaped text and slice that many original characters from the end; do not mix escaped and unescaped lengths.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue is another urlize trailing-punctuation trimming failure.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "pytest-dev__pytest-10081",
+      "related_instance_id": "pytest-dev__pytest-7215",
+      "repo": "pytest-dev/pytest",
+      "expected_reusable_decision": "For unittest --pdb teardown suppression, treat both method-level and class-level unittest skips as skipped before replacing tearDown.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue is another skipped unittest teardown path.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "django__django-12039",
+      "related_instance_id": "django__django-30903",
+      "repo": "django/django",
+      "expected_reusable_decision": "When composing CREATE INDEX column SQL, append suffixes and opclasses with explicit spaces only when the suffix text is non-empty; never concatenate order/opclass fragments directly to quoted column names.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue is in the same CREATE INDEX SQL fragment composition behavior.",
+      "hidden_related_patch_or_tests_inspected": false
+    }
+  ]
+}
