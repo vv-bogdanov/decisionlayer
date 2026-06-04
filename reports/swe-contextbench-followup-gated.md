@@ -139,3 +139,9 @@ Recommended next proof work:
   agent to map extracted decisions to the correct target fix point.
 - For the next broader coding proof, compare D0 vs D1G first. Add D2 only as a
   secondary diagnostic lane.
+
+Follow-up repeat variance is now recorded in:
+
+```text
+reports/swe-contextbench-repeat-variance.md
+```

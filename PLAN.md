@@ -19,6 +19,7 @@ Completed reports:
 reports/swe-contextbench-mini.md
 reports/swe-contextbench-large.md
 reports/swe-contextbench-followup-gated.md
+reports/swe-contextbench-repeat-variance.md
 ```
 
 Mini-slice:
@@ -53,6 +54,22 @@ benchmark-noise patches=0 for every mode
 infra_errors=0
 ```
 
+Three-run D0 vs D1G repeat diagnostic:
+
+```text
+config=configs/swe-contextbench-followup-gated-slice.json
+
+D0  resolved trials:  3/21
+D1G resolved trials:  9/21
+
+D0  per-run resolved:  1/7, 2/7, 0/7
+D1G per-run resolved:  3/7, 3/7, 3/7
+
+apply-only:
+D0  2/18
+D1G 6/18
+```
+
 Important caveat: the follow-up official grading used local images rebuilt with
 the official SWE-ContextBench `build_instance.py` module after Docker Hub
 rate-limited prebuilt image pulls. Treat it as a diagnostic recovery run, not a
@@ -60,15 +77,16 @@ publishable prebuilt-image lane.
 
 ## Interpretation
 
-The Decision Layer signal is still plausible, but the latest follow-up exposed
+The Decision Layer signal is still plausible, and `D1G` is now the best
+headline lane for the next coding proof. The repeat diagnostic also confirms
 agent variance clearly. On `scikit-learn__scikit-learn-25763`, `D0` and `D1G`
 had the same effective prompt because the gate skipped the Decision Brief, but
-they produced different outcomes. A small single-run slice is therefore not
-enough for a causal claim.
+`D1G` solved 3/3 while `D0` solved 1/3. Do not count that pair as memory value.
 
 The cleanest positive signal is still exact decision transfer. In
-`sympy__sympy-20567`, D1 and D1G solved while D0 and D2 failed. The decision was
-short, actionable, and mapped directly to the target failure mode.
+`django__django-11858` and `sympy__sympy-20567`, D1G solved 3/3 while D0 solved
+1/3. The decisions were short, actionable, and mapped directly to the target
+failure mode.
 
 D2 should not be the headline lane yet. The extractor often produced reasonable
 decisions, but the coding agent misapplied them to the wrong target fix point.
@@ -94,16 +112,16 @@ Keep these constraints for all next proof runs:
 
 ## Active Checklist
 
-- [ ] Add a minimal repeat-run protocol for the 7-pair follow-up diagnostic:
-  separate artifact roots, same config, same backend/model/reasoning, and a
-  compact aggregate table by pair and mode.
-- [ ] Run repeated `D0` vs `D1G` first; include `D1` and `D2` only if the extra
-  cost is useful for diagnosis.
 - [ ] Prefer authenticated/prebuilt SWE-ContextBench image pulls for the
   publishable lane. If local rebuilt images are used again, label the run as
   diagnostic only.
-- [ ] Summarize repeat results with variance, not just one resolved total.
-- [ ] If `D1G` still beats `D0`, prepare the next larger predeclared coding
-  slice around `D0` vs `D1G`.
+- [ ] Prepare the next larger predeclared coding slice around `D0` vs `D1G`.
+  Start from SWE-ContextBench large-slice pairs, remove known infrastructure
+  invalid pairs, add `d1_applicability` labels, and keep the run diagnostic
+  unless prebuilt/authenticated images are available.
+- [ ] Preflight that larger slice for public artifacts and Docker images before
+  any agent execution.
+- [ ] Run the larger slice as `D0` vs `D1G` with repeat variance. Do not include
+  `D1` or `D2` in the headline lane.
 - [ ] If `D2` is revisited, add a narrow application guard that forces extracted
   decisions to map to the target fix point before prompt injection.
