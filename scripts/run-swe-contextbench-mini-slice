@@ -954,6 +954,9 @@ def render_d2_brief(pair: dict[str, Any], parsed: dict[str, Any], args: argparse
             lines.append(f"- `{item['text']}`")
             for detail in item.get("critical_details", []):
                 lines.append(f"  - {detail}")
+            scope = item.get("applicability_scope")
+            if isinstance(scope, str) and scope.strip():
+                lines.append(f"  - Scope: {scope.strip()}")
     else:
         lines.append("- None")
     lines.extend(["", "Rejected:", ""])
@@ -1021,8 +1024,27 @@ def prompt_decisions(pair: dict[str, Any], pair_dir: Path, mode: str) -> list[st
     if mode == "D1":
         return [pair["expected_reusable_decision"]]
     parsed = load_json(pair_dir / "logs" / "d2_extract_operational_parsed.json")
-    decisions = [item["text"] for item in parsed.get("decisions", []) if isinstance(item, dict)]
+    decisions = [
+        format_extracted_decision(item)
+        for item in parsed.get("decisions", [])
+        if isinstance(item, dict) and isinstance(item.get("text"), str)
+    ]
     return decisions or ["No accepted operational decisions were extracted from the base task."]
+
+
+def format_extracted_decision(item: dict[str, Any]) -> str:
+    parts = [item["text"]]
+    details = [
+        detail
+        for detail in item.get("critical_details", [])
+        if isinstance(detail, str) and detail.strip()
+    ]
+    if details:
+        parts.append("Critical details: " + "; ".join(details[:4]) + ".")
+    scope = item.get("applicability_scope")
+    if isinstance(scope, str) and scope.strip():
+        parts.append("Scope: " + scope.strip())
+    return " ".join(parts)
 
 
 def parse_runner_stdout(stdout: str) -> dict[str, Any]:

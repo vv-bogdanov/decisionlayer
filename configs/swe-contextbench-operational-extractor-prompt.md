@@ -23,9 +23,16 @@ Rules:
 
 - Extract only accepted decisions, requirements, constraints, procedures, and
   implementation commitments.
+- Prefer transferable operational decisions over base-specific patch trivia.
+  A reusable decision should help on a related task in the same subsystem or
+  behavior family, not merely say what one class/function did in the base patch.
 - Preserve implementation-critical details: argument mapping, operator choice,
   extension point, callable/index choice, invariant, fallback/default policy,
   and negative prefixes/suffixes.
+- Generalize the extension point only as far as the accepted evidence supports.
+  If the patch changes `Identity._entry`, express the symbolic equality rule and
+  mention `Identity._entry` as evidence/scope; do not imply the rule applies to
+  every matrix method unless the source supports that.
 - Preserve conditions exactly. If the source says "when X is false, use Y",
   the decision must keep "when X is false"; do not rewrite it as "if Z is not
   available" or a generic requirement.
@@ -39,10 +46,17 @@ Rules:
 - Include `critical_details` for each decision: 1-5 short phrases that a patch
   verifier or manual audit can use to check whether the agent preserved the
   decision.
+- Include `applicability_scope` for each decision: where this decision can be
+  reused and where it should not be blindly applied.
 - Do not copy raw patch hunks. Do not include file locations unless the file is
   the accepted extension point.
 - Better reject an uncertain item than create a false decision.
 - Each decision text should be short enough to fit as a prompt bullet.
+- Reject exact file edits, tests, comments, changelog entries, and issue-specific
+  constants unless they carry the operational decision.
+- If the base patch contains both a general rule and a narrow implementation
+  site, put the general rule in `text` and the implementation site in
+  `critical_details` or `applicability_scope`.
 
 Schema:
 
@@ -55,6 +69,7 @@ Schema:
       "authority": "base_issue|base_hint|base_accepted_patch|user_instruction|manual_api",
       "source_evidence": "short source explanation",
       "critical_details": ["short condition/mapping/operator detail"],
+      "applicability_scope": "short description of when this transfers and when it should not",
       "risk": "low|medium|high"
     }
   ],
