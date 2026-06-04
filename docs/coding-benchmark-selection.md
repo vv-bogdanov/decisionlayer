@@ -20,6 +20,7 @@ backend/model.
 
 | Benchmark | Fit | Cost | Main Risk |
 | --- | --- | --- | --- |
+| SWE-ContextBench | Directly measures reuse of prior coding experience across related tasks | Medium | Need verify official dataset/harness path locally before running |
 | SWE-bench Lite/Verified or SWE-bench Live small slice | Highest name recognition; real GitHub issue fixing | Medium | Decision Layer insertion can look like prompt engineering unless the agent loop records decisions across attempts |
 | WildClawBench | Native-runtime CLI agent tasks; long-horizon, real tools, containerized | Medium | Newer benchmark; need verify harness maturity locally |
 | RoadmapBench | Explicit long-horizon software development across version upgrades | High | Heavy tasks and likely expensive full runs |
@@ -28,25 +29,28 @@ backend/model.
 
 ## Recommended Next Slice
 
-Start with a SWE-bench-family canary, preferably a small SWE-bench Lite/Verified
-or live/decontaminated slice if the harness can run with the local backend.
+The next selected test is a SWE-ContextBench mini-slice.
 
 Reason:
 
-- easiest to explain in a research artifact
-- widely recognized by coding-agent readers
-- enough existing tooling to avoid writing a custom benchmark
-- can start with a very small slice before overnight runs
+- it is a SWE-bench-family benchmark, so the result remains easy to explain to
+  coding-agent readers
+- it directly evaluates whether agents reuse prior experience across related
+  coding tasks
+- it has a natural Decision Layer split: base-task experience becomes a compact
+  Decision Brief for a later related task
+- it reports the dimensions we care about: accuracy, time efficiency, and cost
+  efficiency
 
 Decision Layer should be inserted as an agent-side sidecar, not as task-answer
-leakage. The canary should compare:
+leakage. The mini-slice should compare:
 
-- D0: same coding agent without Decision Brief persistence
-- D2: same coding agent with accepted requirements, constraints, failed-attempt
-  conclusions, and implementation decisions persisted into a compact Decision
-  Brief
+- D0: related task with no base-task Decision Brief
+- D1: related task with a manually reviewed base-task Decision Brief
+- D2: related task with an automatically extracted base-task Decision Brief
 
-Do not pre-label answer patches or test outcomes as decisions.
+Do not pre-label related-task answer patches or hidden test outcomes as
+decisions.
 
 ## D0/D2 Harness Definition
 
@@ -125,6 +129,7 @@ patch is directly implied by one obvious line in the issue text.
 
 ## External Sources
 
+- SWE-ContextBench: https://arxiv.org/abs/2602.08316
 - SWE-bench: https://arxiv.org/abs/2310.06770
 - SWE-bench organization: https://github.com/swe-bench
 - WildClawBench: https://arxiv.org/abs/2605.10912

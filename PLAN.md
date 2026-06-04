@@ -194,3 +194,128 @@ Keep the repository cleanup standard from this plan:
 - new code is added only if it directly supports D0/D2 measurement
 - every coding run records D0/D2 commands, patches, official grading, and
   Decision Brief contents
+
+## SWE-ContextBench Mini-Slice Plan
+
+Next selected test: **SWE-ContextBench**.
+
+Reason: it is a SWE-bench-family external benchmark that directly evaluates
+whether coding agents can reuse experience from prior related tasks. This is a
+closer fit to Decision Layer than isolated issue-fixing: the benchmark has base
+tasks and related tasks with shared context, so D0 can be compared against D1/D2
+on whether compact accepted decisions from prior work help the same local agent
+solve the later task faster or more often.
+
+Source:
+
+```text
+https://arxiv.org/abs/2602.08316
+```
+
+Current paper snapshot: SWE-ContextBench v3 reports 1,100 base tasks, 376
+related tasks, 51 repositories, and 9 programming languages. Before running, we
+must verify the official dataset/harness location, license, schema, and grading
+path locally.
+
+### Test Hypothesis
+
+Decision Layer improves related coding tasks by preserving compact decisions
+from earlier tasks:
+
+- accepted requirements and constraints
+- implementation commitments
+- stable conclusions from observed failed attempts
+- project-specific procedures learned in the base task
+
+It should not store raw history, full patches, full test logs, arbitrary facts,
+retrieved files, or related-task answer information.
+
+### Protocol
+
+For each selected base -> related pair:
+
+- D0: run the related task with the same local agent/model and no prior
+  Decision Brief.
+- D1: run the related task with a manually reviewed Decision Brief extracted
+  only from the base task. This is the upper-bound oracle.
+- D2: run the related task with an automatically extracted Decision Brief from
+  the base task.
+
+All modes must use the same backend/model, command restrictions, time budget,
+tool access, and official grading. The related task issue text is visible to all
+modes equally; the Decision Brief must not be derived from the related task's
+hidden patch, hidden tests, or final answer.
+
+### Selection Criteria
+
+Start with 5 base -> related pairs. Prefer pairs that:
+
+- have deterministic official grading
+- can run through an existing SWE-bench-family harness
+- are not solved by one obvious line in the issue text
+- have useful shared context between base and related task
+- fit local runtime for a canary and mini-slice
+- avoid unusually heavy dependency setup
+
+Prefer Python first if that makes harness validation faster. Add multilingual
+tasks only after the first mini-slice is reproducible.
+
+### Metrics
+
+Record per mode and per pair:
+
+- official resolved/unresolved
+- wall-clock time
+- tool-call count
+- prompt/completion tokens, if available from the agent logs
+- generated patch size and touched files
+- number of accepted decisions
+- Decision Brief token size
+- false-decision audit result
+
+Primary signal:
+
+- D2 resolves at least one related task that D0 misses, with no audited false
+  decisions.
+
+Secondary signal:
+
+- if D0 and D2 resolve the same tasks, D2 reduces average wall time or tool
+  calls by at least 20% without adding false decisions.
+
+### Implementation Checklist
+
+- [ ] Verify the official SWE-ContextBench dataset/harness location, license,
+  schema, and grading path.
+- [ ] Create an external workspace under
+  `/home/dev/benchmarks/swe-contextbench`; keep generated repos, logs, patches,
+  and official reports out of this repository.
+- [ ] Select one base -> related pair for infrastructure canary and document why
+  it has reusable context.
+- [ ] Run a gold or official-reference grading preflight for that pair, if the
+  benchmark provides one.
+- [ ] Run D0/D1/D2 on the one-pair canary with the local OpenCode +
+  llama.cpp backend and strict no-install command rules.
+- [ ] Write `reports/swe-contextbench-canary.md` with commands, artifacts,
+  Decision Briefs, patches, grading, and caveats.
+- [ ] If the canary is runnable, select a 5-pair mini-slice and save only the
+  small selection metadata in this repository.
+- [ ] Prepare D1 manual Decision Briefs from base-task artifacts only; do not
+  inspect related-task answers while writing them.
+- [ ] Prepare D2 automatic Decision Briefs from the same base-task artifacts.
+- [ ] Run the 5-pair D0/D1/D2 mini-slice with resume/cache so completed pairs
+  are not rerun after failures.
+- [ ] Audit D1/D2 briefs for false decisions and related-task leakage.
+- [ ] Write `reports/swe-contextbench-mini.md` with the result table, analysis,
+  failure cases, and next recommendation.
+- [ ] Continue to a larger run only if the mini-slice shows primary or secondary
+  signal without false decisions.
+
+### Stop Rules
+
+- Stop if the official dataset or grading path is not locally reproducible.
+- Stop if the benchmark requires building a custom judge.
+- Stop if D1 has no signal; that means the benchmark slice does not fit the
+  Decision Layer hypothesis.
+- Stop if D2 introduces false decisions; fix authority/extraction before
+  running more tasks.
