@@ -762,15 +762,14 @@ def run_grading_mode(
     with lock_path.open("w", encoding="utf-8") as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         emit(progress_path, "grading_lock_acquired", pair=related_id, mode=mode)
-        with log_path.open("w", encoding="utf-8") as log:
-            completed = subprocess.run(
-                ["bash", "evaluation.sh", run_id, "verified", str(prediction_dir)],
-                cwd=harness_root,
-                stdout=log,
-                stderr=subprocess.STDOUT,
-                timeout=args.grading_timeout_seconds,
-                check=False,
-            )
+        completed = run_official_grading(
+            harness_root=harness_root,
+            run_id=run_id,
+            prediction_dir=prediction_dir,
+            related_id=related_id,
+            log_path=log_path,
+            timeout_seconds=args.grading_timeout_seconds,
+        )
     elapsed = time.perf_counter() - started
     (pair_dir / "logs" / f"{mode_name}_grading_time.txt").write_text(
         f"elapsed_seconds={elapsed:.2f}\nexit_status={completed.returncode}\n",
@@ -803,6 +802,74 @@ def run_grading_mode(
         result=str(result_path),
     )
     return result
+
+
+def run_official_grading(
+    *,
+    harness_root: Path,
+    run_id: str,
+    prediction_dir: Path,
+    related_id: str,
+    log_path: Path,
+    timeout_seconds: float,
+) -> subprocess.CompletedProcess[Any]:
+    dataset_path = prediction_dir / f"{related_id}_dataset.json"
+    predictions_path = prediction_dir / f"{related_id}_combined_predictions.json"
+    with log_path.open("w", encoding="utf-8") as log:
+        log.write("=" * 60 + "\n")
+        log.write("SWE-ContextBench official module evaluation\n")
+        log.write("=" * 60 + "\n")
+        log.write(f"Run ID: {run_id}\n")
+        log.write(f"Predictions directory: {prediction_dir}\n")
+        log.write(f"Dataset file: {dataset_path}\n")
+        log.write(f"Combined predictions file: {predictions_path}\n\n")
+        combine = subprocess.run(
+            [
+                "python3",
+                "-m",
+                "swebench_memory.harness.combine_instances",
+                "--instances",
+                "cases/SWEContextBench Verified",
+                "--predictions",
+                str(prediction_dir),
+                "--dataset-output",
+                str(dataset_path),
+                "--predictions-output",
+                str(predictions_path),
+            ],
+            cwd=harness_root,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            timeout=timeout_seconds,
+            check=False,
+        )
+        log.write(f"\n[combine exit {combine.returncode}]\n\n")
+        log.flush()
+        if combine.returncode != 0:
+            return combine
+
+        remaining_timeout = max(1.0, timeout_seconds)
+        completed = subprocess.run(
+            [
+                "python3",
+                "-m",
+                "swebench_memory.harness.run_evaluation",
+                "--dataset_name",
+                str(dataset_path),
+                "--predictions_path",
+                str(predictions_path),
+                "--run_id",
+                run_id,
+                "--no-remove-instance-image",
+            ],
+            cwd=harness_root,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            timeout=remaining_timeout,
+            check=False,
+        )
+        log.write(f"\n[evaluation exit {completed.returncode}]\n")
+        return completed
 
 
 def prepare_workspace(
