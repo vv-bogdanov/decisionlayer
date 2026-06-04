@@ -1,0 +1,174 @@
+{
+  "benchmark": "SWE-ContextBench",
+  "subset": "SWEContextBench Verified",
+  "purpose": "Predeclared larger diagnostic slice for D0 vs D1G after the 7-pair repeat variance run. This is not a blind aggregate because it is derived from earlier large-slice diagnostics.",
+  "derived_from": "configs/swe-contextbench-large-slice.json",
+  "selection_rules": [
+    "Use the related public issue text for the shared task prompt.",
+    "Use only the base experience public problem, hints, and accepted patch for D1G decisions.",
+    "Do not inspect the related hidden patch, related hidden tests, final answers, or grading result during this run.",
+    "Exclude the three Matplotlib related pairs that were infrastructure-invalid in the prior large run.",
+    "Compare D0 vs D1G first; do not include D1 or D2 in the headline lane.",
+    "Report repeat variance, not only a single resolved total."
+  ],
+  "excluded_infrastructure_invalid_related_ids": [
+    "matplotlib__matplotlib-26319",
+    "matplotlib__matplotlib-26468",
+    "matplotlib__matplotlib-22864"
+  ],
+  "pairs": [
+    {
+      "base_instance_id": "sympy__sympy-16766",
+      "related_instance_id": "sympy__sympy-22908",
+      "repo": "sympy/sympy",
+      "expected_reusable_decision": "For PythonCodePrinter unsupported symbolic objects, add explicit printer support in sympy/printing/pycode.py that recursively prints object arguments with self._print(...) and emits valid Python syntax instead of unsupported comments.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related task is in the same PythonCodePrinter unsupported-object behavior family.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "django__django-12125",
+      "related_instance_id": "django__django-27914",
+      "repo": "django/django",
+      "expected_reusable_decision": "For migration serialization of nested Python classes, serialize class paths with __qualname__, not __name__, so inner class qualifiers are preserved.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue is another nested-class migration serialization failure.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "django__django-12125",
+      "related_instance_id": "django__django-11858",
+      "repo": "django/django",
+      "expected_reusable_decision": "For migration serialization of nested Python classes, serialize class paths with __qualname__, not __name__, so inner class qualifiers are preserved.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue is directly in the same nested-class serialization family.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "pytest-dev__pytest-7571",
+      "related_instance_id": "pytest-dev__pytest-7672",
+      "repo": "pytest-dev/pytest",
+      "expected_reusable_decision": "When caplog.set_level() mutates logger or handler levels, record the original handler level once and restore it during fixture finalization.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related task is another caplog level restoration failure.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "scikit-learn__scikit-learn-26323",
+      "related_instance_id": "scikit-learn__scikit-learn-25763",
+      "repo": "scikit-learn/scikit-learn",
+      "expected_reusable_decision": "When an estimator exposes set_output, propagate the transform output config to every nested estimator that produces transformed output, including non-drop and non-passthrough remainder estimators.",
+      "d1_applicability": "skip",
+      "d1_applicability_reason": "The related failure is not about ColumnTransformer propagation to nested transformed-output estimators.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "scikit-learn__scikit-learn-26323",
+      "related_instance_id": "scikit-learn__scikit-learn-25365",
+      "repo": "scikit-learn/scikit-learn",
+      "expected_reusable_decision": "When an estimator exposes set_output, propagate the transform output config to every nested estimator that produces transformed output, including non-drop and non-passthrough remainder estimators.",
+      "d1_applicability": "skip",
+      "d1_applicability_reason": "The related task is in transform_output behavior, but not in ColumnTransformer remainder propagation.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "django__django-13363",
+      "related_instance_id": "django__django-31640",
+      "repo": "django/django",
+      "expected_reusable_decision": "Datetime truncation and casting SQL that accepts tzinfo must use self.get_tzname(), not the global current timezone name.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue is in the same datetime truncation/tzinfo behavior family.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "sympy__sympy-20801",
+      "related_instance_id": "sympy__sympy-20795",
+      "repo": "sympy/sympy",
+      "expected_reusable_decision": "Float and Number equality must check Boolean operands before falsy numeric shortcuts so numeric zero is never treated as equal to S.false.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related task is in the same Boolean-vs-number equality invariant.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "sympy__sympy-20590",
+      "related_instance_id": "sympy__sympy-20567",
+      "repo": "sympy/sympy",
+      "expected_reusable_decision": "Mixin classes used by slotted SymPy objects must define __slots__ = () to avoid adding __dict__ to subclasses.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue is directly about the same slotted mixin memory-layout invariant.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "django__django-14539",
+      "related_instance_id": "django__django-26193",
+      "repo": "django/django",
+      "expected_reusable_decision": "When trimming trailing punctuation after HTML unescaping, compute the punctuation count in the unescaped text and slice that many original characters from the end; do not mix escaped and unescaped lengths.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue is another urlize trailing-punctuation trimming failure.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "pytest-dev__pytest-10081",
+      "related_instance_id": "pytest-dev__pytest-7215",
+      "repo": "pytest-dev/pytest",
+      "expected_reusable_decision": "For unittest --pdb teardown suppression, treat both method-level and class-level unittest skips as skipped before replacing tearDown.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue is another skipped unittest teardown path.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "django__django-15930",
+      "related_instance_id": "django__django-26430",
+      "repo": "django/django",
+      "expected_reusable_decision": "In SQL expression contexts that require a predicate, an empty compiled condition string means a match-all filter and must be compiled as Value(True) instead of leaving SQL blank.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue still involves EmptyResultSet behavior in SQL expression compilation.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "django__django-15930",
+      "related_instance_id": "django__django-33374",
+      "repo": "django/django",
+      "expected_reusable_decision": "In SQL expression contexts that require a predicate, an empty compiled condition string means a match-all filter and must be compiled as Value(True) instead of leaving SQL blank.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue is still in EmptyResultSet expression compilation behavior.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "psf__requests-2931",
+      "related_instance_id": "psf__requests-2933",
+      "repo": "psf/requests",
+      "expected_reusable_decision": "Do not coerce request body bytes or strings through to_native_string in _encode_params; preserve body bytes and apply URL-native string conversion only to URL query params.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue is in the same bytes request body regression family.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "psf__requests-2931",
+      "related_instance_id": "psf__requests-2938",
+      "repo": "psf/requests",
+      "expected_reusable_decision": "Do not coerce request body bytes or strings through to_native_string in _encode_params; preserve body bytes and apply URL-native string conversion only to URL query params.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue is another bytes request body encoding failure.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "sphinx-doc__sphinx-9320",
+      "related_instance_id": "sphinx-doc__sphinx-14215",
+      "repo": "sphinx-doc/sphinx",
+      "expected_reusable_decision": "For quickstart prompts where Enter means exit, validate empty input as allowed and exit with status 1 instead of re-prompting for a valid path.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue is in the same sphinx-quickstart existing-conf prompt behavior.",
+      "hidden_related_patch_or_tests_inspected": false
+    },
+    {
+      "base_instance_id": "django__django-12039",
+      "related_instance_id": "django__django-30903",
+      "repo": "django/django",
+      "expected_reusable_decision": "When composing CREATE INDEX column SQL, append suffixes and opclasses with explicit spaces only when the suffix text is non-empty; never concatenate order/opclass fragments directly to quoted column names.",
+      "d1_applicability": "apply",
+      "d1_applicability_reason": "The related issue is in the same CREATE INDEX SQL fragment composition behavior.",
+      "hidden_related_patch_or_tests_inspected": false
+    }
+  ]
+}
