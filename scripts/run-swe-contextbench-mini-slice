@@ -443,7 +443,21 @@ def prepare_workspace(
         fetch_commit(repo_cache, commit, log)
         if workspace.exists():
             safe_rmtree(workspace, benchmark_root / "agent-runs")
-        run_logged(["git", "clone", "--no-hardlinks", str(repo_cache), str(workspace)], cwd=benchmark_root, log=log)
+        run_logged(
+            [
+                "git",
+                "clone",
+                "--filter=blob:none",
+                "--no-checkout",
+                "--reference-if-able",
+                str(repo_cache),
+                repo_url(repo),
+                str(workspace),
+            ],
+            cwd=benchmark_root,
+            log=log,
+        )
+        fetch_commit(workspace, commit, log)
         run_logged(["git", "-C", str(workspace), "checkout", "--detach", commit], cwd=benchmark_root, log=log)
         safe_rmtree(workspace / ".git", workspace)
         run_logged(["git", "-C", str(workspace), "init"], cwd=benchmark_root, log=log)
