@@ -33,7 +33,6 @@ DEFAULT_EXTRACT_MODEL = "qwen36-35b-a3b-udiq3s"
 DEFAULT_EXTRACT_BASE_URL = "http://127.0.0.1:18080/v1"
 DEFAULT_MODES = ("D0", "D1", "D2")
 VALID_MODES = ("D0", "D1", "D1G", "D2")
-PROMPT_MODES = VALID_MODES
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -80,6 +79,7 @@ def main(argv: list[str] | None = None) -> int:
     artifact_root.mkdir(parents=True, exist_ok=True)
 
     selected_modes = parse_modes(args.modes)
+    args.selected_modes = selected_modes
     pairs = list(config["pairs"])
     if args.max_pairs is not None:
         pairs = pairs[: args.max_pairs]
@@ -392,9 +392,11 @@ def prepare_pair_artifacts(
         render_d1_brief(pair),
         args.overwrite,
     )
-    prepare_d2_brief(pair, base_artifacts_text, pair_dir, args, progress_path)
+    selected_modes = modes_from_args(args)
+    if "D2" in selected_modes:
+        prepare_d2_brief(pair, base_artifacts_text, pair_dir, args, progress_path)
 
-    for mode in PROMPT_MODES:
+    for mode in selected_modes:
         write_if_needed(
             pair_dir / "prompts" / f"{mode.lower()}_task.md",
             render_task_prompt(pair, related, pair_dir, mode),
@@ -417,9 +419,19 @@ def ensure_pair_artifacts(
     args: argparse.Namespace,
     progress_path: Path,
 ) -> None:
-    prompt_path = pair_artifact_dir(artifact_root, pair) / "prompts" / "d0_task.md"
-    if args.overwrite or not prompt_path.exists():
+    pair_dir = pair_artifact_dir(artifact_root, pair)
+    prompt_paths = [
+        pair_dir / "prompts" / f"{mode.lower()}_task.md" for mode in modes_from_args(args)
+    ]
+    if args.overwrite or any(not path.exists() for path in prompt_paths):
         prepare_pair_artifacts(pair, benchmark_root, artifact_root, args, progress_path)
+
+
+def modes_from_args(args: argparse.Namespace) -> tuple[str, ...]:
+    modes = getattr(args, "selected_modes", None)
+    if isinstance(modes, tuple):
+        return modes
+    return parse_modes(str(args.modes))
 
 
 def prepare_d2_brief(

@@ -1,0 +1,216 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import importlib.machinery
+import importlib.util
+import json
+from pathlib import Path
+from typing import Any
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SINGLE_RUN_SUMMARY = PROJECT_ROOT / "scripts" / "summarize-swe-contextbench-run"
+DEFAULT_MODES = ("D0", "D1G")
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Summarize repeated SWE-ContextBench artifact roots."
+    )
+    parser.add_argument("runs", nargs="+", help="Artifact root paths, or label=path entries.")
+    parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--modes", default=",".join(DEFAULT_MODES))
+    parser.add_argument("--format", choices=["markdown", "json"], default="markdown")
+    args = parser.parse_args(argv)
+
+    summarize_run = load_single_run_summarizer()
+    modes = parse_modes(args.modes)
+    config = json.loads(args.config.read_text(encoding="utf-8"))
+    gates = {
+        item["related_instance_id"]: str(item.get("d1_applicability", "apply"))
+        for item in config.get("pairs", [])
+    }
+    runs = [summarize_named_run(entry, args.config, modes, summarize_run) for entry in args.runs]
+    summary = {
+        "config": str(args.config.resolve()),
+        "modes": list(modes),
+        "runs": runs,
+        "aggregate": aggregate_runs(runs, modes, gates),
+    }
+    if args.format == "json":
+        print(json.dumps(summary, ensure_ascii=False, indent=2))
+    else:
+        print(render_markdown(summary))
+    return 0
+
+
+def load_single_run_summarizer() -> Any:
+    loader = importlib.machinery.SourceFileLoader(
+        "summarize_swe_contextbench_run",
+        str(SINGLE_RUN_SUMMARY),
+    )
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    if spec is None:
+        raise RuntimeError(f"cannot import {SINGLE_RUN_SUMMARY}")
+    module = importlib.util.module_from_spec(spec)
+    loader.exec_module(module)
+    return module.summarize_run
+
+
+def parse_modes(raw_modes: str) -> tuple[str, ...]:
+    modes = tuple(mode.strip().upper() for mode in raw_modes.split(",") if mode.strip())
+    if not modes:
+        raise SystemExit("at least one mode is required")
+    return modes
+
+
+def summarize_named_run(
+    entry: str,
+    config_path: Path,
+    modes: tuple[str, ...],
+    summarize_run: Any,
+) -> dict[str, Any]:
+    label, raw_path = parse_run_entry(entry)
+    artifact_root = Path(raw_path).expanduser().resolve()
+    summary = summarize_run(artifact_root, config_path, modes)
+    return {
+        "label": label or artifact_root.name,
+        "artifact_root": str(artifact_root),
+        "totals": summary["totals"],
+        "rows": summary["rows"],
+    }
+
+
+def parse_run_entry(entry: str) -> tuple[str | None, str]:
+    if "=" not in entry:
+        return None, entry
+    label, path = entry.split("=", 1)
+    if not label or not path:
+        raise SystemExit(f"invalid run entry: {entry}")
+    return label, path
+
+
+def aggregate_runs(
+    runs: list[dict[str, Any]],
+    modes: tuple[str, ...],
+    gates: dict[str, str],
+) -> dict[str, Any]:
+    pair_ids = sorted({row["pair"] for run in runs for row in run["rows"]})
+    mode_totals = {mode: aggregate_mode(runs, mode) for mode in modes}
+    pair_rows = []
+    for pair_id in pair_ids:
+        row: dict[str, Any] = {"pair": pair_id, "gate": gates.get(pair_id, "")}
+        for mode in modes:
+            resolved_values = [
+                item["resolved"]
+                for run in runs
+                for item in run["rows"]
+                if item["pair"] == pair_id
+                and item["mode"] == mode
+                and item["official_ok"] is not None
+                and not item["infrastructure_error"]
+            ]
+            row[mode] = {
+                "resolved": sum(1 for value in resolved_values if value is True),
+                "graded": len(resolved_values),
+            }
+        pair_rows.append(row)
+    return {"modes": mode_totals, "pairs": pair_rows}
+
+
+def aggregate_mode(runs: list[dict[str, Any]], mode: str) -> dict[str, Any]:
+    per_run_resolved = []
+    per_run_graded = []
+    infra_errors = 0
+    benchmark_noise = 0
+    for run in runs:
+        totals = run["totals"][mode]
+        per_run_resolved.append(totals["resolved"])
+        per_run_graded.append(totals["graded"])
+        infra_errors += totals["infrastructure_errors"]
+        benchmark_noise += totals["benchmark_noise"]
+    return {
+        "runs": len(runs),
+        "resolved": sum(per_run_resolved),
+        "graded": sum(per_run_graded),
+        "per_run_resolved": per_run_resolved,
+        "per_run_graded": per_run_graded,
+        "min_resolved": min(per_run_resolved) if per_run_resolved else 0,
+        "max_resolved": max(per_run_resolved) if per_run_resolved else 0,
+        "infra_errors": infra_errors,
+        "benchmark_noise": benchmark_noise,
+    }
+
+
+def render_markdown(summary: dict[str, Any]) -> str:
+    lines = [
+        "# SWE-ContextBench Repeat Summary",
+        "",
+        f"Config: `{summary['config']}`",
+        "",
+        "## Runs",
+        "",
+        "| Run | Artifact root | " + " | ".join(summary["modes"]) + " |",
+        "| --- | --- | " + " | ".join("---:" for _ in summary["modes"]) + " |",
+    ]
+    for run in summary["runs"]:
+        cells = [
+            f"`{run['label']}`",
+            f"`{run['artifact_root']}`",
+        ]
+        for mode in summary["modes"]:
+            totals = run["totals"][mode]
+            cells.append(f"{totals['resolved']}/{totals['graded']}")
+        lines.append("| " + " | ".join(cells) + " |")
+
+    lines.extend(
+        [
+            "",
+            "## Aggregate",
+            "",
+            "| Mode | Resolved trials | Per-run resolved | Min-Max | Infra errors | Noise |",
+            "| --- | ---: | --- | ---: | ---: | ---: |",
+        ]
+    )
+    for mode in summary["modes"]:
+        totals = summary["aggregate"]["modes"][mode]
+        lines.append(
+            "| {mode} | {resolved}/{graded} | {per_run} | {min_resolved}-{max_resolved} | "
+            "{infra} | {noise} |".format(
+                mode=mode,
+                resolved=totals["resolved"],
+                graded=totals["graded"],
+                per_run=", ".join(
+                    f"{resolved}/{graded}"
+                    for resolved, graded in zip(
+                        totals["per_run_resolved"],
+                        totals["per_run_graded"],
+                        strict=True,
+                    )
+                ),
+                min_resolved=totals["min_resolved"],
+                max_resolved=totals["max_resolved"],
+                infra=totals["infra_errors"],
+                noise=totals["benchmark_noise"],
+            )
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Pair Matrix",
+            "",
+            "| Pair | Gate | " + " | ".join(summary["modes"]) + " |",
+            "| --- | --- | " + " | ".join("---:" for _ in summary["modes"]) + " |",
+        ]
+    )
+    for row in summary["aggregate"]["pairs"]:
+        cells = [f"`{row['pair']}`", row["gate"]]
+        for mode in summary["modes"]:
+            cells.append(f"{row[mode]['resolved']}/{row[mode]['graded']}")
+        lines.append("| " + " | ".join(cells) + " |")
+    return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
