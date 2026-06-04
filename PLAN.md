@@ -82,7 +82,7 @@ Secondary signal:
 - if D0 and D2 resolve the same tasks, D2 reduces average wall time or tool
   calls by at least 20% without adding false decisions.
 
-## Completed Canary
+## Completed Canary Work
 
 - [x] Verify the official SWE-ContextBench dataset/harness location, license,
   schema, and grading path.
@@ -103,31 +103,49 @@ Canary result: stop rule triggered. D1 had no signal on
 `sympy__sympy-24661 -> sympy__sympy-20571`, because the manual brief led agents
 to a parser-only fix while the resolving patch also required `sign.doit()`.
 
+- [x] Select and run a replacement canary:
+  `pydata__xarray-4687 -> pydata__xarray-4141`.
+- [x] Add structured event logging for agent runs:
+  `opencode run --format json`, wall-clock timing, diff snapshots, guard-bin
+  command blocking, and official grading logs per variant.
+- [x] Run D0/D1/D2 on the replacement canary.
+- [x] Run a post-hoc operational-decision diagnostic on the replacement canary.
+- [x] Decide diagnostic-observation authority rule: observations can become
+  Decision Brief content only when authorized by the base task accepted
+  solution, explicit user instruction, or trusted manual API/tool call.
+  Related-task post-hoc failures are allowed for analysis, not for proof.
+- [x] Write `reports/swe-contextbench-xarray-canary.md`.
+
+Replacement canary result: standard D1/D2 had no clean signal, but a post-hoc
+operational-decision diagnostic resolved `pydata__xarray-4141`. The useful
+lesson is that high-level requirements are too lossy for coding tasks; briefs
+must preserve compact implementation decisions.
+
 ## Active Checklist
 
-- [ ] Do not start the 5-pair mini-slice until a replacement canary or revised
-  brief policy shows D1 signal.
-- [ ] Select a replacement base -> related pair where the base artifact contains
-  all decisions needed by the related task, not only a partial parser-side
-  decision.
-- [ ] Add structured event logging for future agent runs:
-  `opencode run --format json`, wall-clock timing, diff snapshots, and official
-  grading logs per variant.
-- [ ] Decide whether "accepted diagnostic observations" are allowed Decision
-  Brief content, and define the authority rule before using them.
-- [ ] Rerun a one-pair canary with D0/D1/D2 and the improved logging policy.
-- [ ] If D1 shows signal and D2 has no false decisions, select a 5-pair
-  mini-slice and save only the small selection metadata in this repository.
-- [ ] Prepare D1 manual Decision Briefs from base-task artifacts only; do not
-  inspect related-task answers while writing them.
-- [ ] Prepare D2 automatic Decision Briefs from the same base-task artifacts.
+- [ ] Do not start the 5-pair mini-slice until a fresh canary shows clean D1 or
+  D2 signal under the revised operational-brief policy.
+- [ ] Define `Operational Decision Brief v0`: compact bullets that preserve
+  implementation-critical operator choices, argument mapping, invariants, and
+  authorized failure-derived constraints without storing raw history or full
+  patches.
+- [ ] Update the D2 extractor prompt/schema so it keeps implementation-critical
+  details instead of summarizing them away.
+- [ ] Select a fresh SWE-ContextBench base -> related pair not already used for
+  post-hoc diagnosis.
+- [ ] Write the D1 manual operational brief from base-task artifacts only; do
+  not inspect related-task hidden patch/tests/final answer while writing it.
+- [ ] Generate the D2 automatic operational brief from the same base-task
+  artifacts and audit it for false decisions before running the related task.
+- [ ] Run a clean one-pair D0/D1/D2 canary with structured logs, guard-bin,
+  official grading, and resume/cache artifacts.
+- [ ] If the clean canary shows signal and D2 has no false decisions, select a
+  5-pair mini-slice and save only the small selection metadata in this
+  repository.
 - [ ] Run the 5-pair D0/D1/D2 mini-slice with resume/cache so completed pairs
   are not rerun after failures.
-- [ ] Audit D1/D2 briefs for false decisions and related-task leakage.
 - [ ] Write `reports/swe-contextbench-mini.md` with the result table, analysis,
   failure cases, and next recommendation.
-- [ ] Continue to a larger run only if the mini-slice shows primary or secondary
-  signal without false decisions.
 
 ## Stop Rules
 
@@ -145,5 +163,7 @@ Completed and historical work is recorded outside this active plan:
 - `reports/current-poc-result.md`
 - `reports/swebench-canary.md`
 - `reports/swebench-d0-d2-canary.md`
+- `reports/swe-contextbench-canary.md`
+- `reports/swe-contextbench-xarray-canary.md`
 - `docs/research-report.md`
 - `docs/coding-benchmark-selection.md`
