@@ -207,14 +207,40 @@ Use this contract for the next wider run before looking at its grading results:
 - image control: publishable lane should use prebuilt or authenticated-pulled
   SWE-ContextBench images; local rebuilt images are diagnostic only
 
+## Publishable Run Command
+
+The publishable lane is prepared as:
+
+```text
+scripts/run-swe-contextbench-publishable-d0-d1g
+```
+
+Defaults:
+
+```text
+config=configs/swe-contextbench-d0-d1g-large-slice.json
+run_name=swe-contextbench-d0-d1g-publishable-codex
+modes=D0,D1G
+agent_backend=codex
+codex_model=gpt-5.3-codex-spark
+codex_reasoning_effort=low
+preflight_docker=pull
+```
+
+The script runs remote Docker pull preflight first. If preflight fails, agents
+and grading do not start. It writes:
+
+```text
+/home/dev/benchmarks/swe-contextbench/agent-runs/swe-contextbench-d0-d1g-publishable-codex/publishable-run.log
+/home/dev/benchmarks/swe-contextbench/agent-runs/swe-contextbench-d0-d1g-publishable-codex/summary.md
+```
+
 ## Active Checklist
 
-- [ ] Prepare a publishable lane with authenticated/prebuilt SWE-ContextBench
-  image pulls. If local rebuilt images are used again, label the run as
-  diagnostic only. Current blocker: `--preflight-docker pull` correctly checks
-  Docker Hub now, but unauthenticated pulls are rate-limited. User action needed:
-  run `docker login` with an account that has available pull quota, then rerun
-  pull preflight.
+- [ ] User action needed: run `docker login` with an account that has available
+  pull quota, then rerun `scripts/run-swe-contextbench-publishable-d0-d1g`.
+  Current blocker: Docker Hub returns unauthenticated pull rate limit during
+  `--preflight-docker pull`.
 - [ ] If another repeat is run, keep the headline lane to `D0` vs `D1G` and use
   the same backend/model/reasoning.
 - [ ] If `D2` is revisited, add a narrow application guard that forces extracted

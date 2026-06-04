@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+config="${CONFIG:-configs/swe-contextbench-d0-d1g-large-slice.json}"
+run_name="${RUN_NAME:-swe-contextbench-d0-d1g-publishable-codex}"
+artifact_root="${ARTIFACT_ROOT:-/home/dev/benchmarks/swe-contextbench/agent-runs/${run_name}}"
+phase="${PHASE:-all}"
+agent_backend="${AGENT_BACKEND:-codex}"
+codex_model="${CODEX_MODEL:-gpt-5.3-codex-spark}"
+codex_reasoning_effort="${CODEX_REASONING_EFFORT:-low}"
+timeout_seconds="${TIMEOUT_SECONDS:-300}"
+grading_timeout_seconds="${GRADING_TIMEOUT_SECONDS:-2400}"
+preflight_timeout_seconds="${PREFLIGHT_TIMEOUT_SECONDS:-300}"
+modes="${MODES:-D0,D1G}"
+
+mkdir -p "$artifact_root"
+run_log="$artifact_root/publishable-run.log"
+summary_path="$artifact_root/summary.md"
+
+exec > >(tee -a "$run_log") 2>&1
+
+print_settings() {
+  printf 'SWE-ContextBench publishable D0 vs D1G lane\n'
+  printf 'config=%s\n' "$config"
+  printf 'run_name=%s\n' "$run_name"
+  printf 'artifact_root=%s\n' "$artifact_root"
+  printf 'phase=%s\n' "$phase"
+  printf 'modes=%s\n' "$modes"
+  printf 'agent_backend=%s\n' "$agent_backend"
+  printf 'codex_model=%s\n' "$codex_model"
+  printf 'codex_reasoning_effort=%s\n' "$codex_reasoning_effort"
+  printf 'timeout_seconds=%s\n' "$timeout_seconds"
+  printf 'grading_timeout_seconds=%s\n' "$grading_timeout_seconds"
+  printf 'preflight_timeout_seconds=%s\n' "$preflight_timeout_seconds"
+  printf 'run_log=%s\n' "$run_log"
+}
+
+run_slice() {
+  local selected_phase="$1"
+  local extra_preflight_args=()
+  if [[ "$selected_phase" == "preflight" ]]; then
+    extra_preflight_args+=(--preflight-docker pull)
+    extra_preflight_args+=(--preflight-timeout-seconds "$preflight_timeout_seconds")
+  fi
+
+  scripts/run-swe-contextbench-mini-slice \
+    --config "$config" \
+    --artifact-root "$artifact_root" \
+    --run-name "$run_name" \
+    --phase "$selected_phase" \
+    --modes "$modes" \
+    --agent-backend "$agent_backend" \
+    --codex-model "$codex_model" \
+    --codex-reasoning-effort "$codex_reasoning_effort" \
+    --timeout-seconds "$timeout_seconds" \
+    --grading-timeout-seconds "$grading_timeout_seconds" \
+    "${extra_preflight_args[@]}"
+}
+
+run_summary() {
+  scripts/summarize-swe-contextbench-run \
+    --artifact-root "$artifact_root" \
+    --config "$config" \
+    --modes "$modes" | tee "$summary_path"
+  printf '\nsummary=%s\n' "$summary_path"
+}
+
+print_settings
+
+case "$phase" in
+  preflight)
+    run_slice preflight
+    ;;
+  agents)
+    run_slice agents
+    ;;
+  grade)
+    run_slice grade
+    ;;
+  summary)
+    run_summary
+    ;;
+  all)
+    if ! run_slice preflight; then
+      printf '\nPublishable preflight failed.\n' >&2
+      printf 'If the error is Docker Hub pull rate limiting, run docker login and retry.\n' >&2
+      exit 1
+    fi
+    run_slice agents
+    run_slice grade
+    run_summary
+    ;;
+  *)
+    printf 'Usage: PHASE=[preflight|agents|grade|summary|all] %s\n' "$0" >&2
+    exit 2
+    ;;
+esac
