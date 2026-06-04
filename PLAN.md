@@ -77,7 +77,7 @@ config=configs/swe-contextbench-d0-d1g-large-slice.json
 pairs=17
 d1_applicability: apply=15, skip=2
 public-artifact preflight: 17/17
-local Docker image preflight: 7/17 available, 10/17 missing
+local Docker image preflight: 17/17 after local diagnostic image rebuild
 ```
 
 Important caveat: the follow-up official grading used local images rebuilt with
@@ -125,14 +125,6 @@ Keep these constraints for all next proof runs:
 - [ ] Prefer authenticated/prebuilt SWE-ContextBench image pulls for the
   publishable lane. If local rebuilt images are used again, label the run as
   diagnostic only.
-- [ ] Restore or build the 10 missing Docker images for
-  `configs/swe-contextbench-d0-d1g-large-slice.json`:
-  `sympy__sympy-22908`, `pytest-dev__pytest-7672`,
-  `scikit-learn__scikit-learn-25365`, `sympy__sympy-20795`,
-  `pytest-dev__pytest-7215`, `django__django-33374`, `psf__requests-2933`,
-  `psf__requests-2938`, `sphinx-doc__sphinx-14215`, `django__django-30903`.
-- [ ] Rerun Docker preflight for the larger slice and require 17/17 before any
-  agent execution.
 - [ ] Run the larger slice as `D0` vs `D1G` with repeat variance. Do not include
   `D1` or `D2` in the headline lane.
 - [ ] If `D2` is revisited, add a narrow application guard that forces extracted
