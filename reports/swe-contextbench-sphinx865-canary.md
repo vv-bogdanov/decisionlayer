@@ -123,3 +123,46 @@ It is not enough to start the 5-pair mini-slice:
 Do not start the mini-slice yet. First tighten D2 extraction so conditionals,
 authority, and key mappings survive summarization. Then run either a diagnostic
 D2 retry on this pair or, for proof, a fresh pair after the extractor update.
+
+## Diagnostic D2 Retry
+
+After this report, the D2 extractor prompt/schema was tightened in
+`configs/swe-contextbench-operational-extractor-prompt.md` to preserve exact
+conditions, branch behavior, key mappings, and negative prefixes. A diagnostic
+retry was run on the same Sphinx-865 pair. This is extractor debugging only, not
+proof evidence for this pair.
+
+The new extractor output preserved the missing critical decision:
+
+```text
+For external inheritance-diagram refs where `internal` is false, derive the
+graph key from the `refuri` fragment after `#`, not from `reftitle`.
+```
+
+Retry artifacts:
+
+```text
+briefs/d2_retry_operational_brief.md
+prompts/d2_retry_extract_operational.md
+prompts/d2_retry_task.md
+prompts/d2_retry_direct_task.md
+logs/d2_retry_extract_operational_*.*
+logs/d2_retry*_opencode.*
+logs/d2_retry*_verifier.json
+logs/d2_retry*_audit.json
+patches/d2_retry*.patch
+```
+
+| Diagnostic variant | Result | Agent time | Verifier | Audit | Official grading |
+| --- | --- | ---: | --- | --- | --- |
+| D2 retry standard | no patch | 7.48s | fail | clean | not graded |
+| D2 retry direct/no-subagent | patch | 14.64s | pass | clean | resolved, F2P 1/1, P2P 5/5 |
+
+The standard retry failed because the model emitted an OpenCode `task` tool call
+as plain text and then stopped. The direct/no-subagent prompt avoided that
+executor failure and produced a resolving patch.
+
+The direct patch still differs from the accepted base logic: it treats missing
+`internal` as external, while the base patch defaulted missing `internal` to
+true. Official grading did not expose a regression, but this should be tightened
+in the next fresh proof pair's verifier/prompt expectations.

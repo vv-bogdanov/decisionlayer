@@ -167,6 +167,11 @@ must preserve compact implementation decisions.
 - [x] Tighten counted-run audit rules: `decision-layer run-opencode-canary`
   supports `--fail-on-dirty-audit` so blocked install/venv/git-history attempts
   can make proof runs fail even if the patch later passes.
+- [x] Run a diagnostic D2 retry on `sphinx-doc__sphinx-865` with the tightened
+  extractor prompt. The standard retry produced no patch due an OpenCode
+  subagent tool-call formatting failure; the direct/no-subagent retry resolved
+  officially (F2P 1/1, P2P 5/5) with clean verifier and audit. This is
+  extractor debugging, not proof evidence for that pair.
 - [x] Write `reports/swe-contextbench-sphinx865-canary.md`.
 
 Next selected canary: `sphinx-doc__sphinx-10614 -> sphinx-doc__sphinx-865`.
@@ -203,11 +208,9 @@ instead of the literal `rsplit` term.
 
 - [ ] Do not start the 5-pair mini-slice until a fresh canary shows clean D2
   signal under the revised operational-brief policy.
-- [ ] Run a diagnostic D2 retry on `sphinx-doc__sphinx-865` after extractor
-  changes using `configs/swe-contextbench-operational-extractor-prompt.md`.
-  Count it only as extractor debugging, not proof.
-- [ ] Select the next fresh SWE-ContextBench pair only after the D2 diagnostic
-  preserves the critical Sphinx-865 decision without false decisions.
+- [ ] Select the next fresh SWE-ContextBench pair for proof-run after the
+  successful D2 diagnostic. Save only small selection metadata in this
+  repository.
 - [ ] If a clean canary shows signal and D2 has no false decisions, select a
   5-pair mini-slice and save only the small selection metadata in this
   repository.
