@@ -121,25 +121,43 @@ operational-decision diagnostic resolved `pydata__xarray-4141`. The useful
 lesson is that high-level requirements are too lossy for coding tasks; briefs
 must preserve compact implementation decisions.
 
+- [x] Define `Operational Decision Brief v0`: compact bullets that preserve
+  implementation-critical operator choices, argument mapping, invariants, and
+  authorized failure-derived constraints without storing raw history or full
+  patches.
+- [x] Update the D2 extractor prompt/schema so it keeps implementation-critical
+  details instead of summarizing them away.
+- [x] Select a fresh SWE-ContextBench pair:
+  `sphinx-doc__sphinx-8265 -> sphinx-doc__sphinx-8052`.
+- [x] Write the D1 manual operational brief from base-task artifacts only.
+- [x] Generate the D2 automatic operational brief from the same base-task
+  artifacts and audit it for false decisions.
+- [x] Run a clean one-pair D0/D1/D2 canary with structured logs, guard-bin,
+  official grading, and resume/cache artifacts.
+- [x] Add the proof-run hygiene rule: coding proof workspaces must be sanitized
+  single-commit repos so agents cannot use future git history.
+- [x] Write `reports/swe-contextbench-sphinx-canary.md`.
+
+Sphinx canary result: no clean Decision Layer signal. D0, D1, and D2 all
+resolved `sphinx-doc__sphinx-8052`, but all non-gold variants regressed the same
+PASS_TO_PASS test. D1 contained the right subscript-preservation decision, but
+the agent ignored it; D2 attempted it but produced an over-broad patch. The
+important protocol lesson is to sanitize repository history and keep structured
+logs, timing, diffs, guard audits, and official grading reports for each run.
+
 ## Active Checklist
 
 - [ ] Do not start the 5-pair mini-slice until a fresh canary shows clean D1 or
   D2 signal under the revised operational-brief policy.
-- [ ] Define `Operational Decision Brief v0`: compact bullets that preserve
-  implementation-critical operator choices, argument mapping, invariants, and
-  authorized failure-derived constraints without storing raw history or full
-  patches.
-- [ ] Update the D2 extractor prompt/schema so it keeps implementation-critical
-  details instead of summarizing them away.
-- [ ] Select a fresh SWE-ContextBench base -> related pair not already used for
-  post-hoc diagnosis.
-- [ ] Write the D1 manual operational brief from base-task artifacts only; do
-  not inspect related-task hidden patch/tests/final answer while writing it.
-- [ ] Generate the D2 automatic operational brief from the same base-task
-  artifacts and audit it for false decisions before running the related task.
-- [ ] Run a clean one-pair D0/D1/D2 canary with structured logs, guard-bin,
-  official grading, and resume/cache artifacts.
-- [ ] If the clean canary shows signal and D2 has no false decisions, select a
+- [ ] Add a lightweight patch/brief verifier for canaries: before official
+  grading, check whether critical brief decisions are reflected in the generated
+  patch and flag over-broad touched files.
+- [ ] Select one more fresh SWE-ContextBench base -> related pair only after the
+  verifier/logging protocol is ready.
+- [ ] Run another clean one-pair D0/D1/D2 canary in sanitized single-commit
+  workspaces with structured JSONL logs, stderr, wall-clock timing, diff
+  snapshots, guard audits, and official grading.
+- [ ] If a clean canary shows signal and D2 has no false decisions, select a
   5-pair mini-slice and save only the small selection metadata in this
   repository.
 - [ ] Run the 5-pair D0/D1/D2 mini-slice with resume/cache so completed pairs

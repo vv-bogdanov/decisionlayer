@@ -78,6 +78,17 @@ only included when decisions exist.
 The brief should be short, stable, and actionable. It should not contain raw
 evidence, long observations, or answer-like facts.
 
+For coding tasks, use the Operational Decision Brief v0 contract:
+
+- preserve compact implementation commitments, not full patches;
+- keep argument mappings, extension points, default policies, invariants, and
+  other implementation-critical choices when they are authorized;
+- reject vague facts and related-task answer leakage.
+- run proof tasks in sanitized single-commit workspaces so agents cannot use
+  future repository history as hidden memory.
+
+See [Operational Decision Brief v0](operational-decision-brief-v0.md).
+
 ## Plugin Boundary
 
 Allowed plugin responsibilities:
