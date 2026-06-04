@@ -110,26 +110,26 @@ extractor before the repo can be cited and the current result can be reproduced.
 
 ## Publishable Repo Checklist
 
-- [ ] Write `docs/research-report.md` with hypothesis, methodology, result
+- [x] Write `docs/research-report.md` with hypothesis, methodology, result
   tables, case studies, limitations, and recommendations.
-- [ ] Write `docs/reproducibility.md` with exact setup, data preparation,
+- [x] Write `docs/reproducibility.md` with exact setup, data preparation,
   commands, local llama.cpp assumptions, expected metrics, and artifact paths.
-- [ ] Write `docs/decision-layer-design.md` explaining the core/plugin boundary,
+- [x] Write `docs/decision-layer-design.md` explaining the core/plugin boundary,
   D0/D1/D2 definitions, authority rules, and why facts/history/RAG are not
   Decision Layer state.
-- [ ] Update `README.md` so a new reader can understand what this is, what it is
+- [x] Update `README.md` so a new reader can understand what this is, what it is
   not, how to run smoke tests, and how to reproduce the current POC result.
-- [ ] Add `LICENSE` before publishing. Prefer Apache-2.0 or MIT.
-- [ ] Add `CITATION.cff` with project name, authors, repository URL placeholder,
+- [x] Add `LICENSE` before publishing. Prefer Apache-2.0 or MIT.
+- [x] Add `CITATION.cff` with project name, authors, repository URL placeholder,
   and version/date.
-- [ ] Add a minimal CI workflow for `pytest`, `ruff`, `ruff format --check`, and
+- [x] Add a minimal CI workflow for `pytest`, `ruff`, `ruff format --check`, and
   `mypy`.
-- [ ] Clean repository noise before publishing: remove editor/cache artifacts
+- [x] Clean repository noise before publishing: remove editor/cache artifacts
   from git, verify `.gitignore`, and keep large/generated benchmark artifacts out
   of the repository.
-- [ ] Add a compact `reports/current-poc-result.md` snapshot so the headline
+- [x] Add a compact `reports/current-poc-result.md` snapshot so the headline
   result is visible without reading `/tmp` artifacts.
-- [ ] Add a small reproduction helper script for the current result or a
+- [x] Add a small reproduction helper script for the current result or a
   documented smoke equivalent; avoid hiding important benchmark assumptions in
   shell magic.
 
@@ -138,13 +138,13 @@ extractor before the repo can be cited and the current result can be reproduced.
 The next external benchmark should focus on coding or software-work tasks, not
 another custom synthetic benchmark. Selection criteria:
 
-- [ ] Known external benchmark with public task definitions and citation path.
-- [ ] Runnable with the same backend/model for D0 vs Decision Layer comparison.
-- [ ] Supports resume/cache or can be wrapped safely for long runs.
-- [ ] Has deterministic or inspectable grading.
-- [ ] Lets us measure horizon through task success by human-time bucket, task
+- [x] Known external benchmark with public task definitions and citation path.
+- [x] Runnable with the same backend/model for D0 vs Decision Layer comparison.
+- [x] Supports resume/cache or can be wrapped safely for long runs.
+- [x] Has deterministic or inspectable grading.
+- [x] Lets us measure horizon through task success by human-time bucket, task
   length, tool-call count, repository size, or multi-step dependency depth.
-- [ ] Has a natural place for Decision Layer interventions: accepted
+- [x] Has a natural place for Decision Layer interventions: accepted
   requirements, constraints, implementation decisions, prior failed attempts, or
   project-specific procedures.
 
@@ -165,11 +165,11 @@ Candidate order:
 
 ## Next Implementation Checklist
 
-- [ ] Finish publishable repo cleanup before adding new benchmark code.
-- [ ] Create a benchmark-selection note comparing SWE-bench, WildClawBench,
+- [x] Finish publishable repo cleanup before adding new benchmark code.
+- [x] Create a benchmark-selection note comparing SWE-bench, WildClawBench,
   RoadmapBench, TheAgentCompany, and METR-style horizon analysis.
-- [ ] Pick one coding benchmark slice for the next POC based on setup cost,
+- [x] Pick one coding benchmark slice for the next POC based on setup cost,
   reproducibility, and Decision Layer insertion quality.
-- [ ] Define D0/D2 harness integration for the selected coding benchmark.
+- [x] Define D0/D2 harness integration for the selected coding benchmark.
 - [ ] Run a small canary coding slice before any overnight/full run.
 - [ ] Only after the canary shows signal, prepare a larger coding benchmark run.

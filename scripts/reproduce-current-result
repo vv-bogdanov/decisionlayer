@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+mode="${1:-smoke}"
+data_root="${DATA_ROOT:-data/longmemeval-v2}"
+reader_base_url="${READER_BASE_URL:-http://127.0.0.1:18080/v1}"
+reader_model="${READER_MODEL:-qwen36-35b-a3b-udiq3s}"
+reader_max_tokens="${READER_MAX_TOKENS:-128}"
+context_max_chars="${CONTEXT_MAX_CHARS:-96000}"
+
+print_settings() {
+  printf 'mode=%s\n' "$mode"
+  printf 'data_root=%s\n' "$data_root"
+  printf 'reader_base_url=%s\n' "$reader_base_url"
+  printf 'reader_model=%s\n' "$reader_model"
+  printf 'reader_max_tokens=%s\n' "$reader_max_tokens"
+  printf 'context_max_chars=%s\n' "$context_max_chars"
+}
+
+require_data() {
+  if [[ ! -f "$data_root/questions.jsonl" || ! -f "$data_root/trajectories.jsonl" ]]; then
+    printf 'Missing LongMemEval-V2 data under %s\n' "$data_root" >&2
+    printf 'Prepare it with: scripts/prepare-longmemeval-v2 %s\n' "$data_root" >&2
+    exit 1
+  fi
+}
+
+run_smoke() {
+  uv run --extra dev pytest
+  uv run decision-layer run-suite \
+    --data-root tests/fixtures/longmemeval_v2 \
+    --output-dir /tmp/decision-layer-reproduce-smoke \
+    --question-id q_static \
+    --oracle-decisions tests/fixtures/longmemeval_v2/oracle_decisions.json
+}
+
+run_current_d0() {
+  require_data
+  uv run decision-layer run-poc \
+    --data-root "$data_root" \
+    --output-dir /tmp/decision-layer-d0-current-no-reasoning \
+    --mode D0 \
+    --tier small \
+    --question-id-file configs/longmemeval-v2-full-deterministic-subset.txt \
+    --reader openai-chat \
+    --reader-base-url "$reader_base_url" \
+    --reader-model "$reader_model" \
+    --reader-max-tokens "$reader_max_tokens" \
+    --context-max-chars "$context_max_chars"
+}
+
+run_current_d2() {
+  require_data
+  uv run decision-layer run-poc \
+    --data-root "$data_root" \
+    --output-dir /tmp/decision-layer-d2-narrow-full-v5-procedure-audit \
+    --mode D2 \
+    --tier small \
+    --question-id-file configs/longmemeval-v2-full-deterministic-subset.txt \
+    --reader openai-chat \
+    --reader-base-url "$reader_base_url" \
+    --reader-model "$reader_model" \
+    --reader-max-tokens "$reader_max_tokens" \
+    --context-max-chars "$context_max_chars" \
+    --accepted-decisions configs/longmemeval-v2-full-blind-accepted-decisions.procedure.json
+}
+
+print_settings
+
+case "$mode" in
+  smoke)
+    run_smoke
+    ;;
+  d0)
+    run_current_d0
+    ;;
+  d2)
+    run_current_d2
+    ;;
+  full)
+    run_current_d0
+    run_current_d2
+    ;;
+  *)
+    printf 'Usage: %s [smoke|d0|d2|full]\n' "$0" >&2
+    exit 2
+    ;;
+esac

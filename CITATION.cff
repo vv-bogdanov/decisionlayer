@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this Decision Layer POC, please cite it using this metadata."
+title: "Decision Layer"
+version: "0.1.0"
+date-released: "2026-06-04"
+authors:
+  - name: "Decision Layer contributors"
+url: "https://github.com/OWNER/REPOSITORY"
+license: "Apache-2.0"
+abstract: >-
+  A minimal POC testing whether compact accepted decisions improve
+  long-horizon agent benchmark performance under the same backend/model.
