@@ -235,13 +235,23 @@ and grading do not start. It writes:
 /home/dev/benchmarks/swe-contextbench/agent-runs/swe-contextbench-d0-d1g-publishable-codex/summary.md
 ```
 
+Latest publishable preflight check:
+
+```text
+artifact_root=/home/dev/benchmarks/swe-contextbench/agent-runs/swe-contextbench-publishable-preflight-check
+phase=preflight
+modes=D0,D1G
+preflight_docker=pull
+result=failed 17/17
+reason=Docker Hub unauthenticated pull rate limit
+agents_started=no
+grading_started=no
+```
+
 ## Active Checklist
 
 - [ ] User action needed: run `docker login` with an account that has available
-  pull quota, then rerun `scripts/run-swe-contextbench-publishable-d0-d1g`.
-  Current blocker: Docker Hub returns unauthenticated pull rate limit during
-  `--preflight-docker pull`.
-- [ ] If another repeat is run, keep the headline lane to `D0` vs `D1G` and use
-  the same backend/model/reasoning.
-- [ ] If `D2` is revisited, add a narrow application guard that forces extracted
-  decisions to map to the target fix point before prompt injection.
+  pull quota.
+- [ ] After Docker login, rerun `scripts/run-swe-contextbench-publishable-d0-d1g`.
+- [ ] Analyze the generated `summary.md` under the publishable artifact root and
+  update `reports/swe-contextbench-d0-d1g-large.md` with the publishable result.
