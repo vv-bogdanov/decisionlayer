@@ -110,31 +110,49 @@ D1G 21/34
 clean paired view, dropping the noisy repeat-02 Sphinx pair:
 D0  19/33
 D1G 20/33
+
+publishable run:
+D0  9/17
+D1G 9/17
+
+authenticated remote Docker pull preflight: 17/17
+agent_ok=17/17 for both modes
+benchmark-noise patches=0
+infra_errors=0
+
+three-run aggregate:
+D0  29/51
+D1G 30/51
+
+clean paired view, dropping only the noisy repeat-02 Sphinx pair:
+D0  28/50
+D1G 29/50
 ```
 
-Important caveat: the follow-up official grading used local images rebuilt with
-the official SWE-ContextBench `build_instance.py` module after Docker Hub
-rate-limited prebuilt image pulls. Treat it as a diagnostic recovery run, not a
-publishable prebuilt-image lane.
+Important caveat: run-01 and repeat-02 used local images rebuilt with the
+official SWE-ContextBench `build_instance.py` module after Docker Hub
+rate-limited prebuilt image pulls. Treat them as diagnostic recovery runs. The
+publishable run used authenticated remote Docker pulls and is the cleanest
+headline lane.
 
 ## Interpretation
 
-The Decision Layer signal is still plausible, but narrower than the 7-pair
-repeat made it look. `D1G` remains the best lane to test, but the larger
-diagnostic only shows a small edge after two runs: official `21/34` vs `20/34`,
-or clean paired `20/33` vs `19/33`.
+The Decision Layer signal is narrower than the 7-pair repeat made it look. The
+publishable run is neutral on the headline metric: `D0 9/17`, `D1G 9/17`.
+Across all three larger runs the aggregate is only `D1G 30/51` vs `D0 29/51`,
+or clean paired `D1G 29/50` vs `D0 28/50`.
 
 The repeat diagnostic also confirms agent variance clearly. On
 `scikit-learn__scikit-learn-25763`, `D0` and `D1G` had the same effective prompt
 because the gate skipped the Decision Brief, but `D1G` solved 3/3 while `D0`
 solved 1/3. Do not count that pair as memory value.
 
-The cleanest positive signal is still exact decision transfer. In the smaller
-repeat, `django__django-11858` and `sympy__sympy-20567` favored D1G. In the
-larger repeat-02, `django__django-30903` is the cleanest D1G-only win;
-`django__django-26193` is D1G-only by official resolved but has a P2P caveat.
-The counterexample is `pytest-dev__pytest-7215`, where D1G failed to apply a
-patch that D0 solved.
+The cleanest positive signal is still exact decision transfer. In the
+publishable run, `sympy__sympy-20567` is a clean D1G-only win and
+`django__django-11858` is D1G-only with a P2P `44/45` caveat. The strongest
+counterexamples are `pytest-dev__pytest-7215`, where D1G failed to apply a patch
+that D0 solved, and `django__django-33374`, where D1G followed the related
+decision into the wrong layer.
 
 A narrow guarded lane now exists for canary testing:
 
@@ -227,7 +245,7 @@ codex_reasoning_effort=low
 preflight_docker=pull
 ```
 
-The script runs remote Docker pull preflight first. If preflight fails, agents
+The script ran remote Docker pull preflight first. If preflight fails, agents
 and grading do not start. It writes:
 
 ```text
@@ -235,23 +253,40 @@ and grading do not start. It writes:
 /home/dev/benchmarks/swe-contextbench/agent-runs/swe-contextbench-d0-d1g-publishable-codex/summary.md
 ```
 
-Latest publishable preflight check:
+Publishable run result:
 
 ```text
-artifact_root=/home/dev/benchmarks/swe-contextbench/agent-runs/swe-contextbench-publishable-preflight-check
-phase=preflight
+artifact_root=/home/dev/benchmarks/swe-contextbench/agent-runs/swe-contextbench-d0-d1g-publishable-codex
+phase=preflight, agents, grade, summary
 modes=D0,D1G
 preflight_docker=pull
-result=failed 17/17
-reason=Docker Hub unauthenticated pull rate limit
-agents_started=no
-grading_started=no
+preflight=17/17
+agent_phase=D0 17/17, D1G 17/17
+official_grading=34/34
+infra_errors=0
+benchmark_noise=0
+D0=9/17
+D1G=9/17
 ```
 
-## Active Checklist
+## Completed Checklist
 
-- [ ] User action needed: run `docker login` with an account that has available
-  pull quota.
-- [ ] After Docker login, rerun `scripts/run-swe-contextbench-publishable-d0-d1g`.
-- [ ] Analyze the generated `summary.md` under the publishable artifact root and
-  update `reports/swe-contextbench-d0-d1g-large.md` with the publishable result.
+- [x] User ran `docker login`; authenticated remote Docker pulls work.
+- [x] Ran `scripts/run-swe-contextbench-publishable-d0-d1g`.
+- [x] Generated publishable `summary.md`.
+- [x] Updated `reports/swe-contextbench-d0-d1g-large.md` with the publishable
+  result and analysis.
+
+## Recommendation
+
+Do not claim net uplift on the broader SWE-ContextBench slice. The proof now
+supports a narrower claim: the Decision Layer can transfer exact reusable
+decisions, but the current prompt-level D1G injection is not reliably better
+than D0 across mixed coding tasks.
+
+Next work should focus on one of two paths:
+
+- narrow the benchmark slice to cases with demonstrably applicable prior
+  decisions before measuring lift
+- improve the decision application mechanism so the agent must connect each
+  decision to the target fix point before editing code
