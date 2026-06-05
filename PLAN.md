@@ -153,6 +153,44 @@ This proves the SlopCodeBench D1 pipeline works end to end on at least one
 external coding problem. It is not yet positive Decision Layer evidence because
 D1 underperformed D0 on checkpoint 2.
 
+### Updated 3-Problem Canary
+
+```text
+run=/home/dev/benchmarks/slopcodebench-runs/canary-xjq-lane-d0-d1
+agent=pi
+model=codex_auth/gpt-5.3-codex-spark
+thinking=medium
+problems=xjq,l2m,etl_pipeline
+```
+
+| Mode | Passed | Checkpoints | Infra Errors | Steps |
+|---|---:|---:|---:|---:|
+| D0 | 0 | 3 | 0 | 186 |
+| D1 | 1 | 4 | 0 | 327 |
+
+Checkpoint matrix:
+
+| Mode | Problem | Checkpoint | Passed | Tests | Decisions |
+|---|---|---|---:|---:|---:|
+| D0 | etl_pipeline | checkpoint_1 | False | 26/41 | 0 |
+| D0 | l2m | checkpoint_1 | False | 32/52 | 0 |
+| D0 | xjq | checkpoint_1 | False | 22/23 | 0 |
+| D1 | etl_pipeline | checkpoint_1 | False | 35/41 | 0 |
+| D1 | l2m | checkpoint_1 | False | 39/52 | 0 |
+| D1 | xjq | checkpoint_1 | True | 23/23 | 6 |
+| D1 | xjq | checkpoint_2 | False | 47/51 | 0 |
+
+Delta classification:
+
+- `xjq` checkpoint 1 D1-only pass is variance, not memory signal. Checkpoint 1
+  has no prior decisions in the prompt.
+- `l2m` and `etl_pipeline` D1 improved pass rate on checkpoint 1, but those are
+  also no-memory checkpoints and cannot prove Decision Layer value.
+- `xjq` checkpoint 2 is the only memory-exposed checkpoint in this canary. It
+  received 6 decisions from checkpoint 1 and still failed.
+- The canary gives no positive Decision Layer evidence and shows high agent
+  variance around first-checkpoint acceptance.
+
 ## Interpretation
 
 - The SlopCodeBench integration is valid enough to run a real D0/D1 canary:
@@ -160,9 +198,12 @@ D1 underperformed D0 on checkpoint 2.
   cleanup is fixed, and D1 prompt enrichment is visible in later checkpoints.
 - The old PI + Spark low canary was too weak because no problem passed
   checkpoint 1.
-- `xjq` with PI + Spark medium is a usable anchor problem for the next canary.
-- The first D1 smoke did not improve results, so the next canary is for signal
-  collection and regression classification, not for claiming value.
+- `xjq` with PI + Spark medium can pass checkpoint 1, but it is not stable
+  enough to support a single-run D0/D1 claim.
+- The current evidence does not justify a 10-problem pilot.
+- The next experiment must reduce variance before testing the layer: either
+  repeated `xjq` runs or a paired checkpoint-2 setup from the same accepted
+  checkpoint-1 snapshot.
 
 ## Active Checklist
 
@@ -184,25 +225,30 @@ D1 underperformed D0 on checkpoint 2.
   `decision_layer/prompt_decisions`.
 - [x] Record the chosen lane in config: agent, model, reasoning, problem slice,
   pass policy, runner commit, problems commit, and output root.
-- [ ] Run the updated 3-problem D0/D1 canary:
+- [x] Run the updated 3-problem D0/D1 canary:
   `xjq`, `l2m`, `etl_pipeline`.
-- [ ] Manually inspect every D0/D1 delta and classify it as useful Decision
-  Layer signal, variance, wrong transfer, or infra noise.
-- [ ] Proceed to a 10-problem pilot only if the canary has at least one
+- [x] Manually inspect every current canary D0/D1 delta and classify it.
+- [ ] Design the next variance-controlled `xjq` experiment before any pilot:
+  repeated runs or paired checkpoint-2 runs from an identical accepted
+  checkpoint-1 snapshot.
+- [ ] Proceed to a 10-problem pilot only if a controlled canary has at least one
   attributable D1-only win or regression-prevention case with no systematic D1
   harm.
 - [ ] Write `reports/slopcodebench-d0-d1-pilot.md` only after a valid pilot.
 
 ## Next Run Plan
 
-1. Run `configs/slopcodebench-canary.json` with overwrite.
-2. Confirm every D1 checkpoint after an accepted prior checkpoint has non-empty
-   `decision_layer/prompt_decisions`.
-3. Compare D0/D1 deltas by checkpoint.
-4. If D1 loses, inspect whether the brief was too broad, incomplete, or simply
-   noise from agent variance.
-5. If at least one D1-only win or regression-prevention case appears without
-   systematic harm, prepare the 10-problem pilot.
+1. Do not run the 10-problem pilot yet.
+2. Use `xjq` as the controlled problem because it has at least one accepted
+   checkpoint and a real memory-exposed checkpoint 2.
+3. Prefer the simplest controlled design:
+   run several D0/D1 `xjq` repeats with distinct output roots and classify only
+   checkpoints where D1 prompt decisions are non-empty.
+4. If repeats remain too noisy, switch to a paired checkpoint-2 setup: start D0
+   and D1 from the same accepted checkpoint-1 snapshot, with the Decision Brief
+   as the only intended difference.
+5. Only after controlled evidence shows a D1 benefit should the 10-problem pilot
+   be run.
 
 ## Stop Criteria
 
