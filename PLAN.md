@@ -110,19 +110,19 @@ Interpretation rules:
 
 ## Active Checklist
 
-- [ ] Clone/pin SlopCodeBench runner and problem repos under
+- [x] Clone/pin SlopCodeBench runner and problem repos under
   `/home/dev/benchmarks`.
-- [ ] Run local preflight: `uv sync`, Docker check, one reference-test check,
-  and one minimal agent dry run.
-- [ ] Inspect available agents and choose the first practical lane:
+- [x] Run local preflight: `uv sync`, Docker check, one reference-test check,
+  and SlopCodeBench agent config dry-run.
+- [x] Inspect available agents and choose the first practical lane:
   prefer Codex with low reasoning; try OpenCode/local agent only if setup is
   clean.
-- [ ] Select a small canary slice of 3 problems with 3-6 checkpoints each.
-- [ ] Predeclare canary config: problems, agent, model, reasoning, timeout,
+- [x] Select a small canary slice of 3 problems with 3-6 checkpoints each.
+- [x] Predeclare canary config: problems, agent, model, reasoning, timeout,
   pass policy, and output root.
-- [ ] Implement the minimal wrapper needed to run `D0` and `D1` with resume,
+- [x] Implement the minimal wrapper needed to run `D0` and `D1` with resume,
   per-checkpoint logs, and per-checkpoint result files.
-- [ ] Implement minimal Decision Brief generation for D1 from prior accepted
+- [x] Implement minimal Decision Brief generation for D1 from prior accepted
   checkpoints only.
 - [ ] Run canary: `D0` and `D1` on the same selected problems.
 - [ ] Generate a canary summary with checkpoint matrix, regressions, D1-only,
@@ -160,10 +160,12 @@ Proceed beyond the pilot only if:
 Repository artifacts:
 
 ```text
+configs/slopcodebench-docker-python3.12-uv-rootless.yaml
 configs/slopcodebench-canary.json
 configs/slopcodebench-pilot.json
 scripts/run-slopcodebench-d0-d1
 scripts/summarize-slopcodebench-run
+scripts/slopcodebench_patch/
 reports/slopcodebench-d0-d1-pilot.md
 ```
 
@@ -198,3 +200,33 @@ Keep the integration thin:
 The first useful result is not a full leaderboard. It is a clean, auditable
 answer to whether accepted decisions help an agent survive iterative checkpoint
 growth.
+
+## Current Run Setup
+
+Pinned sources:
+
+```text
+runner=/home/dev/benchmarks/slop-code-bench @ 0a2e7bec9827a1c09c53beb8d76d854ea3c4befc
+problems=/home/dev/benchmarks/scb-problems @ ef6a9dd13911566b6b01075ca121758c9f7b5c5f
+```
+
+Canary config:
+
+```text
+config=configs/slopcodebench-canary.json
+problems=file_backup,cfgpipe,etl_pipeline
+agent=codex
+model=codex_auth/gpt-5.3-codex-spark
+thinking=low
+pass_policy=all-cases
+output_root=/home/dev/benchmarks/slopcodebench-runs/canary-d0-d1
+```
+
+Run canary:
+
+```sh
+./scripts/run-slopcodebench-d0-d1 --config configs/slopcodebench-canary.json
+```
+
+Resume is the default when lane output already has `config.yaml`. Use
+`--overwrite` only for an intentional fresh rerun.

@@ -1,0 +1,31 @@
+{
+  "name": "slopcodebench-pilot-d0-d1",
+  "runner_path": "/home/dev/benchmarks/slop-code-bench",
+  "runner_commit": "0a2e7bec9827a1c09c53beb8d76d854ea3c4befc",
+  "problems_path": "/home/dev/benchmarks/scb-problems",
+  "problems_commit": "ef6a9dd13911566b6b01075ca121758c9f7b5c5f",
+  "docker_host": "unix:///run/user/1000/docker.sock",
+  "environment": "/home/dev/memorycore/configs/slopcodebench-docker-python3.12-uv-rootless.yaml",
+  "agent": "codex",
+  "model": "codex_auth/gpt-5.3-codex-spark",
+  "thinking": "low",
+  "prompt": "just-solve",
+  "pass_policy": "all-cases",
+  "num_workers": 1,
+  "live_progress": false,
+  "modes": ["D0", "D1"],
+  "output_root": "/home/dev/benchmarks/slopcodebench-runs/pilot-d0-d1",
+  "max_decisions_per_checkpoint": 24,
+  "problems": [
+    "file_backup",
+    "cfgpipe",
+    "etl_pipeline",
+    "textdrop",
+    "xjq",
+    "log_query",
+    "file_merger",
+    "code_search",
+    "database_migration",
+    "pwd_manager"
+  ]
+}

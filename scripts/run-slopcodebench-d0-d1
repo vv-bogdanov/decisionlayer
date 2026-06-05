@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT / "src"))
+
+from decision_layer.slopcodebench import write_summary_files  # noqa: E402
+
+
+def _load_config(path: Path) -> dict[str, Any]:
+    data = json.loads(path.read_text())
+    if not isinstance(data, dict):
+        raise ValueError("config root must be a JSON object")
+    return data
+
+
+def _parse_model(model: str) -> tuple[str, str]:
+    provider, sep, name = model.partition("/")
+    if not sep or not provider or not name:
+        raise ValueError("model must use '{provider}/{name}' format")
+    return provider, name
+
+
+def _yaml_scalar(value: str) -> str:
+    return json.dumps(value)
+
+
+def _write_run_config(config: dict[str, Any], mode: str, path: Path) -> None:
+    provider, model_name = _parse_model(str(config["model"]))
+    problems = "\n".join(f"  - {_yaml_scalar(str(problem))}" for problem in config["problems"])
+    content = f"""agent: {_yaml_scalar(str(config["agent"]))}
+environment: {_yaml_scalar(str(config["environment"]))}
+prompt: {_yaml_scalar(str(config["prompt"]))}
+model:
+  provider: {_yaml_scalar(provider)}
+  name: {_yaml_scalar(model_name)}
+thinking: {_yaml_scalar(str(config["thinking"]))}
+pass_policy: {_yaml_scalar(str(config["pass_policy"]))}
+problems:
+{problems}
+save_dir: {_yaml_scalar(str(config["output_root"]))}
+save_template: {_yaml_scalar(mode)}
+"""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content)
+
+
+def _base_env(config: dict[str, Any], *, d1: bool) -> dict[str, str]:
+    env = os.environ.copy()
+    env["SCBENCH_PROBLEMS_PATH"] = str(config["problems_path"])
+    if config.get("docker_host"):
+        env["DOCKER_HOST"] = str(config["docker_host"])
+    if d1:
+        patch_dir = REPO_ROOT / "scripts" / "slopcodebench_patch"
+        paths = [str(patch_dir), str(REPO_ROOT / "src")]
+        existing = env.get("PYTHONPATH")
+        if existing:
+            paths.append(existing)
+        env["PYTHONPATH"] = os.pathsep.join(paths)
+        env["MEMORYCORE_SLOPCODE_DECISION_LAYER"] = "1"
+        env["MEMORYCORE_SLOPCODE_MAX_DECISIONS_PER_CHECKPOINT"] = str(
+            config.get("max_decisions_per_checkpoint", 24)
+        )
+    return env
+
+
+def _run_mode(
+    config: dict[str, Any],
+    mode: str,
+    *,
+    overwrite: bool,
+    dry_run: bool,
+    num_workers: int | None,
+) -> int:
+    runner_path = Path(config["runner_path"])
+    output_root = Path(config["output_root"])
+    run_dir = output_root / mode
+    generated_config = output_root / "_generated" / f"{mode}.yaml"
+    _write_run_config(config, mode, generated_config)
+
+    cmd = ["uv", "run", "slop-code"]
+    if overwrite:
+        cmd.append("--overwrite")
+    cmd.append("run")
+
+    if run_dir.exists() and (run_dir / "config.yaml").exists() and not overwrite:
+        cmd.extend(["--resume", str(run_dir)])
+    else:
+        cmd.extend(["--config", str(generated_config)])
+
+    if dry_run:
+        cmd.append("--dry-run")
+    workers = num_workers if num_workers is not None else int(config.get("num_workers", 1))
+    cmd.extend(["--num-workers", str(workers)])
+    if not bool(config.get("live_progress", False)):
+        cmd.append("--no-live-progress")
+
+    print(f"[slopcodebench] mode={mode} command={' '.join(cmd)}", flush=True)
+    return subprocess.run(cmd, cwd=runner_path, env=_base_env(config, d1=mode == "D1")).returncode
+
+
+def _validate_pins(config: dict[str, Any]) -> None:
+    for key, commit_key in (("runner_path", "runner_commit"), ("problems_path", "problems_commit")):
+        expected = config.get(commit_key)
+        if not expected:
+            continue
+        actual = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=Path(config[key]),
+            text=True,
+        ).strip()
+        if actual != expected:
+            raise RuntimeError(f"{key} commit mismatch: expected {expected}, got {actual}")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Run SlopCodeBench D0/D1 POC lanes.")
+    parser.add_argument(
+        "--config", default=str(REPO_ROOT / "configs" / "slopcodebench-canary.json")
+    )
+    parser.add_argument("--mode", action="append", choices=("D0", "D1"))
+    parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--num-workers", type=int)
+    args = parser.parse_args()
+
+    config = _load_config(Path(args.config))
+    _validate_pins(config)
+    modes = args.mode or list(config.get("modes", ["D0", "D1"]))
+    failures = []
+    for mode in modes:
+        return_code = _run_mode(
+            config,
+            mode,
+            overwrite=args.overwrite,
+            dry_run=args.dry_run,
+            num_workers=args.num_workers,
+        )
+        if return_code != 0:
+            failures.append((mode, return_code))
+
+    if not args.dry_run:
+        summary = write_summary_files(Path(config["output_root"]), list(modes))
+        print(json.dumps(summary["modes"], indent=2, sort_keys=True), flush=True)
+
+    if failures:
+        for mode, return_code in failures:
+            print(
+                f"[slopcodebench] mode={mode} failed with exit code {return_code}", file=sys.stderr
+            )
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
