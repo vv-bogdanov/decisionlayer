@@ -47,5 +47,11 @@ fail_under = 80
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+[tool.mypy]
+exclude = [
+  "^benchmarks/adr_agent/fixtures/",
+  "^benchmarks/adr_agent/runs/",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["repo_decisions"]

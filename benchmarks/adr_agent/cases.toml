@@ -1,0 +1,39 @@
+[[cases]]
+id = "format-preservation-add-adr"
+fixture = "format_preservation"
+task = """
+Add an accepted ADR for this repository.
+
+Decision to record: all outbound HTTP clients must use a 5 second timeout.
+Preserve the repository's existing ADR directory, numbering, status style,
+headings, and filename convention. Use the repo-decisions tool if available.
+"""
+required_globs = ["docs/adr/0002-*.md"]
+required_patterns = [
+  "docs/adr/0002-*.md::## Status\\s+Accepted",
+  "docs/adr/0002-*.md::## Context and Problem Statement",
+  "docs/adr/0002-*.md::5 second timeout",
+  "docs/adr/0002-*.md::## Decision",
+]
+forbidden_patterns = []
+verify_commands = []
+requires_debug_write = true
+
+[[cases]]
+id = "code-follows-jsonl-adr"
+fixture = "code_follows_adr"
+task = """
+Implement append_event in src/persistence.py and make the unit tests pass.
+Follow the accepted ADRs in this repository.
+"""
+required_globs = ["src/persistence.py"]
+required_patterns = [
+  "src/persistence.py::json\\.dumps",
+  "src/persistence.py::write\\(",
+]
+forbidden_patterns = [
+  "src/persistence.py::import csv",
+  "src/persistence.py::csv\\.",
+]
+verify_commands = ["python3 -m unittest discover -s tests -v"]
+requires_debug_write = false

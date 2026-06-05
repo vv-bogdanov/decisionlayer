@@ -148,8 +148,8 @@ repository ADRs during realistic tasks.
 
 ### Test Repositories
 
-- [ ] Create two small local fixture projects under
-      `benchmarks/adr-agent/fixtures` with exact deterministic oracle checks.
+- [x] Create two small local fixture projects under
+      `benchmarks/adr_agent/fixtures` with exact deterministic oracle checks.
 - [ ] Clone a small set of public ADR-bearing repositories into a temporary
       workspace, pinned by commit SHA.
 - [ ] Start with these candidates:
@@ -188,18 +188,18 @@ repository ADRs during realistic tasks.
 
 ### Harness Shape
 
-- [ ] Add `benchmarks/adr-agent/cases.yaml` with repo, pinned ref, task, mode,
-      expected checks, and allowed commands.
-- [ ] Add `benchmarks/adr-agent/run_case.py` to clone/copy repos into a temp
+- [x] Add `benchmarks/adr_agent/cases.toml` with fixture, task, expected
+      checks, and verify commands, using stdlib `tomllib` instead of YAML.
+- [x] Add `benchmarks/adr_agent/run_case.py` to clone/copy repos into a temp
       workspace, run one mode, capture prompt/brief/final answer/diff, and
-      write results under `benchmarks/adr-agent/runs/`.
-- [ ] Add `benchmarks/adr-agent/checks.py` with deterministic checks:
-      changed paths, ADR status, backlinks, active brief include/exclude,
-      forbidden files, required grep patterns, and optional project tests.
+      write results under `benchmarks/adr_agent/runs/`.
+- [x] Add `benchmarks/adr_agent/checks.py` with deterministic checks:
+      required globs, required/forbidden grep patterns, debug write events, and
+      optional project tests.
 - [ ] Enable `REPO_DECISIONS_DEBUG_LOG` for each agent run and fail if ADR files
       changed without matching `repo-decisions` `mcp-tool-call` and `write`
       events.
-- [ ] Keep LLM judging out of the first version; use it only later for
+- [x] Keep LLM judging out of the first version; use it only later for
       secondary qualitative review.
 
 ### Metrics
