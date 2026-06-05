@@ -12,7 +12,7 @@ class PluginConfigTests(unittest.TestCase):
     def test_mcp_server_runs_from_plugin_root(self) -> None:
         config_path = ROOT / "plugins/repo-decisions/.mcp.json"
         config = json.loads(config_path.read_text(encoding="utf-8"))
-        server = config["mcpServers"]["repo-decisions"]
+        server = config["mcpServers"]["repo-adr-decisions"]
 
         self.assertEqual(server["command"], "./scripts/mcp-server")
         self.assertEqual(server["cwd"], ".")

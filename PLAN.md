@@ -24,6 +24,9 @@ lets the user manage decisions through tools.
   are disabled, not trusted, unavailable, or not yet runtime-verified.
 - Hook and MCP plugin changes must be tested in an isolated lab `CODEX_HOME`
   before touching the main `~/.codex`.
+- MCP server and tool names should be explicit for generic coding agents:
+  prefer `repo-adr-decisions` and `adr_*` tool names over generic names such as
+  `list` or `add`.
 - `proposed`, `rejected`, `deprecated`, and `superseded` ADRs stay visible via
   tools but are not injected as active requirements.
 - No custom ADR schema, database, vector index, graph memory, RAG, REST API, UI,
@@ -88,6 +91,8 @@ lets the user manage decisions through tools.
 - [x] Package the hook in `plugins/repo-decisions/hooks/hooks.json`.
 - [x] Add plugin instructions that keep the first 512 characters focused on
       authority rules and tool usage.
+- [x] Rename listed MCP tools to descriptive `adr_*` names and keep old short
+      names as hidden compatibility aliases.
 
 ### Phase 4: POC Verification
 
@@ -98,6 +103,9 @@ lets the user manage decisions through tools.
       plugin under `.codex-lab/home` instead of the main `~/.codex`.
 - [x] Make the plugin bundle self-contained so installed cache copies can run
       the hook and CLI without importing from the source checkout.
+- [x] Add deterministic fuzz-style parser/add/brief tests for malformed ADR
+      markdown and unusual titles/content.
+- [x] Add coverage configuration and a `scripts/check-coverage` runner.
 - [x] Run `codex exec` smoke attempts with inline and project-local hooks;
       record that this local non-interactive path did not execute the hook.
 - [x] Run an end-to-end tool check for `add` and `supersede`.
@@ -119,6 +127,18 @@ lets the user manage decisions through tools.
       `/hooks` is hard to automate.
 - [ ] Only after this passes, treat hook enrichment as the default runtime path
       for benchmarks; otherwise keep using the wrapper for non-interactive runs.
+
+### Phase 6: MCP Naming and Schema Hardening
+
+- [x] Review current MCP naming/tool-definition best practices from official
+      MCP docs and AWS Prescriptive Guidance.
+- [x] Use prefixed, verb-object tool names: `adr_locate_directory`,
+      `adr_list_decisions`, `adr_build_brief`, `adr_add_decision`,
+      `adr_supersede_decision`, and `adr_configure`.
+- [x] Add tool titles, parameter descriptions, defaults where useful, and
+      `ToolAnnotations` hints for read-only/additive/destructive behavior.
+- [ ] Add structured MCP output schemas/results for JSON-returning tools.
+- [ ] Re-run lab interactive proof with the renamed MCP server and tool names.
 
 ## Next Plan: ADR-Agent Integration Test Harness
 

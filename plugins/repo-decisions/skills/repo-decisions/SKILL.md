@@ -14,7 +14,7 @@ Authority rules:
 Workflow:
 - Treat the bundled UserPromptSubmit hook as the automatic source of active ADR context.
 - For any ADR or durable-decision task, call the `repo-decisions` MCP tools instead of editing ADR files directly.
-- Use `locate`, `list`, and `brief` to inspect active decisions before ADR-related work.
-- Use `add` to create a new ADR and `supersede` to change an accepted ADR.
+- Use `adr_locate_directory`, `adr_list_decisions`, and `adr_build_brief` to inspect active decisions before ADR-related work.
+- Use `adr_add_decision` to create a new ADR and `adr_supersede_decision` to change an accepted ADR.
 - Prefer `supersede` over editing an accepted ADR.
 - If hooks are disabled or unavailable, use `repo-decisions codex -- <prompt>` as the wrapper fallback.

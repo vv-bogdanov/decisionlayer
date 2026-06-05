@@ -1,15 +1,15 @@
 {
   "name": "repo-decisions",
-  "version": "0.1.0+codex.20260605131646",
-  "description": "Automatically inject and manage repository ADR decisions for Codex.",
+  "version": "0.1.0+codex.20260605153110",
+  "description": "Automatically inject and manage repository Architecture Decision Records for Codex.",
   "author": {
     "name": "MemoryCore POC"
   },
   "skills": "./skills/",
   "interface": {
-    "displayName": "Repo Decisions",
-    "shortDescription": "Keep accepted ADR decisions visible to Codex.",
-    "longDescription": "Repo Decisions reads repository ADR markdown files, injects active accepted decisions through a UserPromptSubmit hook, exposes tools to locate/list/brief/add/supersede decisions, and keeps a wrapper fallback for deterministic Codex prompt enrichment.",
+    "displayName": "Repo ADR Decisions",
+    "shortDescription": "Keep accepted Architecture Decision Records visible to Codex.",
+    "longDescription": "Repo ADR Decisions reads repository Architecture Decision Record markdown files, injects active accepted decisions through a UserPromptSubmit hook, exposes adr_* tools to locate/list/brief/add/supersede decisions, and keeps a wrapper fallback for deterministic Codex prompt enrichment.",
     "developerName": "MemoryCore POC",
     "category": "Productivity",
     "capabilities": [

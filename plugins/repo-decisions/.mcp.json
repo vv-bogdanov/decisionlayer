@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "repo-decisions": {
+    "repo-adr-decisions": {
       "command": "./scripts/mcp-server",
       "cwd": ".",
       "startup_timeout_sec": 10,

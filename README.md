@@ -177,14 +177,17 @@ It does not read or modify the main `~/.codex/config.toml`.
 If `repo_decisions/*.py` changes, run `scripts/sync-plugin-package` before
 validation so the installed plugin cache remains self-contained.
 
-The plugin exposes an MCP server with these tools:
+The plugin exposes a `repo-adr-decisions` MCP server with these tools:
 
-- `locate`
-- `list`
-- `brief`
-- `add`
-- `supersede`
-- `config`
+- `adr_locate_directory`
+- `adr_list_decisions`
+- `adr_build_brief`
+- `adr_add_decision`
+- `adr_supersede_decision`
+- `adr_configure`
+
+The old short names are accepted as hidden compatibility aliases, but agents
+should prefer the explicit `adr_*` names.
 
 ## Safety
 
@@ -200,6 +203,7 @@ The plugin exposes an MCP server with these tools:
 
 ```bash
 python3 -m unittest discover -s tests -v
+scripts/check-coverage
 python3 /home/dev/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /home/dev/memorycore/plugins/repo-decisions
 scripts/codex-plugin-lab doctor
 ```
