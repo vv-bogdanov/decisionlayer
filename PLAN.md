@@ -90,6 +90,84 @@ lets the user manage decisions through tools.
 - [x] Run an end-to-end tool check for `add` and `supersede`.
 - [x] Commit each completed phase separately.
 
+## Next Plan: ADR-Agent Integration Test Harness
+
+This is not a replacement for an external benchmark. It is a small regression
+and prompt-selection harness that checks whether coding agents actually respect
+repository ADRs during realistic tasks.
+
+### Test Repositories
+
+- [ ] Create two small local fixture projects under
+      `benchmarks/adr-agent/fixtures` with exact deterministic oracle checks.
+- [ ] Clone a small set of public ADR-bearing repositories into a temporary
+      workspace, pinned by commit SHA.
+- [ ] Start with these candidates:
+      `asyncapi/studio`, `adr/e-adr`, `thomvaill/log4brains`, and optionally
+      `sbomify/sbomify` as a heavier later-stage case.
+- [ ] Record each repo's ADR directory, ADR format, install/test commands, and
+      known constraints in `benchmarks/adr-agent/repos.yaml`.
+
+### Modes To Compare
+
+- [ ] `D0`: baseline Codex without repo-decisions enrichment.
+- [ ] `D1`: `repo-decisions codex -- <task>` with automatic accepted-ADR brief.
+- [ ] `D2`: wrapper enrichment plus repo-decisions MCP tools available.
+- [ ] Prompt variants:
+      strict bullet brief, compact Y-statement brief, and fuller ADR excerpt
+      brief.
+
+### Canary Task Types
+
+- [ ] Format preservation:
+      ask the agent to add an ADR and verify it uses the existing repo
+      directory, numbering, status style, headings, and template.
+- [ ] Supersede behavior:
+      ask the agent to change an accepted ADR and verify it creates a new ADR,
+      marks the old ADR superseded, and keeps only the new ADR active.
+- [ ] Code follows ADR:
+      create a task where the easiest implementation violates an accepted ADR,
+      and verify the diff follows the ADR instead.
+- [ ] Conflict detection:
+      ask for a change that contradicts an accepted ADR and verify the agent
+      asks for explicit supersede/confirmation instead of silently violating it.
+- [ ] No false decision creation:
+      include non-authoritative text that looks decision-like and verify no
+      accepted ADR is created without explicit user authorization.
+
+### Harness Shape
+
+- [ ] Add `benchmarks/adr-agent/cases.yaml` with repo, pinned ref, task, mode,
+      expected checks, and allowed commands.
+- [ ] Add `benchmarks/adr-agent/run_case.py` to clone/copy repos into a temp
+      workspace, run one mode, capture prompt/brief/final answer/diff, and
+      write results under `benchmarks/adr-agent/runs/`.
+- [ ] Add `benchmarks/adr-agent/checks.py` with deterministic checks:
+      changed paths, ADR status, backlinks, active brief include/exclude,
+      forbidden files, required grep patterns, and optional project tests.
+- [ ] Keep LLM judging out of the first version; use it only later for
+      secondary qualitative review.
+
+### Metrics
+
+- [ ] `task_success`: the requested coding/documentation task is completed.
+- [ ] `adr_compliance`: no active ADR is violated by the diff.
+- [ ] `format_preservation`: new ADRs match the repository convention.
+- [ ] `unwanted_adr_mutation`: accepted ADRs are not directly edited except
+      for supersede status/backlink.
+- [ ] `conflict_handling`: contradictory requests trigger confirmation or
+      supersede flow.
+- [ ] `tokens`, `duration`, `diff_size`, and `tool_calls`.
+
+### Initial Run
+
+- [ ] Run fixture canaries first for `D0`, `D1`, and `D2`.
+- [ ] Run one real repo canary on `asyncapi/studio`.
+- [ ] Compare prompt variants on the same pinned case before expanding the
+      suite.
+- [ ] Save a short analysis report with examples of where ADR enrichment helped,
+      failed, or made no difference.
+
 ## Default Paths
 
 - Local config: `.codex/repo-decisions.toml`
