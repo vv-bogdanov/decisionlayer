@@ -233,3 +233,5 @@ Before publishing or tagging a release, also verify the Python package builds:
 ```bash
 uv build
 ```
+
+See [docs/PUBLISHING.md](docs/PUBLISHING.md) for the release checklist.
