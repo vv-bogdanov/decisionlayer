@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LAB_ROOT="${REPO_DECISIONS_CODEX_LAB_DIR:-$ROOT/.codex-lab}"
+LAB_HOME="$LAB_ROOT/home"
+DEBUG_LOG="$LAB_ROOT/repo-decisions-debug.jsonl"
+MARKETPLACE_ROOT="$ROOT"
+PLUGIN_ID="repo-decisions@memorycore-local"
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/codex-plugin-lab <command> [args...]
+
+Commands:
+  init          Create isolated CODEX_HOME and install the local plugin there
+  doctor        Run isolated plugin install, MCP listing, and hook smoke checks
+  mcp-list      Show MCP servers from the isolated CODEX_HOME
+  hook-smoke    Run the installed UserPromptSubmit hook directly with a fixture ADR
+  interactive   Start Codex with the isolated CODEX_HOME and debug log
+  clean         Remove the isolated lab directory
+
+The lab always uses .codex-lab/home by default and never uses the caller's
+CODEX_HOME. Override the lab root with REPO_DECISIONS_CODEX_LAB_DIR.
+EOF
+}
+
+ensure_safe_home() {
+  mkdir -p "$LAB_HOME"
+  local real_lab
+  real_lab="$(cd -P "$LAB_HOME" && pwd)"
+  local main_home="$HOME/.codex"
+  if [ -d "$main_home" ]; then
+    main_home="$(cd -P "$main_home" && pwd)"
+  fi
+  if [ "$real_lab" = "$main_home" ]; then
+    echo "Refusing to use main Codex home as lab: $real_lab" >&2
+    exit 2
+  fi
+}
+
+lab_codex() {
+  ensure_safe_home
+  CODEX_HOME="$LAB_HOME" "$@"
+}
+
+install_plugin() {
+  ensure_safe_home
+  mkdir -p "$LAB_ROOT"
+  lab_codex codex plugin marketplace add "$MARKETPLACE_ROOT"
+  lab_codex codex plugin add "$PLUGIN_ID"
+}
+
+plugin_root() {
+  ensure_safe_home
+  local root="$LAB_HOME/plugins/cache/memorycore-local/repo-decisions"
+  if [ ! -d "$root" ]; then
+    echo "Plugin is not installed in lab home. Run: scripts/codex-plugin-lab init" >&2
+    exit 2
+  fi
+  find "$root" -mindepth 1 -maxdepth 1 -type d | sort | tail -n 1
+}
+
+hook_smoke() {
+  install_plugin >/dev/null
+  local installed_root
+  installed_root="$(plugin_root)"
+  local fixture
+  fixture="$(mktemp -d)"
+  mkdir -p "$fixture/docs/adr"
+  cat >"$fixture/docs/adr/0001-use-sqlite.md" <<'EOF'
+# 1. Use SQLite
+
+Date: 2026-06-05
+
+## Status
+
+Accepted
+
+## Context and Problem Statement
+
+The fixture needs a tiny durable store.
+
+## Decision
+
+Use SQLite for fixture persistence.
+
+## Consequences
+
+No external database is required.
+EOF
+  mkdir -p "$LAB_ROOT"
+  local output
+  output="$(
+    REPO_DECISIONS_DEBUG_LOG="$DEBUG_LOG" \
+      "$installed_root/scripts/user-prompt-submit" \
+      <<<"{\"cwd\":\"$fixture\",\"hook_event_name\":\"UserPromptSubmit\"}"
+  )"
+  rm -rf "$fixture"
+  if [[ "$output" != *"Repository ADR Decisions"* ]]; then
+    echo "Hook smoke failed: expected ADR context in output" >&2
+    echo "$output" >&2
+    exit 1
+  fi
+  if [[ "$output" != *"Use SQLite for fixture persistence"* ]]; then
+    echo "Hook smoke failed: expected fixture decision in output" >&2
+    echo "$output" >&2
+    exit 1
+  fi
+  echo "Hook smoke passed"
+  echo "Debug log: $DEBUG_LOG"
+}
+
+command="${1:-}"
+if [ "$#" -gt 0 ]; then
+  shift
+fi
+
+case "$command" in
+  init)
+    install_plugin
+    echo "Lab CODEX_HOME: $LAB_HOME"
+    echo "Debug log: $DEBUG_LOG"
+    ;;
+  doctor)
+    install_plugin
+    lab_codex codex mcp list
+    hook_smoke
+    ;;
+  mcp-list)
+    lab_codex codex mcp list
+    ;;
+  hook-smoke)
+    hook_smoke
+    ;;
+  interactive)
+    install_plugin >/dev/null
+    mkdir -p "$LAB_ROOT"
+    echo "Lab CODEX_HOME: $LAB_HOME"
+    echo "Debug log: $DEBUG_LOG"
+    REPO_DECISIONS_DEBUG_LOG="$DEBUG_LOG" \
+      CODEX_HOME="$LAB_HOME" \
+      codex --dangerously-bypass-hook-trust "$@"
+    ;;
+  clean)
+    rm -rf "$LAB_ROOT"
+    echo "Removed $LAB_ROOT"
+    ;;
+  ""|-h|--help|help)
+    usage
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac

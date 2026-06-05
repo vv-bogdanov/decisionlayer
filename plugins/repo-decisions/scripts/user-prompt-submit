@@ -8,8 +8,11 @@ from pathlib import Path
 
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
-REPO_DECISIONS_ROOT = PLUGIN_ROOT.parents[1]
-sys.path.insert(0, str(REPO_DECISIONS_ROOT))
+SOURCE_ROOT = PLUGIN_ROOT.parents[1]
+for candidate in (PLUGIN_ROOT, SOURCE_ROOT):
+    if (candidate / "repo_decisions").is_dir():
+        sys.path.insert(0, str(candidate))
+        break
 
 from repo_decisions.core import ACTIVE_STATUS, build_brief, locate_adrs  # noqa: E402
 from repo_decisions.debug import log_event  # noqa: E402

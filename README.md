@@ -157,6 +157,26 @@ codex plugin marketplace add /home/dev/memorycore
 
 Then install `repo-decisions` from the `MemoryCore Local` marketplace in Codex.
 
+During development, do not reinstall or re-enable the hook plugin in the main
+`~/.codex` while an interactive Codex session is running. Active sessions keep
+the hook command they loaded at startup, including the versioned plugin cache
+path. Updating the installed plugin can remove that old path and block prompts
+before our hook code can fail open.
+
+Use the isolated lab home instead:
+
+```bash
+scripts/codex-plugin-lab doctor
+scripts/codex-plugin-lab interactive
+```
+
+The lab uses `.codex-lab/home` as `CODEX_HOME`, installs the local plugin there,
+and writes hook/tool evidence to `.codex-lab/repo-decisions-debug.jsonl`.
+It does not read or modify the main `~/.codex/config.toml`.
+
+If `repo_decisions/*.py` changes, run `scripts/sync-plugin-package` before
+validation so the installed plugin cache remains self-contained.
+
 The plugin exposes an MCP server with these tools:
 
 - `locate`
@@ -181,4 +201,5 @@ The plugin exposes an MCP server with these tools:
 ```bash
 python3 -m unittest discover -s tests -v
 python3 /home/dev/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /home/dev/memorycore/plugins/repo-decisions
+scripts/codex-plugin-lab doctor
 ```

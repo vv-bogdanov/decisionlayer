@@ -22,6 +22,8 @@ lets the user manage decisions through tools.
   returning Codex `additionalContext`.
 - The `repo-decisions codex` wrapper remains a fallback for cases where hooks
   are disabled, not trusted, unavailable, or not yet runtime-verified.
+- Hook and MCP plugin changes must be tested in an isolated lab `CODEX_HOME`
+  before touching the main `~/.codex`.
 - `proposed`, `rejected`, `deprecated`, and `superseded` ADRs stay visible via
   tools but are not injected as active requirements.
 - No custom ADR schema, database, vector index, graph memory, RAG, REST API, UI,
@@ -92,6 +94,10 @@ lets the user manage decisions through tools.
 - [x] Add a minimal README with install, hook trust, config, and daily usage.
 - [x] Add a direct hook test proving the ADR requirements block is emitted as
       Codex hook `additionalContext` without needing a tool call first.
+- [x] Add an isolated Codex plugin lab workflow that installs and debugs the
+      plugin under `.codex-lab/home` instead of the main `~/.codex`.
+- [x] Make the plugin bundle self-contained so installed cache copies can run
+      the hook and CLI without importing from the source checkout.
 - [x] Run `codex exec` smoke attempts with inline and project-local hooks;
       record that this local non-interactive path did not execute the hook.
 - [x] Run an end-to-end tool check for `add` and `supersede`.
@@ -99,11 +105,16 @@ lets the user manage decisions through tools.
 
 ### Phase 5: Runtime Hook Verification
 
-- [ ] Install/enable the repo-decisions plugin in Codex CLI.
-- [ ] Open `/hooks`, verify the bundled `UserPromptSubmit` hook is discovered,
-      trust it, and confirm its command hash is stable.
-- [ ] Run one interactive CLI task with an accepted ADR marker and
-      `REPO_DECISIONS_DEBUG_LOG`; verify a `hook-context` event is written.
+- [x] Add `scripts/codex-plugin-lab doctor` to install the plugin in an
+      isolated `CODEX_HOME`, list MCP servers, and smoke-test the installed
+      `UserPromptSubmit` hook.
+- [ ] Open a separate lab Codex session with
+      `scripts/codex-plugin-lab interactive`, verify the bundled
+      `UserPromptSubmit` hook is discovered, trust/bypass only inside the lab,
+      and confirm its command hash is stable.
+- [ ] Run one lab interactive CLI task with an accepted ADR marker and
+      `.codex-lab/repo-decisions-debug.jsonl`; verify a `hook-context` event is
+      written.
 - [ ] Use app-server `hooks/list` as a non-interactive discovery check if CLI
       `/hooks` is hard to automate.
 - [ ] Only after this passes, treat hook enrichment as the default runtime path

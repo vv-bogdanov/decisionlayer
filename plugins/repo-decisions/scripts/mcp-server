@@ -2,5 +2,9 @@
 set -euo pipefail
 
 PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [ -d "$PLUGIN_DIR/repo_decisions" ]; then
+  exec python3 "$PLUGIN_DIR/repo_decisions/mcp_server.py"
+fi
+
 REPO_ROOT="$(cd "$PLUGIN_DIR/../.." && pwd)"
 exec python3 "$REPO_ROOT/repo_decisions/mcp_server.py"

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SOURCE="$ROOT/repo_decisions"
+TARGET="$ROOT/plugins/repo-decisions/repo_decisions"
+
+rm -rf "$TARGET"
+mkdir -p "$TARGET"
+cp "$SOURCE"/*.py "$TARGET"/
+echo "Synced repo_decisions into plugins/repo-decisions/repo_decisions"

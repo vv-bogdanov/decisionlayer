@@ -2,5 +2,10 @@
 set -euo pipefail
 
 PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [ -d "$PLUGIN_DIR/repo_decisions" ]; then
+  export PYTHONPATH="$PLUGIN_DIR${PYTHONPATH:+:$PYTHONPATH}"
+  exec python3 -m repo_decisions "$@"
+fi
+
 REPO_ROOT="$(cd "$PLUGIN_DIR/../.." && pwd)"
 exec "$REPO_ROOT/scripts/repo-decisions" "$@"
