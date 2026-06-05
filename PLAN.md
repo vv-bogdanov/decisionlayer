@@ -235,3 +235,8 @@ Direct SlopCodeBench `codex` agent was rejected during canary preflight because
 its retry command is incompatible with the installed Codex CLI
 (`codex exec resume` rejects `--skip-git-repo-check`). Use `pi` with the same
 `codex_auth/gpt-5.3-codex-spark` backend for the first practical lane.
+
+Rootless Docker requires the wrapper to patch SlopCodeBench temp workspaces to
+mode `0755`; otherwise agent containers running as user `agent` cannot write to
+`/workspace`, and PI writes into its own `/tmp/repo` instead of the benchmark
+snapshot directory.

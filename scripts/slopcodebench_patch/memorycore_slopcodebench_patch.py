@@ -176,6 +176,22 @@ def _patch_runner() -> None:
     runner._memorycore_d1_patched = True
 
 
-def apply() -> None:
+def apply_rootless_workspace() -> None:
+    import slop_code.execution.workspace as workspace
+
+    if getattr(workspace, "_memorycore_rootless_patched", False):
+        return
+
+    original_prepare = workspace.Workspace.prepare
+
+    def prepare(self: Any) -> None:
+        original_prepare(self)
+        self.working_dir.chmod(0o755)
+
+    workspace.Workspace.prepare = prepare
+    workspace._memorycore_rootless_patched = True
+
+
+def apply_decision_layer() -> None:
     _patch_resume_prompt_validation()
     _patch_runner()

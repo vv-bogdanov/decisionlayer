@@ -58,13 +58,14 @@ def _base_env(config: dict[str, Any], *, d1: bool) -> dict[str, str]:
     env["SCBENCH_PROBLEMS_PATH"] = str(config["problems_path"])
     if config.get("docker_host"):
         env["DOCKER_HOST"] = str(config["docker_host"])
+    patch_dir = REPO_ROOT / "scripts" / "slopcodebench_patch"
+    paths = [str(patch_dir), str(REPO_ROOT / "src")]
+    existing = env.get("PYTHONPATH")
+    if existing:
+        paths.append(existing)
+    env["PYTHONPATH"] = os.pathsep.join(paths)
+    env["MEMORYCORE_SLOPCODE_ROOTLESS_WORKSPACE"] = "1"
     if d1:
-        patch_dir = REPO_ROOT / "scripts" / "slopcodebench_patch"
-        paths = [str(patch_dir), str(REPO_ROOT / "src")]
-        existing = env.get("PYTHONPATH")
-        if existing:
-            paths.append(existing)
-        env["PYTHONPATH"] = os.pathsep.join(paths)
         env["MEMORYCORE_SLOPCODE_DECISION_LAYER"] = "1"
         env["MEMORYCORE_SLOPCODE_MAX_DECISIONS_PER_CHECKPOINT"] = str(
             config.get("max_decisions_per_checkpoint", 24)
