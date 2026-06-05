@@ -1,5 +1,5 @@
 {
-  "name": "slopcodebench-canary-d0-d1",
+  "name": "slopcodebench-canary-xjq-lane-d0-d1",
   "runner_path": "/home/dev/benchmarks/slop-code-bench",
   "runner_commit": "0a2e7bec9827a1c09c53beb8d76d854ea3c4befc",
   "problems_path": "/home/dev/benchmarks/scb-problems",
@@ -8,17 +8,17 @@
   "environment": "/home/dev/memorycore/configs/slopcodebench-docker-python3.12-uv-rootless.yaml",
   "agent": "pi",
   "model": "codex_auth/gpt-5.3-codex-spark",
-  "thinking": "low",
+  "thinking": "medium",
   "prompt": "/home/dev/memorycore/configs/slopcodebench-just-solve-workspace.jinja",
   "pass_policy": "all-cases",
   "num_workers": 1,
   "live_progress": false,
   "modes": ["D0", "D1"],
-  "output_root": "/home/dev/benchmarks/slopcodebench-runs/canary-d0-d1",
+  "output_root": "/home/dev/benchmarks/slopcodebench-runs/canary-xjq-lane-d0-d1",
   "max_decisions_per_checkpoint": 24,
   "problems": [
-    "file_backup",
-    "cfgpipe",
+    "xjq",
+    "l2m",
     "etl_pipeline"
   ]
 }

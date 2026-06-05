@@ -37,7 +37,7 @@ pass_policy=all-cases
 
 ## Current Evidence
 
-Initial 3-problem PI canary:
+### Initial 3-Problem PI Canary
 
 ```text
 run=/home/dev/benchmarks/slopcodebench-runs/canary-d0-d1
@@ -63,7 +63,7 @@ Checkpoint matrix:
 | D1 | etl_pipeline | checkpoint_1 | False | 35/41 | 0 |
 | D1 | file_backup | checkpoint_1 | False | 21/32 | 0 |
 
-Rootless cleanup smoke:
+### Rootless Cleanup Smoke
 
 ```text
 run=/home/dev/benchmarks/slopcodebench-runs/smoke-d1-file-backup-bytecode
@@ -75,7 +75,7 @@ result=checkpoint_1 failed, infra_errors=0, steps=75
 This confirms that the current rootless cleanup guard removes the previous
 Python `__pycache__` cleanup failure on the smoke case.
 
-Direct Codex lane smoke:
+### Direct Codex Lane Smoke
 
 ```text
 run=/home/dev/benchmarks/slopcodebench-runs/smoke-d0-codex-cfgpipe
@@ -88,16 +88,81 @@ The initial Codex command fails with `Permission denied (os error 13)`, and
 SlopCodeBench retry/resume uses CLI arguments that are not compatible with the
 old Codex image. Treat this as an infra lane issue, not a benchmark result.
 
+### Stronger PI Lane Discovery
+
+`codex_auth/gpt-5.3-codex` is not available through the current ChatGPT Codex
+auth path:
+
+```text
+run=/home/dev/benchmarks/slopcodebench-runs/smoke-d0-pi-gpt53-cfgpipe-low
+mode=D0
+problem=cfgpipe
+result=invalid model/auth lane
+error=The 'gpt-5.3-codex' model is not supported when using Codex with a ChatGPT account.
+```
+
+Raising `cfgpipe` from low to medium reasoning with the supported Spark model is
+not practical for the smoke lane:
+
+```text
+run=/home/dev/benchmarks/slopcodebench-runs/smoke-d0-pi-spark-cfgpipe-medium
+mode=D0
+problem=cfgpipe
+result=checkpoint_1 failed, 33/37 tests, infra_errors=0, steps=49
+```
+
+OpenCode is currently blocked by missing local auth:
+
+```text
+~/.local/share/opencode/auth.json missing
+```
+
+### Accepted XJQ Lane Smoke
+
+The first valid lane is:
+
+```text
+agent=pi
+model=codex_auth/gpt-5.3-codex-spark
+thinking=medium
+problem=xjq
+run=/home/dev/benchmarks/slopcodebench-runs/smoke-d0-pi-spark-xjq-medium
+```
+
+| Mode | Passed | Checkpoints | Infra Errors | Steps |
+|---|---:|---:|---:|---:|
+| D0 | 1 | 2 | 0 | 174 |
+| D1 | 1 | 2 | 0 | 182 |
+
+Checkpoint matrix:
+
+| Mode | Problem | Checkpoint | Passed | Tests | Decisions |
+|---|---|---|---:|---:|---:|
+| D0 | xjq | checkpoint_1 | True | 23/23 | 0 |
+| D0 | xjq | checkpoint_2 | False | 48/51 | 0 |
+| D1 | xjq | checkpoint_1 | True | 23/23 | 6 |
+| D1 | xjq | checkpoint_2 | False | 46/51 | 0 |
+
+D1 checkpoint 2 received a non-empty Decision Brief from checkpoint 1:
+
+```text
+decision_layer/prompt_decisions/checkpoint_2.json = 6 decisions
+```
+
+This proves the SlopCodeBench D1 pipeline works end to end on at least one
+external coding problem. It is not yet positive Decision Layer evidence because
+D1 underperformed D0 on checkpoint 2.
+
 ## Interpretation
 
-- The SlopCodeBench integration is close enough to continue lane discovery:
-  agents can write to `/workspace`, snapshots contain solution files, and the
-  rootless cleanup noise is fixed on a smoke run.
-- The current PI + `gpt-5.3-codex-spark` lane is too weak for the selected
-  canary: D0 does not pass any first checkpoint.
-- D1 currently receives zero decisions because no prior checkpoint is accepted.
-- Bigger D0/D1 runs are not useful until D0 can pass checkpoint 1 on at least
-  one selected problem.
+- The SlopCodeBench integration is valid enough to run a real D0/D1 canary:
+  agents write into `/workspace`, snapshots contain solution files, rootless
+  cleanup is fixed, and D1 prompt enrichment is visible in later checkpoints.
+- The old PI + Spark low canary was too weak because no problem passed
+  checkpoint 1.
+- `xjq` with PI + Spark medium is a usable anchor problem for the next canary.
+- The first D1 smoke did not improve results, so the next canary is for signal
+  collection and regression classification, not for claiming value.
 
 ## Active Checklist
 
@@ -107,20 +172,20 @@ old Codex image. Treat this as an infra lane issue, not a benchmark result.
 - [x] Add rootless Docker workspace write guard.
 - [x] Verify rootless cleanup smoke: D1 `file_backup`, `infra_errors=0`.
 - [x] Test direct Codex lane smoke and classify it as invalid for now.
-- [ ] Commit the rootless cleanup fix once the diff is cleaned up.
-- [ ] Find a valid D0 agent lane before any larger D0/D1 run.
-- [ ] First try PI with a stronger Codex model or slightly higher reasoning on
-  the near-miss problem `cfgpipe`.
-- [ ] If PI still fails checkpoint 1, try OpenCode with the same backend/model.
-- [ ] If OpenCode is blocked by auth or tooling, try Hermes/local llama.cpp only
-  as a lane-discovery fallback.
-- [ ] Accept a lane only if D0 passes checkpoint 1 on at least one small problem
-  and reaches a later checkpoint where D1 can carry decisions.
-- [ ] Record the chosen lane in config: agent, model, reasoning, timeout,
-  problem slice, pass policy, runner commit, problems commit, and output root.
-- [ ] Run a new 3-problem D0/D1 canary only after the D0 lane is valid.
-- [ ] Verify that later D1 checkpoints have non-empty
+- [x] Commit the rootless cleanup fix once the diff is cleaned up.
+- [x] Test stronger PI options on `cfgpipe` and classify them:
+  full `gpt-5.3-codex` is unsupported through current auth, Spark medium is too
+  slow and still fails checkpoint 1.
+- [x] Check OpenCode lane availability; it is blocked by missing OpenCode auth.
+- [x] Find a valid D0 agent lane before any larger D0/D1 run.
+- [x] Accept a lane where D0 passes checkpoint 1 and reaches a later checkpoint:
+  PI + `codex_auth/gpt-5.3-codex-spark` + medium on `xjq`.
+- [x] Verify that a later D1 checkpoint has non-empty
   `decision_layer/prompt_decisions`.
+- [x] Record the chosen lane in config: agent, model, reasoning, problem slice,
+  pass policy, runner commit, problems commit, and output root.
+- [ ] Run the updated 3-problem D0/D1 canary:
+  `xjq`, `l2m`, `etl_pipeline`.
 - [ ] Manually inspect every D0/D1 delta and classify it as useful Decision
   Layer signal, variance, wrong transfer, or infra noise.
 - [ ] Proceed to a 10-problem pilot only if the canary has at least one
@@ -130,16 +195,14 @@ old Codex image. Treat this as an infra lane issue, not a benchmark result.
 
 ## Next Run Plan
 
-1. Clean the SlopCodeBench patch diff so only useful POC code remains.
-2. Rerun unit checks for the SlopCodeBench patch and summary code.
-3. Run D0-only smoke on `cfgpipe` with PI and a stronger lane:
-   `codex_auth/gpt-5.3-codex`, starting with low reasoning.
-4. If checkpoint 1 still fails, run one more D0-only smoke with the same model
-   and medium reasoning.
-5. If PI remains below the threshold, run an OpenCode D0-only smoke on `cfgpipe`
-   using the same backend/model if auth is available.
-6. Freeze the first lane that passes checkpoint 1 and rerun a 3-problem D0/D1
-   canary.
+1. Run `configs/slopcodebench-canary.json` with overwrite.
+2. Confirm every D1 checkpoint after an accepted prior checkpoint has non-empty
+   `decision_layer/prompt_decisions`.
+3. Compare D0/D1 deltas by checkpoint.
+4. If D1 loses, inspect whether the brief was too broad, incomplete, or simply
+   noise from agent variance.
+5. If at least one D1-only win or regression-prevention case appears without
+   systematic harm, prepare the 10-problem pilot.
 
 ## Stop Criteria
 

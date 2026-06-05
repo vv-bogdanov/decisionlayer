@@ -8,7 +8,7 @@
   "environment": "/home/dev/memorycore/configs/slopcodebench-docker-python3.12-uv-rootless.yaml",
   "agent": "pi",
   "model": "codex_auth/gpt-5.3-codex-spark",
-  "thinking": "low",
+  "thinking": "medium",
   "prompt": "/home/dev/memorycore/configs/slopcodebench-just-solve-workspace.jinja",
   "pass_policy": "all-cases",
   "num_workers": 1,
@@ -17,15 +17,15 @@
   "output_root": "/home/dev/benchmarks/slopcodebench-runs/pilot-d0-d1",
   "max_decisions_per_checkpoint": 24,
   "problems": [
-    "file_backup",
-    "cfgpipe",
-    "etl_pipeline",
-    "textdrop",
     "xjq",
+    "l2m",
+    "etl_pipeline",
+    "cfgpipe",
+    "file_backup",
+    "textdrop",
     "log_query",
     "file_merger",
     "code_search",
-    "database_migration",
-    "pwd_manager"
+    "database_migration"
   ]
 }
