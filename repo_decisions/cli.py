@@ -14,6 +14,7 @@ from .core import (
     locate_adrs,
     supersede_decision,
 )
+from .debug import log_event
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -56,6 +57,14 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     root = Path(args.root)
+    log_event(
+        {
+            "component": "repo-decisions",
+            "event": "cli-command",
+            "command": args.command,
+            "root": str(root),
+        }
+    )
 
     if args.command == "locate":
         return _locate(root, args.json)

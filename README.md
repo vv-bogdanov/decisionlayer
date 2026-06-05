@@ -88,6 +88,29 @@ brief_max_chars = "6000"
 
 Local config wins over global config.
 
+## Debug Log
+
+Set `REPO_DECISIONS_DEBUG_LOG` to collect JSONL evidence that the agent used
+the tool instead of editing ADR files directly:
+
+```bash
+REPO_DECISIONS_DEBUG_LOG=/tmp/repo-decisions-debug.jsonl \
+scripts/repo-decisions --root . add ...
+```
+
+The MCP server also writes `mcp-tool-call` events when the environment variable
+is set. Write operations include file paths and SHA-256 hashes before and after
+the tool action. A benchmark checker can fail any run where ADR files changed
+but the debug log has no matching `write` event.
+
+Use `REPO_DECISIONS_RUN_ID` to correlate events from one agent run:
+
+```bash
+REPO_DECISIONS_RUN_ID=case-001 \
+REPO_DECISIONS_DEBUG_LOG=/tmp/repo-decisions-debug.jsonl \
+scripts/repo-decisions --root . codex -- "Add the ADR."
+```
+
 ## Plugin
 
 The local Codex plugin lives at:

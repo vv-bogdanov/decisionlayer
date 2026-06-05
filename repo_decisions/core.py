@@ -9,6 +9,8 @@ from datetime import date
 from pathlib import Path
 from typing import Iterable
 
+from .debug import file_state, log_event
+
 
 LOCAL_CONFIG = Path(".codex/repo-decisions.toml")
 GLOBAL_CONFIG_ENV = "REPO_DECISIONS_GLOBAL_CONFIG"
@@ -173,6 +175,7 @@ def add_decision(
     if path.exists():
         raise FileExistsError(path)
 
+    before = file_state(path)
     text = render_adr(
         location.profile,
         number=next_number,
@@ -185,6 +188,19 @@ def add_decision(
         supersedes=supersedes,
     )
     path.write_text(text, encoding="utf-8")
+    log_event(
+        {
+            "component": "repo-decisions",
+            "event": "write",
+            "operation": "add",
+            "root": str(location.root),
+            "adr_dir": str(location.adr_dir),
+            "title": title,
+            "status": _normalize_status(status),
+            "before": {str(path): before},
+            "after": {str(path): file_state(path)},
+        }
+    )
     return path
 
 
@@ -203,6 +219,7 @@ def supersede_decision(
     if old.status != ACTIVE_STATUS:
         raise ValueError(f"Only accepted ADRs can be superseded through this tool: {old.path}")
 
+    old_before = file_state(old.path)
     new_path = add_decision(
         start,
         title=title,
@@ -214,8 +231,28 @@ def supersede_decision(
         supersedes=old,
     )
     new_record = parse_adr_file(new_path)
+    new_before_backlink = file_state(new_path)
     _mark_superseded(old.path, old, new_record)
     _append_backlink(new_path, old)
+    log_event(
+        {
+            "component": "repo-decisions",
+            "event": "write",
+            "operation": "supersede",
+            "root": str(location.root),
+            "adr_dir": str(location.adr_dir),
+            "target": old.id,
+            "replacement": new_record.id,
+            "before": {
+                str(old.path): old_before,
+                str(new_path): new_before_backlink,
+            },
+            "after": {
+                str(old.path): file_state(old.path),
+                str(new_path): file_state(new_path),
+            },
+        }
+    )
     return old.path, new_path
 
 

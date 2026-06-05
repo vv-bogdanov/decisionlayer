@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -20,9 +21,11 @@ class RepoDecisionTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.global_config = self.root / "global.toml"
         os.environ["REPO_DECISIONS_GLOBAL_CONFIG"] = str(self.global_config)
+        os.environ.pop("REPO_DECISIONS_DEBUG_LOG", None)
 
     def tearDown(self) -> None:
         os.environ.pop("REPO_DECISIONS_GLOBAL_CONFIG", None)
+        os.environ.pop("REPO_DECISIONS_DEBUG_LOG", None)
         self.tmp.cleanup()
 
     def write(self, rel: str, text: str) -> Path:
@@ -209,6 +212,27 @@ class RepoDecisionTests(unittest.TestCase):
         self.assertIn("## Context and Problem Statement", text)
         self.assertIn("## Considered Options", text)
         self.assertIn("## Decision", text)
+
+    def test_debug_log_records_add_write_hash(self) -> None:
+        log_path = self.root / "debug.jsonl"
+        os.environ["REPO_DECISIONS_DEBUG_LOG"] = str(log_path)
+
+        path = add_decision(
+            self.root,
+            title="Audit writes",
+            context="Tests need proof the tool performed ADR writes.",
+            decision="Write debug JSONL events for ADR operations.",
+            consequences=["Harness checks can prove tool usage."],
+            options=["Transcript only", "Debug log"],
+        )
+
+        events = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines()]
+        write = next(event for event in events if event["operation"] == "add")
+        after = write["after"][str(path)]
+
+        self.assertEqual(write["event"], "write")
+        self.assertEqual(after["exists"], True)
+        self.assertEqual(len(after["sha256"]), 64)
 
     def test_add_preserves_detected_numbering_and_headings(self) -> None:
         self.write(

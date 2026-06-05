@@ -145,6 +145,9 @@ repository ADRs during realistic tasks.
 - [ ] Add `benchmarks/adr-agent/checks.py` with deterministic checks:
       changed paths, ADR status, backlinks, active brief include/exclude,
       forbidden files, required grep patterns, and optional project tests.
+- [ ] Enable `REPO_DECISIONS_DEBUG_LOG` for each agent run and fail if ADR files
+      changed without matching `repo-decisions` `mcp-tool-call` and `write`
+      events.
 - [ ] Keep LLM judging out of the first version; use it only later for
       secondary qualitative review.
 
