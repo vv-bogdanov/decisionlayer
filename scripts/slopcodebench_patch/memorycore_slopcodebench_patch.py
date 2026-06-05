@@ -184,9 +184,26 @@ def apply_rootless_workspace() -> None:
 
     original_prepare = workspace.Workspace.prepare
 
+    def chmod_or(path: Path, mode_bits: int) -> None:
+        path.chmod((path.stat().st_mode & 0o7777) | mode_bits)
+
+    def make_agent_writable(path: Path) -> None:
+        for current_root, dirs, files in os.walk(path):
+            root_path = Path(current_root)
+            if not root_path.is_symlink():
+                chmod_or(root_path, 0o777)
+            for name in dirs:
+                dir_path = root_path / name
+                if not dir_path.is_symlink():
+                    chmod_or(dir_path, 0o777)
+            for name in files:
+                file_path = root_path / name
+                if not file_path.is_symlink():
+                    chmod_or(file_path, 0o666)
+
     def prepare(self: Any) -> None:
         original_prepare(self)
-        self.working_dir.chmod(0o755)
+        make_agent_writable(self.working_dir)
 
     workspace.Workspace.prepare = prepare
     workspace._memorycore_rootless_patched = True
