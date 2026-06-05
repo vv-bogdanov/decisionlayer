@@ -29,8 +29,6 @@ local Codex CLI/plugin environment and should be run before a release tag.
 ## Before Public Release
 
 - Choose and add a `LICENSE`.
-- Add repository/project URLs to `pyproject.toml` after the public remote is
-  known.
 - Re-run `scripts/codex-plugin-lab doctor`.
 - Run `scripts/codex-plugin-lab runtime-smoke`. If it reports missing lab
   authentication, run `CODEX_HOME=.codex-lab/home codex login` and retry.

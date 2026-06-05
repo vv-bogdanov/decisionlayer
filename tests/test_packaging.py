@@ -12,6 +12,7 @@ def test_pyproject_exposes_cli_entrypoint() -> None:
 
     assert data["build-system"]["build-backend"] == "hatchling.build"
     assert data["project"]["scripts"]["repo-decisions"] == "repo_decisions.cli:main"
+    assert data["project"]["urls"]["Repository"] == "https://github.com/vv-bogdanov/memorycore"
     assert data["tool"]["hatch"]["build"]["targets"]["wheel"]["packages"] == [
         "repo_decisions"
     ]

@@ -109,6 +109,7 @@ lets the user manage decisions through tools.
 - [x] Add a top-level `scripts/check` runner for local readiness checks.
 - [x] Add a wheel install smoke test for the packaged CLI entrypoint.
 - [x] Add CI and publishing checklist docs for local/public release readiness.
+- [x] Add package project URLs for the public GitHub repository.
 - [x] Run `codex exec` smoke attempts with inline and project-local hooks;
       record that this local non-interactive path did not execute the hook.
 - [x] Run an end-to-end tool check for `add` and `supersede`.
