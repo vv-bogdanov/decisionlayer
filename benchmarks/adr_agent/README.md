@@ -28,7 +28,10 @@ Modes:
 - `d1`: accepted ADR brief prepended to the task.
 - `d2`: accepted ADR brief plus explicit repo-decisions MCP tool guidance. The
   agent command still has to run in an environment where the MCP server is
-  available, such as the isolated Codex plugin lab.
+  available, such as the isolated Codex plugin lab. For non-MCP runners,
+  `run_case` also exports `REPO_DECISIONS_CLI=<repo>/scripts/repo-decisions`
+  and the D2 prompt tells the agent to use that CLI instead of editing ADR
+  files directly.
 
 For wrapper-fallback testing specifically, run `d0` and let the wrapper add the
 brief:

@@ -172,7 +172,8 @@ repository ADRs during realistic tasks.
 - [x] `D1`: automatic accepted-ADR brief from the repo-decisions hook or wrapper
       fallback.
 - [x] `D2`: automatic enrichment plus repo-decisions MCP tool guidance; actual
-      MCP availability is supplied by the agent command or lab setup.
+      MCP availability is supplied by the agent command or lab setup, with
+      `REPO_DECISIONS_CLI` as a non-MCP local-runner fallback.
 - [ ] Prompt variants:
       strict bullet brief, compact Y-statement brief, and fuller ADR excerpt
       brief.
@@ -228,11 +229,15 @@ repository ADRs during realistic tasks.
 
 ### Initial Run
 
-- [ ] Run fixture canaries first for `D0`, `D1`, and `D2`.
+- [x] Run initial fixture canaries with local `pi` for `D0`, `D1`, and `D2`:
+      `code-follows-jsonl-adr` and `format-preservation-add-adr`.
+- [ ] Run remaining fixture canaries with local `pi`:
+      `supersede-accepted-adr`, `conflict-requires-supersede-confirmation`,
+      and `no-false-decision-creation`.
 - [ ] Run one real repo canary on `asyncapi/studio`.
 - [ ] Compare prompt variants on the same pinned case before expanding the
       suite.
-- [ ] Save a short analysis report with examples of where ADR enrichment helped,
+- [x] Save a short analysis report with examples of where ADR enrichment helped,
       failed, or made no difference.
 
 ## Default Paths

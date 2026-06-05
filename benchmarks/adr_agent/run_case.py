@@ -22,6 +22,8 @@ ROOT = Path(__file__).resolve().parent
 REPO_ROOT = ROOT.parents[1]
 DEFAULT_RESULTS = ROOT / "runs"
 MODES = ("d0", "d1", "d2")
+RUNTIME_ARTIFACT_DIRS = ("__pycache__", ".mypy_cache", ".pytest_cache", ".ruff_cache")
+RUNTIME_ARTIFACT_FILES = (".coverage",)
 D2_TOOL_GUIDANCE = """\
 # Repo Decisions Tool Requirement
 
@@ -31,6 +33,13 @@ Use the repo-decisions MCP tools for ADR operations:
 - Add new ADRs with `adr_add_decision`.
 - Change accepted ADRs only with `adr_supersede_decision`.
 - Do not edit accepted ADR files directly.
+
+If this runner does not expose MCP tools, use the CLI path from
+`REPO_DECISIONS_CLI` instead:
+
+- `$REPO_DECISIONS_CLI --root . brief`
+- `$REPO_DECISIONS_CLI --root . add ...`
+- `$REPO_DECISIONS_CLI --root . supersede ...`
 """
 
 
@@ -85,6 +94,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.agent_command:
         result.update(_run_agent(case, args.mode, args.agent_command, workspace, prompt_file, effective_prompt_file, debug_log))
+        _clean_runtime_artifacts(workspace)
         result["final_brief"] = build_brief(workspace)
         result["diff"] = _run_diff(baseline, workspace)
         report = check_case(
@@ -102,7 +112,7 @@ def main(argv: list[str] | None = None) -> int:
                 "diff_size": len(result["diff"]["stdout"]),
                 "changed_files": len(report.changed_files),
                 "changed_adr_files": len(report.changed_adr_files),
-                "tool_calls": report.debug_events.get("mcp-tool-call", 0),
+                "tool_calls": report.debug_events.get("mcp-tool-call", 0) + report.debug_events.get("cli-command", 0),
                 "write_events": report.debug_events.get("write", 0),
             }
         )
@@ -158,7 +168,9 @@ def _run_agent(
     env = os.environ.copy()
     env["REPO_DECISIONS_DEBUG_LOG"] = str(debug_log)
     env["REPO_DECISIONS_RUN_ID"] = case.id
+    env["REPO_DECISIONS_CLI"] = str(REPO_ROOT / "scripts/repo-decisions")
     env["ADR_AGENT_MODE"] = mode
+    env["GIT_CEILING_DIRECTORIES"] = str(workspace.parent)
     started = time.monotonic()
     completed = subprocess.run(
         command,
@@ -220,6 +232,20 @@ def _run_diff(baseline: Path, workspace: Path) -> dict[str, Any]:
         "stdout": completed.stdout,
         "stderr": completed.stderr,
     }
+
+
+def _clean_runtime_artifacts(root: Path) -> None:
+    for dirname in RUNTIME_ARTIFACT_DIRS:
+        for path in sorted(root.rglob(dirname), reverse=True):
+            if path.is_dir():
+                shutil.rmtree(path)
+    for path in root.rglob("*.py[co]"):
+        if path.is_file():
+            path.unlink()
+    for filename in RUNTIME_ARTIFACT_FILES:
+        for path in root.rglob(filename):
+            if path.is_file():
+                path.unlink()
 
 
 def _result_ok(result: dict[str, Any]) -> bool:

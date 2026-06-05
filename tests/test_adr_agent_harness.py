@@ -13,7 +13,7 @@ from benchmarks.adr_agent import run_case
 from benchmarks.adr_agent import run_suite
 from benchmarks.adr_agent.report import build_report
 from benchmarks.adr_agent.checks import check_case, load_cases
-from benchmarks.adr_agent.run_case import compose_effective_prompt
+from benchmarks.adr_agent.run_case import _clean_runtime_artifacts, compose_effective_prompt
 from repo_decisions.core import add_decision, supersede_decision
 
 
@@ -186,6 +186,7 @@ class AdrAgentHarnessTests(unittest.TestCase):
         self.assertEqual(compose_effective_prompt(task, brief, "d0"), "Implement persistence.\n")
         self.assertIn("ADR-0001", compose_effective_prompt(task, brief, "d1"))
         self.assertIn("Repo Decisions Tool Requirement", compose_effective_prompt(task, brief, "d2"))
+        self.assertIn("REPO_DECISIONS_CLI", compose_effective_prompt(task, brief, "d2"))
 
     def test_run_case_prepare_writes_mode_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -206,6 +207,56 @@ class AdrAgentHarnessTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(payload["mode"], "d1")
         self.assertIn("Repository ADR Decisions", effective_prompt)
+
+    def test_run_case_cleans_runtime_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "src/__pycache__").mkdir(parents=True)
+            (root / "src/__pycache__/module.cpython-312.pyc").write_bytes(b"cache")
+            (root / ".pytest_cache").mkdir()
+            (root / ".coverage").write_text("coverage", encoding="utf-8")
+            (root / "src/persistence.py").write_text("keep", encoding="utf-8")
+
+            _clean_runtime_artifacts(root)
+
+            self.assertFalse((root / "src/__pycache__").exists())
+            self.assertFalse((root / ".pytest_cache").exists())
+            self.assertFalse((root / ".coverage").exists())
+            self.assertTrue((root / "src/persistence.py").exists())
+
+    def test_run_case_cli_fallback_uses_fixture_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with redirect_stdout(StringIO()):
+                code = run_case.main(
+                    [
+                        "format-preservation-add-adr",
+                        "--mode",
+                        "d2",
+                        "--results-dir",
+                        tmp,
+                        "--run-id",
+                        "cli-fallback",
+                        "--agent-command",
+                        (
+                            '"$REPO_DECISIONS_CLI" --root . add '
+                            '--title "Use HTTP Client Timeout" '
+                            '--context "Outbound calls must not hang indefinitely." '
+                            '--option "No timeout" '
+                            '--option "5 second timeout" '
+                            '--decision "All outbound HTTP clients must use a 5 second timeout." '
+                            '--consequence "Slow downstream services fail fast."'
+                        ),
+                    ]
+                )
+            result_path = Path(tmp) / "cli-fallback/format-preservation-add-adr/d2/result.json"
+            payload = json.loads(result_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(code, 0)
+        self.assertEqual(payload["status"], "passed")
+        self.assertEqual(payload["metrics"]["changed_adr_files"], 1)
+        self.assertEqual(payload["metrics"]["write_events"], 1)
+        self.assertGreaterEqual(payload["metrics"]["tool_calls"], 1)
+        self.assertTrue(payload["workspace"].startswith(tmp))
 
     def test_run_suite_groups_results_under_one_run_id(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

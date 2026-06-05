@@ -118,8 +118,9 @@ def check_case(
 
     if case.requires_debug_write and changed_adr_files and debug_events.get("write", 0) == 0:
         report.failures.append("missing repo-decisions write event in debug log")
-    if mode == "d2" and changed_adr_files and debug_events.get("mcp-tool-call", 0) == 0:
-        report.failures.append("missing repo-decisions mcp-tool-call event in debug log")
+    tool_events = debug_events.get("mcp-tool-call", 0) + debug_events.get("cli-command", 0)
+    if mode == "d2" and changed_adr_files and tool_events == 0:
+        report.failures.append("missing repo-decisions tool call event in debug log")
 
     return report
 
