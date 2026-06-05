@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import os
 from pathlib import Path
 from typing import Any
@@ -177,12 +178,13 @@ def _patch_runner() -> None:
 
 
 def apply_rootless_workspace() -> None:
+    import slop_code.execution.docker_runtime.streaming as streaming
     import slop_code.execution.workspace as workspace
 
-    if getattr(workspace, "_memorycore_rootless_patched", False):
+    if getattr(workspace, "_memorycore_rootless_patched", False) and getattr(
+        streaming, "_memorycore_rootless_patched", False
+    ):
         return
-
-    original_prepare = workspace.Workspace.prepare
 
     def chmod_or(path: Path, mode_bits: int) -> None:
         path.chmod((path.stat().st_mode & 0o7777) | mode_bits)
@@ -201,12 +203,34 @@ def apply_rootless_workspace() -> None:
                 if not file_path.is_symlink():
                     chmod_or(file_path, 0o666)
 
-    def prepare(self: Any) -> None:
-        original_prepare(self)
-        make_agent_writable(self.working_dir)
+    if not getattr(workspace, "_memorycore_rootless_patched", False):
+        original_prepare = workspace.Workspace.prepare
 
-    workspace.Workspace.prepare = prepare
-    workspace._memorycore_rootless_patched = True
+        def prepare(self: Any) -> None:
+            original_prepare(self)
+            make_agent_writable(self.working_dir)
+
+        workspace.Workspace.prepare = prepare
+        workspace._memorycore_rootless_patched = True
+
+    if not getattr(streaming, "_memorycore_rootless_patched", False):
+        original_cleanup = streaming.DockerStreamingRuntime.cleanup
+
+        def cleanup(self: Any) -> None:
+            container = getattr(self, "_container", None)
+            if container is not None:
+                with contextlib.suppress(Exception):
+                    container.reload()
+                    state = container.attrs.get("State", {})
+                    if state.get("Status") == "running":
+                        container.exec_run(
+                            "chmod -R a+rwX /workspace || true",
+                            user="0:0",
+                        )
+            original_cleanup(self)
+
+        streaming.DockerStreamingRuntime.cleanup = cleanup
+        streaming._memorycore_rootless_patched = True
 
 
 def apply_decision_layer() -> None:
