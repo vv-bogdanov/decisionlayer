@@ -30,7 +30,7 @@ jobs:
         run: scripts/check --skip-lab --skip-build
 
       - name: Prepare ADR-agent canaries
-        run: python3 -m benchmarks.adr_agent.run_suite --mode d0 --mode d1 --mode d2
+        run: python3 -m benchmarks.adr_agent.run_suite --mode d0 --mode d1 --mode d2 --quiet
 
       - name: Build package
         run: uv build

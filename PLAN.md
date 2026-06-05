@@ -199,6 +199,8 @@ repository ADRs during realistic tasks.
 - [x] Add `benchmarks/adr_agent/checks.py` with deterministic checks:
       required globs, required/forbidden grep patterns, debug write events, and
       optional project tests.
+- [x] Add `benchmarks/adr_agent/report.py` for markdown summaries of canary
+      runs.
 - [x] Enable `REPO_DECISIONS_DEBUG_LOG` for each agent run and fail if ADR files
       changed without matching `repo-decisions` `mcp-tool-call` and `write`
       events.

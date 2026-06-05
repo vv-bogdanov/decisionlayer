@@ -10,6 +10,8 @@ from io import StringIO
 from pathlib import Path
 
 from benchmarks.adr_agent import run_case
+from benchmarks.adr_agent import run_suite
+from benchmarks.adr_agent.report import build_report
 from benchmarks.adr_agent.checks import check_case, load_cases
 from benchmarks.adr_agent.run_case import compose_effective_prompt
 from repo_decisions.core import add_decision, supersede_decision
@@ -204,6 +206,61 @@ class AdrAgentHarnessTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(payload["mode"], "d1")
         self.assertIn("Repository ADR Decisions", effective_prompt)
+
+    def test_run_suite_groups_results_under_one_run_id(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with redirect_stdout(StringIO()):
+                code = run_suite.main(
+                    [
+                        "--case",
+                        "code-follows-jsonl-adr",
+                        "--mode",
+                        "d0",
+                        "--mode",
+                        "d1",
+                        "--results-dir",
+                        tmp,
+                        "--run-id",
+                        "grouped",
+                        "--quiet",
+                    ]
+                )
+            result_files = sorted(Path(tmp).glob("grouped/code-follows-jsonl-adr/*/result.json"))
+
+        self.assertEqual(code, 0)
+        self.assertEqual(len(result_files), 2)
+
+    def test_report_summarizes_prepared_results(self) -> None:
+        report = build_report(
+            Path("/tmp/run-1"),
+            [
+                {
+                    "case_id": "code-follows-jsonl-adr",
+                    "mode": "d0",
+                    "status": "prepared",
+                    "metrics": {"prompt_chars": 100, "initial_brief_chars": 0},
+                },
+                {
+                    "case_id": "code-follows-jsonl-adr",
+                    "mode": "d1",
+                    "status": "passed",
+                    "metrics": {
+                        "prompt_chars": 200,
+                        "duration_sec": 1.5,
+                        "diff_size": 10,
+                        "changed_files": 1,
+                        "changed_adr_files": 0,
+                        "tool_calls": 0,
+                        "write_events": 0,
+                    },
+                    "checks": {"failures": []},
+                },
+            ],
+        )
+
+        self.assertIn("# ADR-Agent Canary Report", report)
+        self.assertIn("code-follows-jsonl-adr", report)
+        self.assertIn("prepared", report)
 
     def test_code_case_passes_after_jsonl_implementation(self) -> None:
         case = load_cases()["code-follows-jsonl-adr"]

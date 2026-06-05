@@ -8,7 +8,8 @@ Run:
 
 ```bash
 scripts/check
-python3 -m benchmarks.adr_agent.run_suite --mode d0 --mode d1 --mode d2
+python3 -m benchmarks.adr_agent.run_suite --mode d0 --mode d1 --mode d2 --quiet
+python3 -m benchmarks.adr_agent.report --run-id latest
 ```
 
 `scripts/check` runs static checks, coverage, plugin validation when the local
@@ -19,7 +20,7 @@ validator is available, isolated lab checks, and package build.
 GitHub Actions runs:
 
 - `scripts/check --skip-lab --skip-build`
-- `python3 -m benchmarks.adr_agent.run_suite --mode d0 --mode d1 --mode d2`
+- `python3 -m benchmarks.adr_agent.run_suite --mode d0 --mode d1 --mode d2 --quiet`
 - `uv build`
 
 CI intentionally skips `scripts/codex-plugin-lab doctor`; that check requires a

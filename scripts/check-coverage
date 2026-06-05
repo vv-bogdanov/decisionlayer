@@ -4,8 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-if [ -n "${PYTHON:-}" ]; then
-  PYTHON_BIN="$PYTHON"
+if [ -n "${COVERAGE_PYTHON:-}" ]; then
+  PYTHON_BIN="$COVERAGE_PYTHON"
 elif [ -x "$ROOT/.venv/bin/python" ]; then
   PYTHON_BIN="$ROOT/.venv/bin/python"
 else
@@ -23,6 +23,9 @@ Then run:
   .venv/bin/python -m coverage run -m unittest discover -s tests -v
   .venv/bin/python -m coverage report
 EOF
+  echo >&2
+  echo "Selected Python: $PYTHON_BIN" >&2
+  echo "Override with COVERAGE_PYTHON=/path/to/python when needed." >&2
   exit 2
 fi
 

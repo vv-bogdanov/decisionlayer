@@ -8,7 +8,8 @@ Prepare a case without running an agent:
 
 ```bash
 python3 -m benchmarks.adr_agent.run_case format-preservation-add-adr
-python3 -m benchmarks.adr_agent.run_suite
+python3 -m benchmarks.adr_agent.run_suite --quiet
+python3 -m benchmarks.adr_agent.report --run-id latest
 ```
 
 Run a case with an agent command. The command may use `{workspace}`,
@@ -39,6 +40,19 @@ python3 -m benchmarks.adr_agent.run_case format-preservation-add-adr \
 ```
 
 Results are written under `benchmarks/adr_agent/runs/`.
+
+`run_suite` writes all selected case/mode results under one run id:
+
+```text
+benchmarks/adr_agent/runs/<run-id>/<case-id>/<mode>/result.json
+```
+
+Generate a markdown report:
+
+```bash
+python3 -m benchmarks.adr_agent.report --run-id latest \
+  --out benchmarks/adr_agent/reports/latest.md
+```
 
 Current canary cases:
 

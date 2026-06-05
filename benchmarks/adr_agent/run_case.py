@@ -39,6 +39,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("case_id")
     parser.add_argument("--cases", type=Path, default=DEFAULT_CASES)
     parser.add_argument("--results-dir", type=Path, default=DEFAULT_RESULTS)
+    parser.add_argument("--run-id")
     parser.add_argument("--mode", choices=MODES, default="d0")
     parser.add_argument(
         "--agent-command",
@@ -52,7 +53,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Unknown case: {args.case_id}", file=sys.stderr)
         return 2
     case = cases[args.case_id]
-    result_dir = _new_result_dir(args.results_dir, case, args.mode)
+    result_dir = _new_result_dir(args.results_dir, case, args.mode, args.run_id)
     baseline = result_dir / "baseline"
     workspace = result_dir / "workspace"
     prompt_file = result_dir / "prompt.md"
@@ -126,8 +127,12 @@ def compose_effective_prompt(task: str, brief: str, mode: str) -> str:
     return "\n\n".join(parts).strip() + "\n"
 
 
-def _new_result_dir(results_dir: Path, case: Case, mode: str) -> Path:
-    run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+def new_run_id() -> str:
+    return datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+
+
+def _new_result_dir(results_dir: Path, case: Case, mode: str, run_id: str | None = None) -> Path:
+    run_id = run_id or new_run_id()
     path = results_dir / run_id / case.id / mode
     path.mkdir(parents=True, exist_ok=False)
     return path
