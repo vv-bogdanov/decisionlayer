@@ -57,6 +57,9 @@ python3 -m benchmarks.adr_agent.report --run-id latest \
   --out benchmarks/adr_agent/reports/latest.md
 ```
 
+Real-repository candidates are tracked in `repos.toml` with pinned commit SHAs,
+ADR directory metadata, and first-canary constraints.
+
 Current canary cases:
 
 - `format-preservation-add-adr`

@@ -1,0 +1,57 @@
+[[repos]]
+id = "asyncapi-studio"
+url = "https://github.com/asyncapi/studio"
+commit = "a17876ad12cd213643fbd9425bfba028bc4f38fa"
+adr_dir = "doc/adr"
+adr_source = "common"
+format_notes = "Nygard-style numbered ADRs with 0000-template.md and mixed accepted/proposed statuses."
+install_command = "pnpm install"
+test_command = ""
+first_canary = true
+constraints = [
+  "JavaScript monorepo; avoid full install in first canary.",
+  "Use format-preservation or brief-generation tasks before code tasks.",
+]
+
+[[repos]]
+id = "adr-e-adr"
+url = "https://github.com/adr/e-adr"
+commit = "312d88800121de7051729df5fc15e629102defa6"
+adr_dir = "docs/decisions"
+adr_source = "common"
+format_notes = "Decision records under docs/decisions with adr-template.md; no explicit Status section in current records."
+install_command = ""
+test_command = ""
+first_canary = false
+constraints = [
+  "Useful for format detection, but accepted-decision brief is empty until status handling is configured.",
+]
+
+[[repos]]
+id = "log4brains"
+url = "https://github.com/thomvaill/log4brains"
+commit = "17e32021a8c5130386f17e921d4efa6da7709a66"
+adr_dir = "docs/adr"
+adr_source = "common"
+format_notes = "Date-prefixed Log4brains ADRs with template.md and additional nested package ADR directories."
+install_command = "yarn install"
+test_command = ""
+first_canary = false
+constraints = [
+  "Large TypeScript monorepo with dated ADR numbering.",
+  "Top-level ADRs do not use explicit accepted/proposed statuses in the Nygard sense.",
+]
+
+[[repos]]
+id = "sbomify"
+url = "https://github.com/sbomify/sbomify"
+commit = "e7c86fd14f9a1e3975efc51e3fa094665ee6f9e6"
+adr_dir = "docs/ADR"
+adr_source = ".adr-dir"
+format_notes = "Uppercase ADR directory configured by .adr-dir; Nygard-style accepted/proposed statuses."
+install_command = "uv sync"
+test_command = ""
+first_canary = false
+constraints = [
+  "Heavier Python/Django repository; use after the first asyncapi/studio real-repo canary.",
+]

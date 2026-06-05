@@ -158,13 +158,14 @@ repository ADRs during realistic tasks.
 
 - [x] Create two small local fixture projects under
       `benchmarks/adr_agent/fixtures` with exact deterministic oracle checks.
-- [ ] Clone a small set of public ADR-bearing repositories into a temporary
+- [x] Clone a small set of public ADR-bearing repositories into a temporary
       workspace, pinned by commit SHA.
-- [ ] Start with these candidates:
+- [x] Start with these candidates:
       `asyncapi/studio`, `adr/e-adr`, `thomvaill/log4brains`, and optionally
       `sbomify/sbomify` as a heavier later-stage case.
-- [ ] Record each repo's ADR directory, ADR format, install/test commands, and
-      known constraints in `benchmarks/adr-agent/repos.yaml`.
+- [x] Record each repo's ADR directory, ADR format, install/test commands, and
+      known constraints in `benchmarks/adr_agent/repos.toml` using stdlib TOML
+      instead of YAML.
 
 ### Modes To Compare
 

@@ -165,6 +165,38 @@ class RepoDecisionTests(unittest.TestCase):
         self.assertEqual(record.options, ["Nygard", "MADR"])
         self.assertIn("MADR", record.decision)
 
+    def test_status_section_wins_over_inline_status_mentions(self) -> None:
+        path = self.write(
+            "docs/adr/0001-code-mentions-status.md",
+            """
+            # 1. Code mentions status
+
+            ## Status
+
+            Accepted
+
+            ## Context
+
+            Example code may contain status-like fields.
+
+            ## Decision
+
+            Use the explicit Status section.
+
+            ```python
+            status: Optional[str]
+            ```
+
+            ## Consequences
+
+            Parser output stays stable.
+            """,
+        )
+
+        record = parse_adr_file(path)
+
+        self.assertEqual(record.status, "accepted")
+
     def test_local_config_overrides_directory(self) -> None:
         self.write(".codex/repo-decisions.toml", 'adr_dir = "architecture/decisions"\n')
         self.write(
@@ -227,6 +259,39 @@ class RepoDecisionTests(unittest.TestCase):
         self.assertEqual(location.adr_dir, self.root / "doc/adr")
         self.assertEqual(location.records[0].status, "accepted")
         self.assertEqual(location.profile.filename_style, "{number:04d}-{slug}.md")
+
+    def test_detects_adr_dir_file_with_uppercase_directory(self) -> None:
+        self.write(".adr-dir", "docs/ADR\n")
+        self.write(
+            "docs/ADR/0001-use-django.md",
+            """
+            # 1. Use Django
+
+            Date: 2026-06-05
+
+            ## Status
+
+            Accepted
+
+            ## Context
+
+            The team needs a mature web framework.
+
+            ## Decision
+
+            Use Django.
+
+            ## Consequences
+
+            The application remains a monolith.
+            """,
+        )
+
+        location = locate_adrs(self.root)
+
+        self.assertEqual(location.adr_dir, self.root / "docs/ADR")
+        self.assertEqual(location.source, ".adr-dir")
+        self.assertEqual(location.records[0].status, "accepted")
 
     def test_add_uses_fallback_template_when_no_adrs_exist(self) -> None:
         path = add_decision(

@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import tempfile
+import tomllib
 import unittest
 from contextlib import redirect_stdout
 from io import StringIO
@@ -25,6 +26,16 @@ class AdrAgentHarnessTests(unittest.TestCase):
         self.assertIn("supersede-accepted-adr", cases)
         self.assertIn("conflict-requires-supersede-confirmation", cases)
         self.assertIn("no-false-decision-creation", cases)
+
+    def test_real_repo_metadata_loads(self) -> None:
+        data = tomllib.loads((Path("benchmarks/adr_agent/repos.toml")).read_text(encoding="utf-8"))
+        repos = data["repos"]
+
+        self.assertGreaterEqual(len(repos), 4)
+        self.assertEqual([repo["id"] for repo in repos if repo["first_canary"]], ["asyncapi-studio"])
+        for repo in repos:
+            self.assertRegex(repo["commit"], r"^[0-9a-f]{40}$")
+            self.assertTrue(repo["adr_dir"])
 
     def test_format_preservation_case_passes_after_repo_decisions_add(self) -> None:
         case = load_cases()["format-preservation-add-adr"]

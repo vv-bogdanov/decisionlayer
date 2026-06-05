@@ -11,7 +11,25 @@ These runs are fixture canaries, not benchmark proof. They test whether the
 agent respects repository ADRs and uses the decision tool surface when the task
 requires changing ADRs.
 
-## Runs
+## Real Repository Candidate Scan
+
+Pinned metadata is stored in `benchmarks/adr_agent/repos.toml`.
+
+| Repo | Commit | ADR dir | Notes |
+| --- | --- | --- | --- |
+| `asyncapi/studio` | `a17876ad12cd213643fbd9425bfba028bc4f38fa` | `doc/adr` | First real canary candidate; numbered ADRs with accepted/proposed statuses. |
+| `adr/e-adr` | `312d88800121de7051729df5fc15e629102defa6` | `docs/decisions` | Good format-detection candidate; current records have no explicit status. |
+| `thomvaill/log4brains` | `17e32021a8c5130386f17e921d4efa6da7709a66` | `docs/adr` | Dated Log4brains ADRs and nested package ADRs. |
+| `sbomify/sbomify` | `e7c86fd14f9a1e3975efc51e3fa094665ee6f9e6` | `docs/ADR` | Uses `.adr-dir`; this scan drove `.adr-dir` and uppercase ADR directory support. |
+
+Real-repo scan fixes:
+
+- `.adr-dir` is now supported as an ADR directory source.
+- Uppercase `docs/ADR`, `doc/ADR`, and `ADR` common directories are considered.
+- Explicit `## Status` sections now win over inline/code-like `status:` mentions
+  elsewhere in an ADR body.
+
+## Fixture Runs
 
 ### `pi-code-jsonl-001`
 
@@ -94,8 +112,7 @@ code.
 
 ## Next
 
-- Run the remaining fixture cases with the same runner.
-- Add at least one real repository canary after pinning a small ADR-bearing
-  repository by commit SHA.
+- Add at least one real repository canary using the pinned repository metadata.
+- Compare prompt variants on one pinned case before expanding real-repo runs.
 - Keep using wrapper/CLI fallback until isolated Codex lab runtime proof records
   a real `hook-context` event.

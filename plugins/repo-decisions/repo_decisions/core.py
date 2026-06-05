@@ -16,12 +16,16 @@ LOCAL_CONFIG = Path(".codex/repo-decisions.toml")
 GLOBAL_CONFIG_ENV = "REPO_DECISIONS_GLOBAL_CONFIG"
 DEFAULT_GLOBAL_CONFIG = Path("~/.codex/repo-decisions/config.toml")
 DEFAULT_ADR_DIR = Path("docs/adr")
+ADR_DIR_FILE = Path(".adr-dir")
 COMMON_ADR_DIRS = [
     Path("docs/adr"),
+    Path("docs/ADR"),
     Path("docs/adrs"),
     Path("docs/decisions"),
     Path("doc/adr"),
+    Path("doc/ADR"),
     Path("adr"),
+    Path("ADR"),
     Path("adrs"),
     Path("decisions"),
     Path(".adr"),
@@ -284,8 +288,8 @@ def parse_adr_file(path: Path) -> AdrRecord:
     sections = _extract_sections(body)
     status = _normalize_status(
         frontmatter.get("status")
-        or _inline_value(body, "status")
         or _first_section_line(sections, "status")
+        or _inline_value(body, "status")
         or "unknown"
     )
     date_value = frontmatter.get("date") or _inline_value(body, "date")
@@ -385,6 +389,13 @@ def _candidate_dirs(root: Path, config: dict[str, object]) -> list[tuple[Path, s
         value = config.get(key)
         if isinstance(value, list):
             dirs.extend((Path(str(item)), "config") for item in value)
+    adr_dir_file = root / ADR_DIR_FILE
+    if adr_dir_file.is_file():
+        for line in adr_dir_file.read_text(encoding="utf-8").splitlines():
+            candidate = line.strip()
+            if candidate and not candidate.startswith("#"):
+                dirs.append((Path(candidate), ".adr-dir"))
+                break
     dirs.extend((path, "common") for path in COMMON_ADR_DIRS)
 
     seen: set[Path] = set()
