@@ -16,6 +16,7 @@ Commands:
   init          Create isolated CODEX_HOME and install the local plugin there
   doctor        Run isolated plugin install, MCP listing, and hook smoke checks
   mcp-list      Show MCP servers from the isolated CODEX_HOME
+  hooks-list    Query app-server hooks/list from the isolated CODEX_HOME
   hook-smoke    Run the installed UserPromptSubmit hook directly with a fixture ADR
   interactive   Start Codex with the isolated CODEX_HOME and debug log
   clean         Remove the isolated lab directory
@@ -111,6 +112,112 @@ EOF
   echo "Debug log: $DEBUG_LOG"
 }
 
+hooks_list() {
+  install_plugin >/dev/null
+  CODEX_HOME="$LAB_HOME" ROOT="$ROOT" python3 - <<'PY'
+from __future__ import annotations
+
+import json
+import os
+import select
+import subprocess
+import sys
+import time
+
+
+root = os.environ["ROOT"]
+env = os.environ.copy()
+proc = subprocess.Popen(
+    ["codex", "app-server", "--stdio"],
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    text=True,
+    env=env,
+    cwd=root,
+)
+assert proc.stdin is not None
+assert proc.stdout is not None
+
+
+def send(message: dict) -> None:
+    proc.stdin.write(json.dumps(message) + "\n")
+    proc.stdin.flush()
+
+
+def read_response(request_id: int, timeout: float = 5.0) -> dict:
+    deadline = time.monotonic() + timeout
+    fd = proc.stdout.fileno()
+    while time.monotonic() < deadline:
+        remaining = max(0.0, deadline - time.monotonic())
+        ready, _, _ = select.select([fd], [], [], remaining)
+        if not ready:
+            break
+        line = proc.stdout.readline()
+        if not line:
+            break
+        try:
+            message = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if message.get("id") == request_id:
+            return message
+    raise RuntimeError(f"Timed out waiting for app-server response id={request_id}")
+
+
+try:
+    send(
+        {
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "clientInfo": {"name": "repo-decisions-lab", "version": "0.1.0"},
+                "capabilities": {
+                    "experimentalApi": True,
+                    "requestAttestation": False,
+                },
+            },
+        }
+    )
+    read_response(1)
+    send({"id": 2, "method": "hooks/list", "params": {"cwds": [root]}})
+    response = read_response(2)
+finally:
+    proc.stdin.close()
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.terminate()
+        proc.wait(timeout=5)
+
+if "error" in response:
+    raise RuntimeError(response["error"])
+
+entries = response.get("result", {}).get("data", [])
+matches = [
+    hook
+    for entry in entries
+    for hook in entry.get("hooks", [])
+    if hook.get("pluginId") == "repo-decisions@memorycore-local"
+    and hook.get("eventName") == "userPromptSubmit"
+    and hook.get("source") == "plugin"
+]
+if not matches:
+    stderr = proc.stderr.read() if proc.stderr is not None else ""
+    if stderr:
+        print(stderr, file=sys.stderr)
+    raise RuntimeError("repo-decisions UserPromptSubmit hook was not listed")
+hook = matches[0]
+if not hook.get("enabled"):
+    raise RuntimeError("repo-decisions UserPromptSubmit hook is listed but disabled")
+print(
+    "Hook list passed: "
+    f"{hook.get('pluginId')} {hook.get('eventName')} "
+    f"trust={hook.get('trustStatus')} hash={hook.get('currentHash')}"
+)
+PY
+}
+
 command="${1:-}"
 if [ "$#" -gt 0 ]; then
   shift
@@ -125,10 +232,14 @@ case "$command" in
   doctor)
     install_plugin
     lab_codex codex mcp list
+    hooks_list
     hook_smoke
     ;;
   mcp-list)
     lab_codex codex mcp list
+    ;;
+  hooks-list)
+    hooks_list
     ;;
   hook-smoke)
     hook_smoke

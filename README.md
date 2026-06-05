@@ -174,12 +174,15 @@ Use the isolated lab home instead:
 
 ```bash
 scripts/codex-plugin-lab doctor
+scripts/codex-plugin-lab hooks-list
 scripts/codex-plugin-lab interactive
 ```
 
 The lab uses `.codex-lab/home` as `CODEX_HOME`, installs the local plugin there,
 and writes hook/tool evidence to `.codex-lab/repo-decisions-debug.jsonl`.
 It does not read or modify the main `~/.codex/config.toml`.
+`hooks-list` queries Codex app-server's `hooks/list` method and verifies that
+the plugin-bundled `UserPromptSubmit` hook is discovered in the lab home.
 
 If `repo_decisions/*.py` changes, run `scripts/sync-plugin-package` before
 validation so the installed plugin cache remains self-contained.

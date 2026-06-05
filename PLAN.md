@@ -123,7 +123,7 @@ lets the user manage decisions through tools.
 - [ ] Run one lab interactive CLI task with an accepted ADR marker and
       `.codex-lab/repo-decisions-debug.jsonl`; verify a `hook-context` event is
       written.
-- [ ] Use app-server `hooks/list` as a non-interactive discovery check if CLI
+- [x] Use app-server `hooks/list` as a non-interactive discovery check if CLI
       `/hooks` is hard to automate.
 - [ ] Only after this passes, treat hook enrichment as the default runtime path
       for benchmarks; otherwise keep using the wrapper for non-interactive runs.
