@@ -84,7 +84,7 @@ Pass Codex flags with repeated `--codex-arg`:
 
 ```bash
 scripts/repo-decisions --root . codex \
-  --codex-arg "--sandbox" \
+  --codex-arg=--sandbox \
   --codex-arg "read-only" \
   -- "Summarize active decisions."
 ```

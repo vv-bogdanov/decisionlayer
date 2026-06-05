@@ -4,9 +4,15 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-PYTHON="${PYTHON:-python3}"
+if [ -n "${PYTHON:-}" ]; then
+  PYTHON_BIN="$PYTHON"
+elif [ -x "$ROOT/.venv/bin/python" ]; then
+  PYTHON_BIN="$ROOT/.venv/bin/python"
+else
+  PYTHON_BIN="python3"
+fi
 
-if ! "$PYTHON" -m coverage --version >/dev/null 2>&1; then
+if ! "$PYTHON_BIN" -m coverage --version >/dev/null 2>&1; then
   cat >&2 <<'EOF'
 coverage is not installed.
 
@@ -20,5 +26,6 @@ EOF
   exit 2
 fi
 
-"$PYTHON" -m coverage run -m unittest discover -s tests -v
-"$PYTHON" -m coverage report
+echo "Using Python: $PYTHON_BIN"
+"$PYTHON_BIN" -m coverage run -m unittest discover -s tests -v
+"$PYTHON_BIN" -m coverage report

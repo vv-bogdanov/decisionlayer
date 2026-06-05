@@ -8,13 +8,16 @@ dependencies = []
 [project.optional-dependencies]
 dev = [
   "coverage[toml]>=7.6",
+  "mypy>=1.18",
   "pytest>=8",
+  "ruff>=0.15",
 ]
 
 [tool.coverage.run]
 branch = true
 source = ["repo_decisions"]
 omit = [
+  "repo_decisions/__main__.py",
   "plugins/repo-decisions/repo_decisions/*",
 ]
 
