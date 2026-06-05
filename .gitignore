@@ -6,3 +6,6 @@ __pycache__/
 .venv/
 .codex-lab/
 .coverage
+build/
+dist/
+*.egg-info/

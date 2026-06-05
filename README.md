@@ -41,6 +41,13 @@ scripts/repo-decisions --root . list
 scripts/repo-decisions --root . brief
 ```
 
+Or use the installable Python entrypoint:
+
+```bash
+uv sync --extra dev
+uv run repo-decisions --root . brief
+```
+
 Add a decision:
 
 ```bash
@@ -202,8 +209,15 @@ should prefer the explicit `adr_*` names.
 ## Checks
 
 ```bash
+uv run repo-decisions --help
 python3 -m unittest discover -s tests -v
 scripts/check-coverage
 python3 /home/dev/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /home/dev/memorycore/plugins/repo-decisions
 scripts/codex-plugin-lab doctor
+```
+
+Before publishing or tagging a release, also verify the Python package builds:
+
+```bash
+uv build
 ```

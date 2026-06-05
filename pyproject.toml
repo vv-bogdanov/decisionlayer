@@ -1,9 +1,27 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
 [project]
 name = "repo-decisions"
 version = "0.1.0"
 description = "Codex ADR decision layer plugin POC"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []
+keywords = ["adr", "codex", "mcp", "repository-decisions"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Software Development :: Documentation",
+  "Topic :: Software Development :: Quality Assurance",
+]
+
+[project.scripts]
+repo-decisions = "repo_decisions.cli:main"
 
 [project.optional-dependencies]
 dev = [
@@ -28,3 +46,6 @@ fail_under = 80
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["repo_decisions"]
