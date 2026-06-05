@@ -31,19 +31,14 @@ lets the user manage decisions through tools.
       Y-Statements, and template comparison notes.
 - [x] Save ADR research notes in `research/adr-standards/README.md`.
 - [x] Simplify the plan around immutable accepted ADRs and `supersede`.
+- [x] Test Codex hook prompt-enrichment feasibility and record results in
+      `research/codex-hooks/README.md`.
+- [x] Choose wrapper fallback as the reliable first POC enrichment path because
+      hook prompt mutation was not verified on Codex CLI 0.137.0.
 
 ## Active Plan
 
-### Phase 1: Hook Feasibility
-
-- [ ] Create a tiny temporary `UserPromptSubmit` command hook.
-- [ ] Use `codex debug prompt-input` to verify whether hook output can mutate
-      the model-visible prompt.
-- [ ] Record the result in `research/codex-hooks/README.md`.
-- [ ] Choose the enrichment path:
-      hook if prompt mutation works, wrapper fallback if it does not.
-
-### Phase 2: ADR Core CLI
+### Phase 1: ADR Core CLI
 
 - [ ] Implement `repo-decisions locate`.
 - [ ] Implement fast ADR directory discovery:
@@ -63,7 +58,7 @@ lets the user manage decisions through tools.
 - [ ] Implement `repo-decisions config` for local/global defaults and prompt
       size limits.
 
-### Phase 3: Tests
+### Phase 2: Tests
 
 - [ ] Add fixture repositories for:
       no ADRs, Nygard ADRs, MADR ADRs, adr-tools-style ADRs, custom directory,
@@ -74,16 +69,20 @@ lets the user manage decisions through tools.
 - [ ] Test `add` preserves the detected repository convention.
 - [ ] Test `supersede` creates a new ADR and updates the old status/backlink.
 
-### Phase 4: Codex Integration
+### Phase 3: Codex Integration
 
-- [ ] Implement automatic prompt enrichment using the Phase 1 result.
+- [ ] Implement automatic prompt enrichment through `repo-decisions codex ...`,
+      a wrapper that prepends `repo-decisions brief` to the user prompt before
+      invoking Codex.
 - [ ] Expose the management commands as a local MCP server:
       `locate`, `list`, `brief`, `add`, `supersede`, and `config`.
-- [ ] Package hook/wrapper and MCP server as a local Codex plugin.
+- [ ] Package wrapper and MCP server as a local Codex plugin.
+- [ ] Keep Codex hooks optional until prompt mutation is verified through a
+      trusted manual `/hooks` flow.
 - [ ] Add plugin instructions that keep the first 512 characters focused on
       authority rules and tool usage.
 
-### Phase 5: POC Verification
+### Phase 4: POC Verification
 
 - [ ] Add a minimal README with install, hook trust, config, and daily usage.
 - [ ] Run an end-to-end check proving Codex receives the ADR requirements block
