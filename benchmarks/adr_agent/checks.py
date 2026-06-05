@@ -15,7 +15,8 @@ DEFAULT_CASES = ROOT / "cases.toml"
 @dataclass(frozen=True)
 class Case:
     id: str
-    fixture: str
+    fixture: str | None
+    repo_id: str | None
     task: str
     required_globs: tuple[str, ...] = ()
     required_patterns: tuple[str, ...] = ()
@@ -29,6 +30,8 @@ class Case:
 
     @property
     def fixture_dir(self) -> Path:
+        if not self.fixture:
+            raise ValueError(f"Case {self.id} does not define a local fixture")
         return ROOT / "fixtures" / self.fixture
 
 
@@ -64,7 +67,8 @@ def load_cases(path: Path = DEFAULT_CASES) -> dict[str, Case]:
     for item in data.get("cases", []):
         case = Case(
             id=str(item["id"]),
-            fixture=str(item["fixture"]),
+            fixture=str(item["fixture"]) if item.get("fixture") else None,
+            repo_id=str(item["repo_id"]) if item.get("repo_id") else None,
             task=str(item["task"]).strip() + "\n",
             required_globs=tuple(item.get("required_globs", [])),
             required_patterns=tuple(item.get("required_patterns", [])),

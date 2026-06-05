@@ -22,7 +22,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     cases = load_cases(args.cases)
-    case_ids = args.case_ids or sorted(cases)
+    case_ids = args.case_ids or sorted(case_id for case_id, case in cases.items() if case.fixture)
     modes = args.modes or list(MODES)
     run_id = args.run_id or new_run_id()
     print(f"run_id: {run_id}", flush=True)

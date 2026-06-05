@@ -51,6 +51,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cases", type=Path, default=DEFAULT_CASES)
     parser.add_argument("--results-dir", type=Path, default=DEFAULT_RESULTS)
     parser.add_argument("--run-id")
+    parser.add_argument("--source-dir", type=Path, help="Override case fixture with an external repository checkout")
     parser.add_argument("--mode", choices=MODES, default="d0")
     parser.add_argument(
         "--agent-command",
@@ -64,14 +65,19 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Unknown case: {args.case_id}", file=sys.stderr)
         return 2
     case = cases[args.case_id]
+    try:
+        source_dir = args.source_dir or case.fixture_dir
+    except ValueError as exc:
+        print(f"{exc}. Pass --source-dir for external repository cases.", file=sys.stderr)
+        return 2
     result_dir = _new_result_dir(args.results_dir, case, args.mode, args.run_id)
     baseline = result_dir / "baseline"
     workspace = result_dir / "workspace"
     prompt_file = result_dir / "prompt.md"
     effective_prompt_file = result_dir / "effective-prompt.md"
     debug_log = result_dir / "repo-decisions-debug.jsonl"
-    shutil.copytree(case.fixture_dir, baseline)
-    shutil.copytree(case.fixture_dir, workspace)
+    _copy_source_tree(source_dir, baseline)
+    _copy_source_tree(source_dir, workspace)
     prompt_file.write_text(case.task, encoding="utf-8")
     initial_brief = build_brief(workspace)
     effective_prompt_file.write_text(
@@ -249,6 +255,14 @@ def _clean_runtime_artifacts(root: Path) -> None:
         for path in root.rglob(filename):
             if path.is_file():
                 path.unlink()
+
+
+def _copy_source_tree(source: Path, destination: Path) -> None:
+    shutil.copytree(
+        source,
+        destination,
+        ignore=shutil.ignore_patterns(".git", "node_modules", ".venv", "dist", "build"),
+    )
 
 
 def _result_ok(result: dict[str, Any]) -> bool:

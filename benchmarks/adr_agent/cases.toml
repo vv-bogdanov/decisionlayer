@@ -95,3 +95,25 @@ forbidden_stdout_patterns = []
 verify_commands = []
 requires_debug_write = false
 forbid_adr_changes = true
+
+[[cases]]
+id = "real-asyncapi-format-add-adr"
+repo_id = "asyncapi-studio"
+task = """
+Add an accepted ADR to this repository.
+
+Decision to record: generated API preview sessions must expire after 30 minutes
+of inactivity.
+Preserve the repository's existing ADR directory, numbering, status style,
+headings, and filename convention. Use the repo-decisions tool if available.
+"""
+required_globs = ["doc/adr/0010-*.md"]
+required_patterns = [
+  "doc/adr/0010-*.md::## Status\\s+Accepted",
+  "doc/adr/0010-*.md::## Context",
+  "doc/adr/0010-*.md::30 minutes",
+  "doc/adr/0010-*.md::## Decision",
+]
+forbidden_patterns = []
+verify_commands = []
+requires_debug_write = true

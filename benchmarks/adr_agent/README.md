@@ -60,6 +60,16 @@ python3 -m benchmarks.adr_agent.report --run-id latest \
 Real-repository candidates are tracked in `repos.toml` with pinned commit SHAs,
 ADR directory metadata, and first-canary constraints.
 
+External real-repo cases are not included in default `run_suite` runs. Pass a
+checked-out repository with `--source-dir`:
+
+```bash
+python3 -m benchmarks.adr_agent.run_case real-asyncapi-format-add-adr \
+  --source-dir /tmp/memorycore-adr-repos/asyncapi-studio \
+  --mode d2 \
+  --agent-command 'pi --provider llamacpp --model qwen36-35b-a3b-udiq3s --thinking off --no-session -p "$(cat {effective_prompt_file})"'
+```
+
 Current canary cases:
 
 - `format-preservation-add-adr`
@@ -67,3 +77,4 @@ Current canary cases:
 - `supersede-accepted-adr`
 - `conflict-requires-supersede-confirmation`
 - `no-false-decision-creation`
+- `real-asyncapi-format-add-adr` (requires `--source-dir`)

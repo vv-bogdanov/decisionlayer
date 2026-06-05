@@ -6,7 +6,7 @@ import shutil
 import tempfile
 import tomllib
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
 
@@ -26,6 +26,8 @@ class AdrAgentHarnessTests(unittest.TestCase):
         self.assertIn("supersede-accepted-adr", cases)
         self.assertIn("conflict-requires-supersede-confirmation", cases)
         self.assertIn("no-false-decision-creation", cases)
+        self.assertEqual(cases["real-asyncapi-format-add-adr"].repo_id, "asyncapi-studio")
+        self.assertIsNone(cases["real-asyncapi-format-add-adr"].fixture)
 
     def test_real_repo_metadata_loads(self) -> None:
         data = tomllib.loads((Path("benchmarks/adr_agent/repos.toml")).read_text(encoding="utf-8"))
@@ -239,6 +241,21 @@ class AdrAgentHarnessTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(payload["mode"], "d1")
         self.assertIn("Repository ADR Decisions", effective_prompt)
+
+    def test_run_case_external_case_requires_source_dir(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            stderr = StringIO()
+            with redirect_stdout(StringIO()), redirect_stderr(stderr):
+                code = run_case.main(
+                    [
+                        "real-asyncapi-format-add-adr",
+                        "--results-dir",
+                        tmp,
+                    ]
+                )
+
+        self.assertEqual(code, 2)
+        self.assertIn("Pass --source-dir", stderr.getvalue())
 
     def test_run_case_cleans_runtime_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

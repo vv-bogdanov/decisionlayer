@@ -98,6 +98,29 @@ The follow-up run confirms the hardened D2 guidance can make the local runner
 stop on a conflicting request and ask for supersede confirmation without editing
 code.
 
+## Real Repo Canary
+
+### `pi-asyncapi-real-001`
+
+Case: `real-asyncapi-format-add-adr`
+
+Source: `asyncapi/studio` at
+`a17876ad12cd213643fbd9425bfba028bc4f38fa`.
+
+| Mode | Status | Prompt chars | Duration | Changed ADR files | Tool calls | Writes |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| D2 | passed | 3034 | 34.018s | 1 | 6 | 1 |
+
+The agent created
+`doc/adr/0010-expire-generated-api-preview-sessions-after-30-minutes-of-inactivity.md`
+through `repo-decisions --root . add`. The generated ADR preserved the real
+repository's format:
+
+- `# 10: ...` heading style.
+- `**Date:** YYYY-MM-DD`.
+- `## Status`, `## Context`, `## Decision`, and `## Consequences` sections.
+- Zero-padded filename numbering after ADR-0009.
+
 ## Harness Fixes From This Run
 
 - Runtime artifacts such as `__pycache__`, `.pytest_cache`, `.coverage`, and

@@ -235,7 +235,7 @@ repository ADRs during realistic tasks.
 - [x] Run remaining fixture canaries with local `pi`:
       `supersede-accepted-adr`, `conflict-requires-supersede-confirmation`,
       and `no-false-decision-creation`.
-- [ ] Run one real repo canary on `asyncapi/studio`.
+- [x] Run one real repo canary on `asyncapi/studio`.
 - [ ] Compare prompt variants on the same pinned case before expanding the
       suite.
 - [x] Save a short analysis report with examples of where ADR enrichment helped,
