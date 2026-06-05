@@ -56,12 +56,21 @@ def build_report(run_dir: Path, results: list[dict[str, Any]]) -> str:
         failed = sum(1 for item in mode_results if item.get("status") == "failed")
         lines.append(f"| `{mode}` | {prepared} | {passed} | {failed} | {len(mode_results)} |")
 
-    lines.extend(["", "## Cases", "", "| Case | d0 | d1 | d2 | Notes |", "| --- | --- | --- | --- | --- |"])
-    for case_id in sorted({str(item.get("case_id")) for item in results}):
+    lines.extend(
+        [
+            "",
+            "## Cases",
+            "",
+            "| Case | Variant | d0 | d1 | d2 | Notes |",
+            "| --- | --- | --- | --- | --- | --- |",
+        ]
+    )
+    case_variants = sorted({(str(item.get("case_id")), _brief_variant(item)) for item in results})
+    for case_id, variant in case_variants:
         cells = []
         notes = []
         for mode in MODES:
-            item = _find_result(results, case_id, mode)
+            item = _find_result(results, case_id, mode, variant)
             if not item:
                 cells.append("-")
                 continue
@@ -70,14 +79,23 @@ def build_report(run_dir: Path, results: list[dict[str, Any]]) -> str:
             failures = item.get("checks", {}).get("failures", [])
             if failures:
                 notes.append(f"{mode}: {'; '.join(str(failure) for failure in failures)}")
-        lines.append(f"| `{case_id}` | {' | '.join(cells)} | {_escape_cell(' '.join(notes)) or '-'} |")
+        lines.append(f"| `{case_id}` | `{variant}` | {' | '.join(cells)} | {_escape_cell(' '.join(notes)) or '-'} |")
 
-    lines.extend(["", "## Metrics", "", "| Case | Mode | Prompt chars | Duration | Diff size | Files | ADR files | Tool calls | Writes |", "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"])
-    for item in sorted(results, key=lambda value: (str(value.get("case_id")), str(value.get("mode")))):
+    lines.extend(
+        [
+            "",
+            "## Metrics",
+            "",
+            "| Case | Mode | Variant | Prompt chars | Duration | Diff size | Files | ADR files | Tool calls | Writes |",
+            "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        ]
+    )
+    for item in sorted(results, key=lambda value: (str(value.get("case_id")), str(value.get("mode")), _brief_variant(value))):
         metrics = item.get("metrics", {})
         lines.append(
             "| "
             f"`{item.get('case_id')}` | `{item.get('mode')}` | "
+            f"`{_brief_variant(item)}` | "
             f"{metrics.get('prompt_chars', '-')} | "
             f"{metrics.get('duration_sec', '-')} | "
             f"{metrics.get('diff_size', '-')} | "
@@ -116,11 +134,15 @@ def _load_results(run_dir: Path) -> list[dict[str, Any]]:
     return results
 
 
-def _find_result(results: list[dict[str, Any]], case_id: str, mode: str) -> dict[str, Any] | None:
+def _find_result(results: list[dict[str, Any]], case_id: str, mode: str, brief_variant: str) -> dict[str, Any] | None:
     for item in results:
-        if item.get("case_id") == case_id and item.get("mode") == mode:
+        if item.get("case_id") == case_id and item.get("mode") == mode and _brief_variant(item) == brief_variant:
             return item
     return None
+
+
+def _brief_variant(item: dict[str, Any]) -> str:
+    return str(item.get("brief_variant") or "standard")
 
 
 def _escape_cell(value: str) -> str:

@@ -42,6 +42,26 @@ python3 -m benchmarks.adr_agent.run_case format-preservation-add-adr \
   --agent-command '{repo_root}/scripts/repo-decisions --root {workspace} codex -- "$(cat {prompt_file})"'
 ```
 
+Brief variants:
+
+- `standard`: current `repo-decisions brief` output.
+- `strict`: compact MUST-style requirements.
+- `y`: compact Y-statement-inspired requirements.
+- `excerpt`: fuller context/decision/consequence excerpts.
+
+Compare variants under one run id:
+
+```bash
+python3 -m benchmarks.adr_agent.run_suite \
+  --case real-asyncapi-format-add-adr \
+  --mode d2 \
+  --brief-variant standard \
+  --brief-variant strict \
+  --brief-variant y \
+  --brief-variant excerpt \
+  --source-dir /tmp/memorycore-adr-repos/asyncapi-studio
+```
+
 Results are written under `benchmarks/adr_agent/runs/`.
 
 `run_suite` writes all selected case/mode results under one run id:

@@ -175,7 +175,7 @@ repository ADRs during realistic tasks.
 - [x] `D2`: automatic enrichment plus repo-decisions MCP tool guidance; actual
       MCP availability is supplied by the agent command or lab setup, with
       `REPO_DECISIONS_CLI` as a non-MCP local-runner fallback.
-- [ ] Prompt variants:
+- [x] Prompt variants:
       strict bullet brief, compact Y-statement brief, and fuller ADR excerpt
       brief.
 
@@ -236,7 +236,7 @@ repository ADRs during realistic tasks.
       `supersede-accepted-adr`, `conflict-requires-supersede-confirmation`,
       and `no-false-decision-creation`.
 - [x] Run one real repo canary on `asyncapi/studio`.
-- [ ] Compare prompt variants on the same pinned case before expanding the
+- [x] Compare prompt variants on the same pinned case before expanding the
       suite.
 - [x] Save a short analysis report with examples of where ADR enrichment helped,
       failed, or made no difference.

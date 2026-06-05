@@ -121,6 +121,27 @@ repository's format:
 - `## Status`, `## Context`, `## Decision`, and `## Consequences` sections.
 - Zero-padded filename numbering after ADR-0009.
 
+### `pi-asyncapi-variants-001`
+
+Case: `real-asyncapi-format-add-adr`
+
+Source: `asyncapi/studio` at
+`a17876ad12cd213643fbd9425bfba028bc4f38fa`.
+
+| Brief Variant | Status | Prompt chars | Duration | Tool calls | Writes | Notes |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| `standard` | passed | 3034 | 33.308s | 4 | 1 | Best default candidate: short, direct, and preserved accepted status. |
+| `strict` | passed | 3114 | 46.339s | 5 | 1 | Passed, but slower and did not improve this case. |
+| `y` | failed | 3744 | 20.929s | 3 | 1 | Created `Proposed` instead of required `Accepted`; too narrative for this task. |
+| `excerpt` | passed | 4169 | 30.119s | 5 | 1 | Passed and produced richer ADR content, but uses the largest prompt. |
+
+Interpretation: the current compact hard-requirements brief remains the best
+default for the POC. The Y-statement variant is useful as a research comparator
+but should not be the default because the local runner dropped the required
+accepted status in this canary. Fuller excerpts may help when context quality
+matters, but they spend more prompt budget and need broader evidence before
+becoming default.
+
 ## Harness Fixes From This Run
 
 - Runtime artifacts such as `__pycache__`, `.pytest_cache`, `.coverage`, and
@@ -135,7 +156,8 @@ repository's format:
 
 ## Next
 
-- Add at least one real repository canary using the pinned repository metadata.
-- Compare prompt variants on one pinned case before expanding real-repo runs.
+- Expand real repository canaries using the pinned repository metadata.
+- Keep `standard` as the default brief while using `strict`, `y`, and `excerpt`
+  only for prompt-selection experiments.
 - Keep using wrapper/CLI fallback until isolated Codex lab runtime proof records
   a real `hook-context` event.

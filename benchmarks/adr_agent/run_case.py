@@ -15,13 +15,14 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from benchmarks.adr_agent.checks import DEFAULT_CASES, Case, check_case, load_cases
-from repo_decisions.core import build_brief
+from repo_decisions.core import ACTIVE_STATUS, AdrRecord, build_brief, locate_adrs
 
 
 ROOT = Path(__file__).resolve().parent
 REPO_ROOT = ROOT.parents[1]
 DEFAULT_RESULTS = ROOT / "runs"
 MODES = ("d0", "d1", "d2")
+BRIEF_VARIANTS = ("standard", "strict", "y", "excerpt")
 RUNTIME_ARTIFACT_DIRS = ("__pycache__", ".mypy_cache", ".pytest_cache", ".ruff_cache")
 RUNTIME_ARTIFACT_FILES = (".coverage",)
 D2_TOOL_GUIDANCE = """\
@@ -53,6 +54,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--run-id")
     parser.add_argument("--source-dir", type=Path, help="Override case fixture with an external repository checkout")
     parser.add_argument("--mode", choices=MODES, default="d0")
+    parser.add_argument("--brief-variant", choices=BRIEF_VARIANTS, default="standard")
     parser.add_argument(
         "--agent-command",
         help="Shell command. May use {workspace}, {prompt_file}, and {debug_log}.",
@@ -70,7 +72,7 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as exc:
         print(f"{exc}. Pass --source-dir for external repository cases.", file=sys.stderr)
         return 2
-    result_dir = _new_result_dir(args.results_dir, case, args.mode, args.run_id)
+    result_dir = _new_result_dir(args.results_dir, case, args.mode, args.brief_variant, args.run_id)
     baseline = result_dir / "baseline"
     workspace = result_dir / "workspace"
     prompt_file = result_dir / "prompt.md"
@@ -79,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
     _copy_source_tree(source_dir, baseline)
     _copy_source_tree(source_dir, workspace)
     prompt_file.write_text(case.task, encoding="utf-8")
-    initial_brief = build_brief(workspace)
+    initial_brief = build_variant_brief(workspace, args.brief_variant)
     effective_prompt_file.write_text(
         compose_effective_prompt(case.task, initial_brief, args.mode),
         encoding="utf-8",
@@ -88,6 +90,7 @@ def main(argv: list[str] | None = None) -> int:
     result: dict[str, Any] = {
         "case_id": case.id,
         "mode": args.mode,
+        "brief_variant": args.brief_variant,
         "workspace": str(workspace),
         "prompt_file": str(prompt_file),
         "effective_prompt_file": str(effective_prompt_file),
@@ -103,7 +106,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.agent_command:
         result.update(_run_agent(case, args.mode, args.agent_command, workspace, prompt_file, effective_prompt_file, debug_log))
         _clean_runtime_artifacts(workspace)
-        result["final_brief"] = build_brief(workspace)
+        result["final_brief"] = build_variant_brief(workspace, args.brief_variant)
         result["diff"] = _run_diff(baseline, workspace)
         report = check_case(
             case,
@@ -145,13 +148,98 @@ def compose_effective_prompt(task: str, brief: str, mode: str) -> str:
     return "\n\n".join(parts).strip() + "\n"
 
 
+def build_variant_brief(root: Path, variant: str = "standard") -> str:
+    if variant == "standard":
+        return build_brief(root)
+    location = locate_adrs(root)
+    active = [record for record in location.records if record.status == ACTIVE_STATUS]
+    if not active:
+        return ""
+    if variant == "strict":
+        return _strict_brief(active)
+    if variant == "y":
+        return _y_statement_brief(active)
+    if variant == "excerpt":
+        return _excerpt_brief(active)
+    raise ValueError(f"Unknown brief variant: {variant}")
+
+
+def _strict_brief(records: list[AdrRecord]) -> str:
+    lines = [
+        "# Repository ADR Decisions (Strict Requirements)",
+        "",
+        "Accepted ADRs are mandatory. Do not violate them unless the user explicitly authorizes superseding the ADR.",
+        "",
+    ]
+    for record in records:
+        decision = _one_line(record.decision or record.title)
+        lines.append(f"- MUST follow {record.id}: {record.title}. Requirement: {decision}")
+        if record.consequences:
+            lines.append(f"  Impact: {_one_line(record.consequences)}")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _y_statement_brief(records: list[AdrRecord]) -> str:
+    lines = [
+        "# Repository ADR Decisions (Y-Statements)",
+        "",
+        "Accepted ADRs are binding requirements.",
+        "",
+    ]
+    for record in records:
+        context = _one_line(record.context or "this repository")
+        decision = _one_line(record.decision or record.title)
+        consequences = _one_line(record.consequences or "the documented trade-offs apply")
+        lines.append(
+            f"- {record.id}: In the context of {context}, facing documented trade-offs, "
+            f"we decided to {decision}, accepting that {consequences}."
+        )
+    return "\n".join(lines).strip() + "\n"
+
+
+def _excerpt_brief(records: list[AdrRecord]) -> str:
+    lines = [
+        "# Repository ADR Decisions (Fuller Excerpts)",
+        "",
+        "Accepted ADR excerpts below are binding requirements.",
+        "",
+    ]
+    for record in records:
+        lines.extend(
+            [
+                f"## {record.id}: {record.title}",
+                "",
+                f"Decision: {_clip(_one_line(record.decision or record.title), 700)}",
+            ]
+        )
+        if record.context:
+            lines.append(f"Context: {_clip(_one_line(record.context), 500)}")
+        if record.consequences:
+            lines.append(f"Consequences: {_clip(_one_line(record.consequences), 500)}")
+        if record.options:
+            lines.append("Options: " + "; ".join(record.options[:5]))
+        lines.append("")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _one_line(value: str) -> str:
+    return " ".join(value.split())
+
+
+def _clip(value: str, max_chars: int) -> str:
+    if len(value) <= max_chars:
+        return value
+    return value[: max_chars - 1].rstrip() + "..."
+
+
 def new_run_id() -> str:
     return datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
 
 
-def _new_result_dir(results_dir: Path, case: Case, mode: str, run_id: str | None = None) -> Path:
+def _new_result_dir(results_dir: Path, case: Case, mode: str, brief_variant: str, run_id: str | None = None) -> Path:
     run_id = run_id or new_run_id()
-    path = results_dir / run_id / case.id / mode
+    mode_dir = mode if brief_variant == "standard" else f"{mode}-{brief_variant}"
+    path = results_dir / run_id / case.id / mode_dir
     path.mkdir(parents=True, exist_ok=False)
     return path
 

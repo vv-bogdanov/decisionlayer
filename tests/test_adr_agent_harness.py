@@ -14,7 +14,7 @@ from benchmarks.adr_agent import run_case
 from benchmarks.adr_agent import run_suite
 from benchmarks.adr_agent.report import build_report
 from benchmarks.adr_agent.checks import check_case, load_cases
-from benchmarks.adr_agent.run_case import _clean_runtime_artifacts, compose_effective_prompt
+from benchmarks.adr_agent.run_case import _clean_runtime_artifacts, build_variant_brief, compose_effective_prompt
 from repo_decisions.core import add_decision, supersede_decision
 
 
@@ -222,6 +222,25 @@ class AdrAgentHarnessTests(unittest.TestCase):
         self.assertIn("REPO_DECISIONS_CLI", compose_effective_prompt(task, brief, "d2"))
         self.assertIn("explicit supersede confirmation", compose_effective_prompt(task, brief, "d2"))
 
+    def test_brief_variants_render_distinct_shapes(self) -> None:
+        case = load_cases()["code-follows-jsonl-adr"]
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp) / "workspace"
+            shutil.copytree(case.fixture_dir, workspace)
+
+            standard = build_variant_brief(workspace, "standard")
+            strict = build_variant_brief(workspace, "strict")
+            y_statement = build_variant_brief(workspace, "y")
+            excerpt = build_variant_brief(workspace, "excerpt")
+
+        self.assertIn("Hard Requirements", standard)
+        self.assertIn("Strict Requirements", strict)
+        self.assertIn("MUST follow", strict)
+        self.assertIn("Y-Statements", y_statement)
+        self.assertIn("In the context of", y_statement)
+        self.assertIn("Fuller Excerpts", excerpt)
+        self.assertIn("Decision:", excerpt)
+
     def test_run_case_prepare_writes_mode_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             with redirect_stdout(StringIO()):
@@ -241,6 +260,30 @@ class AdrAgentHarnessTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(payload["mode"], "d1")
         self.assertIn("Repository ADR Decisions", effective_prompt)
+
+    def test_run_case_prepare_writes_variant_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with redirect_stdout(StringIO()):
+                code = run_case.main(
+                    [
+                        "code-follows-jsonl-adr",
+                        "--mode",
+                        "d1",
+                        "--brief-variant",
+                        "strict",
+                        "--results-dir",
+                        tmp,
+                        "--run-id",
+                        "variants",
+                    ]
+                )
+            result_path = Path(tmp) / "variants/code-follows-jsonl-adr/d1-strict/result.json"
+            payload = json.loads(result_path.read_text(encoding="utf-8"))
+            effective_prompt = Path(payload["effective_prompt_file"]).read_text(encoding="utf-8")
+
+        self.assertEqual(code, 0)
+        self.assertEqual(payload["brief_variant"], "strict")
+        self.assertIn("Strict Requirements", effective_prompt)
 
     def test_run_case_external_case_requires_source_dir(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -330,6 +373,31 @@ class AdrAgentHarnessTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(len(result_files), 2)
 
+    def test_run_suite_can_prepare_multiple_brief_variants(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with redirect_stdout(StringIO()):
+                code = run_suite.main(
+                    [
+                        "--case",
+                        "code-follows-jsonl-adr",
+                        "--mode",
+                        "d1",
+                        "--brief-variant",
+                        "standard",
+                        "--brief-variant",
+                        "strict",
+                        "--results-dir",
+                        tmp,
+                        "--run-id",
+                        "variant-suite",
+                        "--quiet",
+                    ]
+                )
+            result_files = sorted(Path(tmp).glob("variant-suite/code-follows-jsonl-adr/*/result.json"))
+
+        self.assertEqual(code, 0)
+        self.assertEqual([path.parent.name for path in result_files], ["d1", "d1-strict"])
+
     def test_report_summarizes_prepared_results(self) -> None:
         report = build_report(
             Path("/tmp/run-1"),
@@ -361,6 +429,7 @@ class AdrAgentHarnessTests(unittest.TestCase):
         self.assertIn("# ADR-Agent Canary Report", report)
         self.assertIn("code-follows-jsonl-adr", report)
         self.assertIn("prepared", report)
+        self.assertIn("| Case | Variant | d0 | d1 | d2 | Notes |", report)
 
     def test_code_case_passes_after_jsonl_implementation(self) -> None:
         case = load_cases()["code-follows-jsonl-adr"]
