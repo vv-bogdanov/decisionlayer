@@ -1,6 +1,6 @@
 {
   "name": "repo-decisions",
-  "version": "0.1.0+codex.20260605123055",
+  "version": "0.1.0+codex.20260605130819",
   "description": "Automatically inject and manage repository ADR decisions for Codex.",
   "author": {
     "name": "MemoryCore POC"
