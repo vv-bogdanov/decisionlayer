@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+PYTHON="${PYTHON:-python3}"
+
+if ! "$PYTHON" -m coverage --version >/dev/null 2>&1; then
+  cat >&2 <<'EOF'
+coverage is not installed.
+
+Install dev dependencies first, for example:
+  uv sync --extra dev
+
+Then run:
+  .venv/bin/python -m coverage run -m unittest discover -s tests -v
+  .venv/bin/python -m coverage report
+EOF
+  exit 2
+fi
+
+"$PYTHON" -m coverage run -m unittest discover -s tests -v
+"$PYTHON" -m coverage report

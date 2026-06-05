@@ -452,8 +452,14 @@ def _extract_title(text: str) -> str | None:
     for line in text.splitlines():
         match = re.match(r"^\s*#\s+(.+?)\s*$", line)
         if match:
-            return match.group(1).strip()
+            return _clean_title(match.group(1))
     return None
+
+
+def _clean_title(value: str) -> str:
+    title = value.strip()
+    title = re.sub(r"^(?:adr[-_ ]*)?\d+\s*[:.)-]\s*", "", title, flags=re.IGNORECASE)
+    return title.strip() or value.strip()
 
 
 def _extract_sections(text: str) -> dict[str, str]:

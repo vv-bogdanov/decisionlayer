@@ -97,6 +97,37 @@ class RepoDecisionTests(unittest.TestCase):
         self.assertIn("We will record architecture decisions", brief)
         self.assertNotIn("Draft only", brief)
 
+    def test_strips_number_prefix_from_title(self) -> None:
+        path = self.write(
+            "docs/adr/0007-numbered-title.md",
+            """
+            # 7. Numbered Title
+
+            ## Status
+
+            Accepted
+
+            ## Context
+
+            Existing ADRs include numbers in H1 headings.
+
+            ## Decision
+
+            Store the semantic title without the H1 number prefix.
+
+            ## Consequences
+
+            Prompt briefs avoid duplicate numbering.
+            """,
+        )
+
+        record = parse_adr_file(path)
+        brief = build_brief(self.root)
+
+        self.assertEqual(record.title, "Numbered Title")
+        self.assertIn("ADR-0007: Numbered Title", brief)
+        self.assertNotIn("ADR-0007: 7. Numbered Title", brief)
+
     def test_parses_madr_frontmatter(self) -> None:
         path = self.write(
             "docs/decisions/0001-use-madr.md",
