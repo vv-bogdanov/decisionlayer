@@ -212,9 +212,18 @@ should prefer the explicit `adr_*` names.
 ## Checks
 
 ```bash
+scripts/check
+scripts/check --quick
+```
+
+Individual checks:
+
+```bash
 uv run repo-decisions --help
 python3 -m unittest discover -s tests -v
 scripts/check-coverage
+uv run --extra dev ruff check .
+uv run --extra dev mypy repo_decisions tests benchmarks
 python3 /home/dev/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /home/dev/memorycore/plugins/repo-decisions
 scripts/codex-plugin-lab doctor
 ```

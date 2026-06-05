@@ -106,6 +106,7 @@ lets the user manage decisions through tools.
 - [x] Add deterministic fuzz-style parser/add/brief tests for malformed ADR
       markdown and unusual titles/content.
 - [x] Add coverage configuration and a `scripts/check-coverage` runner.
+- [x] Add a top-level `scripts/check` runner for local readiness checks.
 - [x] Run `codex exec` smoke attempts with inline and project-local hooks;
       record that this local non-interactive path did not execute the hook.
 - [x] Run an end-to-end tool check for `add` and `supersede`.
