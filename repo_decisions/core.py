@@ -692,7 +692,9 @@ def _global_config_path() -> Path:
 
 
 def _as_int(value: object, default: int) -> int:
+    if not isinstance(value, (str, int, float)):
+        return default
     try:
-        return int(value)  # type: ignore[arg-type]
+        return int(value)
     except (TypeError, ValueError):
         return default

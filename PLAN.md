@@ -137,7 +137,7 @@ lets the user manage decisions through tools.
       `adr_supersede_decision`, and `adr_configure`.
 - [x] Add tool titles, parameter descriptions, defaults where useful, and
       `ToolAnnotations` hints for read-only/additive/destructive behavior.
-- [ ] Add structured MCP output schemas/results for JSON-returning tools.
+- [x] Add structured MCP output schemas/results for JSON-returning tools.
 - [ ] Re-run lab interactive proof with the renamed MCP server and tool names.
 
 ## Next Plan: ADR-Agent Integration Test Harness

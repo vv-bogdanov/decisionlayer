@@ -1,6 +1,6 @@
 {
   "name": "repo-decisions",
-  "version": "0.1.0+codex.20260605153110",
+  "version": "0.1.0+codex.20260605155514",
   "description": "Automatically inject and manage repository Architecture Decision Records for Codex.",
   "author": {
     "name": "MemoryCore POC"

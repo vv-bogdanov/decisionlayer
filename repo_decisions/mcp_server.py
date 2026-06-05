@@ -38,6 +38,10 @@ TOOL_ALIASES = {
 }
 
 
+class UnknownToolError(ValueError):
+    pass
+
+
 def main() -> int:
     while True:
         message = _read_message()
@@ -68,13 +72,23 @@ def _handle(message: dict[str, Any]) -> dict[str, Any] | None:
             return _result(request_id, {"tools": _tools()})
         if method == "tools/call":
             params = message.get("params") or {}
-            return _result(request_id, _call_tool(params.get("name"), params.get("arguments") or {}))
+            try:
+                result = _call_tool(params.get("name"), params.get("arguments") or {})
+            except UnknownToolError as exc:
+                return _error(request_id, -32602, str(exc))
+            except ValueError as exc:
+                result = _tool_error(str(exc))
+            return _result(request_id, result)
         return _error(request_id, -32601, f"Unknown method: {method}")
     except Exception as exc:  # pragma: no cover - last-resort MCP error boundary
         return _error(request_id, -32000, str(exc))
 
 
-def _call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
+def _call_tool(name: str | None, args: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(name, str) or not name:
+        raise UnknownToolError("Missing tool name")
+    if not isinstance(args, dict):
+        raise ValueError("Tool arguments must be an object")
     name = TOOL_ALIASES.get(name, name)
     root = Path(str(args.get("root") or "."))
     log_event(
@@ -101,11 +115,11 @@ def _call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
                 "section_headings": list(location.profile.section_headings),
             },
         }
-        return _text(json.dumps(payload, indent=2))
+        return _tool_result(json.dumps(payload, indent=2), payload)
     if name == "adr_list_decisions":
         include_inactive = bool(args.get("include_inactive", True))
         records = list_decisions(root, include_inactive=include_inactive)
-        payload = [
+        decisions = [
             {
                 "id": record.id,
                 "title": record.title,
@@ -115,10 +129,18 @@ def _call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
             }
             for record in records
         ]
-        return _text(json.dumps(payload, indent=2))
+        return _tool_result(json.dumps(decisions, indent=2), {"decisions": decisions})
     if name == "adr_build_brief":
-        return _text(build_brief(root, max_chars=_optional_int(args.get("max_chars"))))
+        max_chars = _optional_int(args.get("max_chars"))
+        brief = build_brief(root, max_chars=max_chars)
+        payload = {
+            "brief": brief,
+            "active_count": len(list_decisions(root, include_inactive=False)),
+            "max_chars": max_chars,
+        }
+        return _tool_result(brief, payload)
     if name == "adr_add_decision":
+        status = str(args.get("status") or "accepted")
         path = add_decision(
             root,
             title=_required(args, "title"),
@@ -126,9 +148,9 @@ def _call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
             decision=_required(args, "decision"),
             consequences=_strings(args.get("consequences")),
             options=_strings(args.get("options")),
-            status=str(args.get("status") or "accepted"),
+            status=status,
         )
-        return _text(f"created {path}")
+        return _tool_result(f"created {path}", {"created": True, "path": str(path), "status": status})
     if name == "adr_supersede_decision":
         old_path, new_path = supersede_decision(
             root,
@@ -139,16 +161,23 @@ def _call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
             consequences=_strings(args.get("consequences")),
             options=_strings(args.get("options")),
         )
-        return _text(f"superseded {old_path}\ncreated {new_path}")
+        return _tool_result(
+            f"superseded {old_path}\ncreated {new_path}",
+            {"superseded": True, "old_path": str(old_path), "new_path": str(new_path)},
+        )
     if name == "adr_configure":
         set_values = args.get("set")
         if isinstance(set_values, dict) and set_values:
             path = _config_path(root, str(args.get("scope") or "local"))
             _write_config_values(path, set_values)
-            return _text(f"updated {path}")
+            written = {str(key): str(value) for key, value in set_values.items()}
+            return _tool_result(f"updated {path}", {"updated": True, "path": str(path), "config": written})
         location = locate_adrs(root)
-        return _text(json.dumps(location.config, indent=2))
-    raise ValueError(f"Unknown tool: {name}")
+        return _tool_result(
+            json.dumps(location.config, indent=2),
+            {"updated": False, "config": location.config},
+        )
+    raise UnknownToolError(f"Unknown tool: {name}")
 
 
 def _tools() -> list[dict[str, Any]]:
@@ -159,6 +188,7 @@ def _tools() -> list[dict[str, Any]]:
             {"root": _string("Repository root or subdirectory. Defaults to the current working directory.")},
             title="Locate ADR Directory",
             read_only=True,
+            output_schema=_locate_output_schema(),
         ),
         _tool(
             "adr_list_decisions",
@@ -173,6 +203,7 @@ def _tools() -> list[dict[str, Any]]:
             },
             title="List ADR Decisions",
             read_only=True,
+            output_schema=_list_output_schema(),
         ),
         _tool(
             "adr_build_brief",
@@ -186,6 +217,7 @@ def _tools() -> list[dict[str, Any]]:
             },
             title="Build ADR Requirements Brief",
             read_only=True,
+            output_schema=_brief_output_schema(),
         ),
         _tool(
             "adr_add_decision",
@@ -204,6 +236,7 @@ def _tools() -> list[dict[str, Any]]:
             read_only=False,
             destructive=False,
             idempotent=False,
+            output_schema=_add_output_schema(),
         ),
         _tool(
             "adr_supersede_decision",
@@ -222,6 +255,7 @@ def _tools() -> list[dict[str, Any]]:
             read_only=False,
             destructive=True,
             idempotent=False,
+            output_schema=_supersede_output_schema(),
         ),
         _tool(
             "adr_configure",
@@ -239,6 +273,7 @@ def _tools() -> list[dict[str, Any]]:
             read_only=False,
             destructive=False,
             idempotent=True,
+            output_schema=_config_output_schema(),
         ),
     ]
 
@@ -253,6 +288,7 @@ def _tool(
     read_only: bool | None = None,
     destructive: bool | None = None,
     idempotent: bool | None = None,
+    output_schema: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     inferred_required = [key for key, value in properties.items() if value.pop("_required", False)]
     tool = {
@@ -274,11 +310,110 @@ def _tool(
     if idempotent is not None:
         annotations["idempotentHint"] = idempotent
     tool["annotations"] = annotations
+    if output_schema:
+        tool["outputSchema"] = output_schema
     return tool
 
 
+def _object_schema(
+    properties: dict[str, Any],
+    required: list[str] | None = None,
+    *,
+    additional_properties: bool = False,
+) -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": required or [],
+        "additionalProperties": additional_properties,
+    }
+
+
+def _record_schema() -> dict[str, Any]:
+    return _object_schema(
+        {
+            "id": {"type": "string"},
+            "title": {"type": "string"},
+            "status": {"type": "string"},
+            "path": {"type": "string"},
+            "date": {"type": ["string", "null"]},
+        },
+        ["id", "title", "status", "path", "date"],
+    )
+
+
+def _locate_output_schema() -> dict[str, Any]:
+    return _object_schema(
+        {
+            "root": {"type": "string"},
+            "adr_dir": {"type": "string"},
+            "source": {"type": "string"},
+            "records": {"type": "integer"},
+            "profile": _object_schema(
+                {
+                    "number_width": {"type": "integer"},
+                    "filename_style": {"type": "string"},
+                    "status_style": {"type": "string"},
+                    "date_style": {"type": "string"},
+                    "section_headings": {"type": "array", "items": {"type": "string"}},
+                },
+                ["number_width", "filename_style", "status_style", "date_style", "section_headings"],
+            ),
+        },
+        ["root", "adr_dir", "source", "records", "profile"],
+    )
+
+
+def _list_output_schema() -> dict[str, Any]:
+    return _object_schema({"decisions": {"type": "array", "items": _record_schema()}}, ["decisions"])
+
+
+def _brief_output_schema() -> dict[str, Any]:
+    return _object_schema(
+        {
+            "brief": {"type": "string"},
+            "active_count": {"type": "integer"},
+            "max_chars": {"type": ["integer", "null"]},
+        },
+        ["brief", "active_count", "max_chars"],
+    )
+
+
+def _add_output_schema() -> dict[str, Any]:
+    return _object_schema(
+        {
+            "created": {"type": "boolean"},
+            "path": {"type": "string"},
+            "status": {"type": "string"},
+        },
+        ["created", "path", "status"],
+    )
+
+
+def _supersede_output_schema() -> dict[str, Any]:
+    return _object_schema(
+        {
+            "superseded": {"type": "boolean"},
+            "old_path": {"type": "string"},
+            "new_path": {"type": "string"},
+        },
+        ["superseded", "old_path", "new_path"],
+    )
+
+
+def _config_output_schema() -> dict[str, Any]:
+    return _object_schema(
+        {
+            "updated": {"type": "boolean"},
+            "path": {"type": "string"},
+            "config": {"type": "object", "additionalProperties": True},
+        },
+        ["updated", "config"],
+    )
+
+
 def _string(description: str | None = None, required: bool = False) -> dict[str, Any]:
-    value = {"type": "string"}
+    value: dict[str, Any] = {"type": "string"}
     if description:
         value["description"] = description
     if required:
@@ -287,7 +422,7 @@ def _string(description: str | None = None, required: bool = False) -> dict[str,
 
 
 def _string_array(description: str | None = None) -> dict[str, Any]:
-    value = {"type": "array", "items": {"type": "string"}}
+    value: dict[str, Any] = {"type": "array", "items": {"type": "string"}}
     if description:
         value["description"] = description
     return value
@@ -338,8 +473,22 @@ def _write_config_values(path: Path, values: dict[str, Any]) -> None:
     path.write_text("\n".join(kept) + "\n", encoding="utf-8")
 
 
-def _text(value: str) -> dict[str, Any]:
-    return {"content": [{"type": "text", "text": value}]}
+def _tool_result(
+    text: str,
+    structured_content: dict[str, Any] | None = None,
+    *,
+    is_error: bool = False,
+) -> dict[str, Any]:
+    result: dict[str, Any] = {"content": [{"type": "text", "text": text}]}
+    if structured_content is not None:
+        result["structuredContent"] = structured_content
+    if is_error:
+        result["isError"] = True
+    return result
+
+
+def _tool_error(message: str) -> dict[str, Any]:
+    return _tool_result(message, {"error": message}, is_error=True)
 
 
 def _result(request_id: Any, result: dict[str, Any]) -> dict[str, Any]:
