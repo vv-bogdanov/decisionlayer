@@ -18,6 +18,10 @@ lets the user manage decisions through tools.
 - Accepted ADRs are immutable through the tool. Changes happen only through
   `supersede`.
 - Only active `accepted` ADRs become prompt requirements.
+- Target automatic enrichment is the plugin-bundled `UserPromptSubmit` hook
+  returning Codex `additionalContext`.
+- The `repo-decisions codex` wrapper remains a fallback for cases where hooks
+  are disabled, not trusted, unavailable, or not yet runtime-verified.
 - `proposed`, `rejected`, `deprecated`, and `superseded` ADRs stay visible via
   tools but are not injected as active requirements.
 - No custom ADR schema, database, vector index, graph memory, RAG, REST API, UI,
@@ -31,10 +35,10 @@ lets the user manage decisions through tools.
       Y-Statements, and template comparison notes.
 - [x] Save ADR research notes in `research/adr-standards/README.md`.
 - [x] Simplify the plan around immutable accepted ADRs and `supersede`.
-- [x] Test Codex hook prompt-enrichment feasibility and record results in
-      `research/codex-hooks/README.md`.
-- [x] Choose wrapper fallback as the reliable first POC enrichment path because
-      hook prompt mutation was not verified on Codex CLI 0.137.0.
+- [x] Test Codex hook prompt-enrichment feasibility and record initial results
+      in `research/codex-hooks/README.md`.
+- [x] Inspect Codex CLI source and confirm `UserPromptSubmit` can inject
+      model-visible `additionalContext`.
 
 ## Active Plan
 
@@ -71,24 +75,39 @@ lets the user manage decisions through tools.
 
 ### Phase 3: Codex Integration
 
-- [x] Implement automatic prompt enrichment through `repo-decisions codex ...`,
-      a wrapper that prepends `repo-decisions brief` to the user prompt before
-      invoking Codex.
+- [x] Implement automatic prompt enrichment through a plugin-bundled
+      `UserPromptSubmit` hook that returns the accepted ADR brief as
+      `additionalContext`.
+- [x] Keep `repo-decisions codex ...` as a wrapper fallback that prepends
+      `repo-decisions brief` to the user prompt before invoking Codex.
 - [x] Expose the management commands as a local MCP server:
       `locate`, `list`, `brief`, `add`, `supersede`, and `config`.
 - [x] Package wrapper and MCP server as a local Codex plugin.
-- [x] Keep Codex hooks optional until prompt mutation is verified through a
-      trusted manual `/hooks` flow.
+- [x] Package the hook in `plugins/repo-decisions/hooks/hooks.json`.
 - [x] Add plugin instructions that keep the first 512 characters focused on
       authority rules and tool usage.
 
 ### Phase 4: POC Verification
 
 - [x] Add a minimal README with install, hook trust, config, and daily usage.
-- [x] Run an end-to-end check proving Codex receives the ADR requirements block
-      without needing to call a tool first.
+- [x] Add a direct hook test proving the ADR requirements block is emitted as
+      Codex hook `additionalContext` without needing a tool call first.
+- [x] Run `codex exec` smoke attempts with inline and project-local hooks;
+      record that this local non-interactive path did not execute the hook.
 - [x] Run an end-to-end tool check for `add` and `supersede`.
 - [x] Commit each completed phase separately.
+
+### Phase 5: Runtime Hook Verification
+
+- [ ] Install/enable the repo-decisions plugin in Codex CLI.
+- [ ] Open `/hooks`, verify the bundled `UserPromptSubmit` hook is discovered,
+      trust it, and confirm its command hash is stable.
+- [ ] Run one interactive CLI task with an accepted ADR marker and
+      `REPO_DECISIONS_DEBUG_LOG`; verify a `hook-context` event is written.
+- [ ] Use app-server `hooks/list` as a non-interactive discovery check if CLI
+      `/hooks` is hard to automate.
+- [ ] Only after this passes, treat hook enrichment as the default runtime path
+      for benchmarks; otherwise keep using the wrapper for non-interactive runs.
 
 ## Next Plan: ADR-Agent Integration Test Harness
 
@@ -111,8 +130,9 @@ repository ADRs during realistic tasks.
 ### Modes To Compare
 
 - [ ] `D0`: baseline Codex without repo-decisions enrichment.
-- [ ] `D1`: `repo-decisions codex -- <task>` with automatic accepted-ADR brief.
-- [ ] `D2`: wrapper enrichment plus repo-decisions MCP tools available.
+- [ ] `D1`: automatic accepted-ADR brief from the repo-decisions hook or wrapper
+      fallback.
+- [ ] `D2`: automatic enrichment plus repo-decisions MCP tools available.
 - [ ] Prompt variants:
       strict bullet brief, compact Y-statement brief, and fuller ADR excerpt
       brief.

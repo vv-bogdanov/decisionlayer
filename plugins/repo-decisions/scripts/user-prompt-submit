@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import sys
+import traceback
+from pathlib import Path
+
+
+PLUGIN_ROOT = Path(__file__).resolve().parents[1]
+REPO_DECISIONS_ROOT = PLUGIN_ROOT.parents[1]
+sys.path.insert(0, str(REPO_DECISIONS_ROOT))
+
+from repo_decisions.core import ACTIVE_STATUS, build_brief, locate_adrs  # noqa: E402
+from repo_decisions.debug import log_event  # noqa: E402
+
+
+def main() -> int:
+    try:
+        request = _read_request()
+        cwd = Path(request.get("cwd") or Path.cwd()).expanduser()
+        location = locate_adrs(cwd)
+        brief = build_brief(location.root).strip()
+        active_count = sum(1 for record in location.records if record.status == ACTIVE_STATUS)
+        log_event(
+            {
+                "component": "repo-decisions",
+                "event": "hook-context",
+                "hook_event_name": request.get("hook_event_name"),
+                "root": str(location.root),
+                "adr_dir": str(location.adr_dir),
+                "active_decisions": active_count,
+                "brief_chars": len(brief),
+            }
+        )
+        if not brief:
+            return 0
+        _write_output(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "UserPromptSubmit",
+                    "additionalContext": brief,
+                },
+                "suppressOutput": True,
+            }
+        )
+        return 0
+    except Exception as exc:  # pragma: no cover - defensive hook boundary
+        log_event(
+            {
+                "component": "repo-decisions",
+                "event": "hook-error",
+                "error": str(exc),
+                "traceback": traceback.format_exc(),
+            }
+        )
+        _write_output(
+            {
+                "systemMessage": f"repo-decisions hook failed: {exc}",
+                "suppressOutput": False,
+            }
+        )
+        return 0
+
+
+def _read_request() -> dict[str, object]:
+    raw = sys.stdin.read().strip()
+    if not raw:
+        return {}
+    value = json.loads(raw)
+    if isinstance(value, dict):
+        return value
+    return {}
+
+
+def _write_output(payload: dict[str, object]) -> None:
+    sys.stdout.write(json.dumps(payload, separators=(",", ":")))
+    sys.stdout.write("\n")
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

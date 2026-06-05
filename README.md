@@ -6,6 +6,31 @@ The plugin is not a general memory system. It reads repository ADR markdown
 files, treats active `accepted` ADRs as binding decisions, and gives Codex tools
 to locate, list, brief, add, and supersede decisions.
 
+## Automatic Codex Enrichment
+
+The plugin bundles a `UserPromptSubmit` hook. In Codex's hook model, this runs
+before each user prompt, reads the accepted ADR brief, and injects it as
+model-visible developer context. The agent does not need to remember to call a
+tool first.
+
+In the CLI, review and trust the hook with `/hooks`. For one-off automation
+that already vets the plugin source, Codex exposes:
+
+```bash
+codex --dangerously-bypass-hook-trust
+codex exec --dangerously-bypass-hook-trust "Implement the next task."
+```
+
+Current POC caveat: direct hook output is unit-tested, and Codex source confirms
+the `additionalContext` contract. In this local `codex-cli 0.137.0`
+environment, `codex exec` did not run a project-local `UserPromptSubmit` smoke
+hook, so non-interactive runs should use the wrapper fallback until plugin hook
+runtime is verified through `/hooks` or app-server hook listing.
+
+Set `REPO_DECISIONS_DEBUG_LOG` to verify hook usage. The hook writes
+`hook-context` events with the repository root, ADR directory, active decision
+count, and brief size.
+
 ## CLI
 
 Run from the repository root:
@@ -43,10 +68,9 @@ scripts/repo-decisions --root . supersede 1 \
 Accepted ADRs are immutable through the tool. To change one, create a new ADR
 with `supersede`.
 
-## Codex Wrapper
+## Codex Wrapper Fallback
 
-Use the wrapper when you want Codex to receive the accepted ADR brief without
-remembering to call a tool first:
+Use the wrapper when plugin hooks are disabled, not trusted, or unavailable:
 
 ```bash
 scripts/repo-decisions --root . codex --print-prompt -- "Implement the next task."
@@ -91,17 +115,17 @@ Local config wins over global config.
 ## Debug Log
 
 Set `REPO_DECISIONS_DEBUG_LOG` to collect JSONL evidence that the agent used
-the tool instead of editing ADR files directly:
+the hook/tool instead of editing ADR files directly:
 
 ```bash
 REPO_DECISIONS_DEBUG_LOG=/tmp/repo-decisions-debug.jsonl \
 scripts/repo-decisions --root . add ...
 ```
 
-The MCP server also writes `mcp-tool-call` events when the environment variable
-is set. Write operations include file paths and SHA-256 hashes before and after
-the tool action. A benchmark checker can fail any run where ADR files changed
-but the debug log has no matching `write` event.
+The UserPromptSubmit hook writes `hook-context` events. The MCP server writes
+`mcp-tool-call` events. Write operations include file paths and SHA-256 hashes
+before and after the tool action. A benchmark checker can fail any run where ADR
+files changed but the debug log has no matching `write` event.
 
 Use `REPO_DECISIONS_RUN_ID` to correlate events from one agent run:
 
