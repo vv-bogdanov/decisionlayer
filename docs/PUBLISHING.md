@@ -32,6 +32,8 @@ local Codex CLI/plugin environment and should be run before a release tag.
 - Add repository/project URLs to `pyproject.toml` after the public remote is
   known.
 - Re-run `scripts/codex-plugin-lab doctor`.
+- Run `scripts/codex-plugin-lab runtime-smoke`. If it reports missing lab
+  authentication, run `CODEX_HOME=.codex-lab/home codex login` and retry.
 - Run one interactive lab session with `scripts/codex-plugin-lab interactive`
   and verify `hook-context` appears in `.codex-lab/repo-decisions-debug.jsonl`.
 - Run ADR-agent fixture canaries with the selected agent command and save a

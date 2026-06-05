@@ -29,6 +29,13 @@ class PluginConfigTests(unittest.TestCase):
                 f"bundled {source_path.name} is out of sync",
             )
 
+    def test_lab_script_exposes_runtime_smoke(self) -> None:
+        script = (ROOT / "scripts/codex-plugin-lab").read_text(encoding="utf-8")
+
+        self.assertIn("runtime-smoke Run codex exec", script)
+        self.assertIn("runtime-smoke)", script)
+        self.assertIn("runtime_smoke", script)
+
 
 if __name__ == "__main__":
     unittest.main()

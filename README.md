@@ -174,6 +174,7 @@ Use the isolated lab home instead:
 
 ```bash
 scripts/codex-plugin-lab doctor
+scripts/codex-plugin-lab runtime-smoke
 scripts/codex-plugin-lab hooks-list
 scripts/codex-plugin-lab interactive
 ```
@@ -183,6 +184,13 @@ and writes hook/tool evidence to `.codex-lab/repo-decisions-debug.jsonl`.
 It does not read or modify the main `~/.codex/config.toml`.
 `hooks-list` queries Codex app-server's `hooks/list` method and verifies that
 the plugin-bundled `UserPromptSubmit` hook is discovered in the lab home.
+`runtime-smoke` runs `codex exec` against a tiny fixture repository and verifies
+that the hook writes a `hook-context` debug event. If the lab home is not
+authenticated, it exits with setup instructions for:
+
+```bash
+CODEX_HOME=.codex-lab/home codex login
+```
 
 If `repo_decisions/*.py` changes, run `scripts/sync-plugin-package` before
 validation so the installed plugin cache remains self-contained.
@@ -226,6 +234,12 @@ uv run --extra dev ruff check .
 uv run --extra dev mypy repo_decisions tests benchmarks
 python3 /home/dev/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /home/dev/memorycore/plugins/repo-decisions
 scripts/codex-plugin-lab doctor
+```
+
+Auth-gated runtime proof:
+
+```bash
+scripts/codex-plugin-lab runtime-smoke
 ```
 
 Before publishing or tagging a release, also verify the Python package builds:

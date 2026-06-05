@@ -18,6 +18,7 @@ Commands:
   mcp-list      Show MCP servers from the isolated CODEX_HOME
   hooks-list    Query app-server hooks/list from the isolated CODEX_HOME
   hook-smoke    Run the installed UserPromptSubmit hook directly with a fixture ADR
+  runtime-smoke Run codex exec in the lab and verify hook-context evidence
   interactive   Start Codex with the isolated CODEX_HOME and debug log
   clean         Remove the isolated lab directory
 
@@ -68,6 +69,31 @@ hook_smoke() {
   installed_root="$(plugin_root)"
   local fixture
   fixture="$(mktemp -d)"
+  write_fixture_adr "$fixture"
+  mkdir -p "$LAB_ROOT"
+  local output
+  output="$(
+    REPO_DECISIONS_DEBUG_LOG="$DEBUG_LOG" \
+      "$installed_root/scripts/user-prompt-submit" \
+      <<<"{\"cwd\":\"$fixture\",\"hook_event_name\":\"UserPromptSubmit\"}"
+  )"
+  rm -rf "$fixture"
+  if [[ "$output" != *"Repository ADR Decisions"* ]]; then
+    echo "Hook smoke failed: expected ADR context in output" >&2
+    echo "$output" >&2
+    exit 1
+  fi
+  if [[ "$output" != *"Use SQLite for fixture persistence"* ]]; then
+    echo "Hook smoke failed: expected fixture decision in output" >&2
+    echo "$output" >&2
+    exit 1
+  fi
+  echo "Hook smoke passed"
+  echo "Debug log: $DEBUG_LOG"
+}
+
+write_fixture_adr() {
+  local fixture="$1"
   mkdir -p "$fixture/docs/adr"
   cat >"$fixture/docs/adr/0001-use-sqlite.md" <<'EOF'
 # 1. Use SQLite
@@ -90,26 +116,70 @@ Use SQLite for fixture persistence.
 
 No external database is required.
 EOF
-  mkdir -p "$LAB_ROOT"
-  local output
-  output="$(
-    REPO_DECISIONS_DEBUG_LOG="$DEBUG_LOG" \
-      "$installed_root/scripts/user-prompt-submit" \
-      <<<"{\"cwd\":\"$fixture\",\"hook_event_name\":\"UserPromptSubmit\"}"
-  )"
-  rm -rf "$fixture"
-  if [[ "$output" != *"Repository ADR Decisions"* ]]; then
-    echo "Hook smoke failed: expected ADR context in output" >&2
-    echo "$output" >&2
-    exit 1
+}
+
+runtime_smoke() {
+  install_plugin >/dev/null
+  mkdir -p "$LAB_ROOT/runtime-smoke"
+  local run_dir
+  run_dir="$(mktemp -d "$LAB_ROOT/runtime-smoke/run.XXXXXX")"
+  local fixture="$run_dir/fixture"
+  local debug_log="$run_dir/repo-decisions-debug.jsonl"
+  local stdout_log="$run_dir/codex.jsonl"
+  local stderr_log="$run_dir/codex.stderr"
+  local last_message="$run_dir/last-message.txt"
+  mkdir -p "$fixture"
+  write_fixture_adr "$fixture"
+  git -C "$fixture" init -q
+
+  set +e
+  REPO_DECISIONS_DEBUG_LOG="$debug_log" \
+    CODEX_HOME="$LAB_HOME" \
+    codex exec \
+      --dangerously-bypass-hook-trust \
+      --skip-git-repo-check \
+      -C "$fixture" \
+      --json \
+      --output-last-message "$last_message" \
+      "Reply with exactly OK." \
+      >"$stdout_log" 2>"$stderr_log"
+  local status=$?
+  set -e
+
+  if [ -f "$debug_log" ] && grep -q '"event": "hook-context"' "$debug_log"; then
+    if [ "$status" -eq 0 ]; then
+      echo "Runtime smoke passed"
+      echo "Artifacts: $run_dir"
+      return 0
+    fi
+    echo "Runtime hook-context was recorded, but codex exec failed with status $status." >&2
+    echo "Artifacts: $run_dir" >&2
+    return "$status"
   fi
-  if [[ "$output" != *"Use SQLite for fixture persistence"* ]]; then
-    echo "Hook smoke failed: expected fixture decision in output" >&2
-    echo "$output" >&2
-    exit 1
+
+  if grep -Eiq '401 Unauthorized|Missing bearer|not logged in|authentication' "$stderr_log" "$stdout_log"; then
+    cat >&2 <<EOF
+Runtime smoke could not prove hook execution because the lab CODEX_HOME is not authenticated.
+
+Authenticate only the isolated lab home, then retry:
+  CODEX_HOME=$LAB_HOME codex login
+  scripts/codex-plugin-lab runtime-smoke
+
+Artifacts: $run_dir
+EOF
+    return 2
   fi
-  echo "Hook smoke passed"
-  echo "Debug log: $DEBUG_LOG"
+
+  cat >&2 <<EOF
+Runtime smoke failed: codex exec completed without a hook-context debug event.
+
+This means the plugin hook was not run in the tested runtime path, even though
+direct hook smoke and hooks/list may still pass. Keep using the wrapper fallback
+or verify the hook in an interactive lab session.
+
+Artifacts: $run_dir
+EOF
+  return 1
 }
 
 hooks_list() {
@@ -243,6 +313,9 @@ case "$command" in
     ;;
   hook-smoke)
     hook_smoke
+    ;;
+  runtime-smoke)
+    runtime_smoke
     ;;
   interactive)
     install_plugin >/dev/null

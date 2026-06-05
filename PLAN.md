@@ -118,10 +118,16 @@ lets the user manage decisions through tools.
 - [x] Add `scripts/codex-plugin-lab doctor` to install the plugin in an
       isolated `CODEX_HOME`, list MCP servers, and smoke-test the installed
       `UserPromptSubmit` hook.
+- [x] Add `scripts/codex-plugin-lab runtime-smoke` to run real `codex exec`
+      under the isolated lab home, preserve artifacts, and distinguish missing
+      lab authentication from a hook runtime failure.
 - [ ] Open a separate lab Codex session with
       `scripts/codex-plugin-lab interactive`, verify the bundled
       `UserPromptSubmit` hook is discovered, trust/bypass only inside the lab,
       and confirm its command hash is stable.
+- [ ] Authenticate the isolated lab home if needed with
+      `CODEX_HOME=.codex-lab/home codex login`, then re-run
+      `scripts/codex-plugin-lab runtime-smoke`.
 - [ ] Run one lab interactive CLI task with an accepted ADR marker and
       `.codex-lab/repo-decisions-debug.jsonl`; verify a `hook-context` event is
       written.
