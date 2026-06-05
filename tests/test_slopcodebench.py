@@ -85,3 +85,36 @@ def test_write_summary_files_collects_d0_d1_delta(tmp_path: Path) -> None:
     assert summary["modes"]["D1"]["passed"] == 1
     assert summary["deltas"][0]["winner"] == "D1"
     assert (tmp_path / "summary.md").exists()
+
+
+def test_write_summary_files_counts_runtime_error_as_infra(tmp_path: Path) -> None:
+    checkpoint = tmp_path / "D0" / "example" / "checkpoint_1"
+    checkpoint.mkdir(parents=True)
+    (checkpoint / "evaluation.json").write_text(
+        json.dumps(
+            {
+                "pytest_exit_code": 0,
+                "infrastructure_failure": False,
+                "pass_counts": {"Core": 1},
+                "total_counts": {"Core": 1},
+            }
+        )
+    )
+    (tmp_path / "D0" / "example" / "infer.log").write_text(
+        json.dumps(
+            {
+                "level": "error",
+                "event": (
+                    "Error running problem error_message=\"cleanup failed\" "
+                    "error_type='PermissionError' problem='example'"
+                ),
+            }
+        )
+        + "\n"
+    )
+
+    summary = write_summary_files(tmp_path, ["D0"])
+
+    assert summary["modes"]["D0"]["passed"] == 0
+    assert summary["modes"]["D0"]["infra_errors"] == 1
+    assert summary["checkpoints"][0]["runtime_error"] == "PermissionError: cleanup failed"

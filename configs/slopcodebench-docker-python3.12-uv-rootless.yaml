@@ -10,6 +10,7 @@ environment:
     UV_CACHE_DIR: /tmp/uv-cache
     PIP_CACHE_DIR: /tmp/pip-cache-dir
     PIP_CONFIG_FILE: /tmp/pip-conf
+    PYTHONDONTWRITEBYTECODE: "1"
 setup:
   eval_commands:
     - uv init

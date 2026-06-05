@@ -48,6 +48,7 @@ class CheckpointSummary:
     cost: float | None
     steps: int | None
     decisions: int
+    runtime_error: str | None
 
 
 def strip_benchmark_comments(text: str) -> str:
@@ -222,6 +223,39 @@ def _usage_from_checkpoint(checkpoint_dir: Path) -> tuple[float | None, int | No
     )
 
 
+def _extract_runtime_error_field(event: str, field: str) -> str | None:
+    match = re.search(rf"{field}=([\"'])(.*?)\1", event)
+    if not match:
+        return None
+    return match.group(2)
+
+
+def _problem_runtime_error(problem_dir: Path) -> str | None:
+    path = problem_dir / "infer.log"
+    if not path.exists():
+        return None
+    try:
+        lines = path.read_text().splitlines()
+    except OSError:
+        return None
+    for line in lines:
+        try:
+            data = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        event = data.get("event")
+        if data.get("level") != "error" or not isinstance(event, str):
+            continue
+        if "Error running problem" not in event:
+            continue
+        error_type = _extract_runtime_error_field(event, "error_type")
+        error_message = _extract_runtime_error_field(event, "error_message")
+        if error_type and error_message:
+            return _truncate(f"{error_type}: {error_message}", 240)
+        return _truncate(event, 240)
+    return None
+
+
 def _decision_count(problem_dir: Path, checkpoint: str) -> int:
     path = problem_dir / "decision_layer" / "checkpoint_decisions" / f"{checkpoint}.json"
     return len(load_json_list(path))
@@ -234,6 +268,7 @@ def collect_checkpoint_summaries(run_root: Path, modes: list[str]) -> list[Check
         if not mode_dir.exists():
             continue
         for problem_dir in sorted(path for path in mode_dir.iterdir() if path.is_dir()):
+            runtime_error = _problem_runtime_error(problem_dir)
             for checkpoint_dir in sorted(problem_dir.glob("checkpoint_*")):
                 evaluation_path = checkpoint_dir / "evaluation.json"
                 if not evaluation_path.exists():
@@ -255,19 +290,27 @@ def collect_checkpoint_summaries(run_root: Path, modes: list[str]) -> list[Check
                     else 0
                 )
                 cost, steps = _usage_from_checkpoint(checkpoint_dir)
+                infrastructure_failure = (
+                    bool(evaluation.get("infrastructure_failure"))
+                    or runtime_error is not None
+                )
                 summaries.append(
                     CheckpointSummary(
                         mode=mode,
                         problem=problem_dir.name,
                         checkpoint=checkpoint_dir.name,
-                        passed=evaluation_passed_all_cases(evaluation),
+                        passed=(
+                            evaluation_passed_all_cases(evaluation)
+                            and runtime_error is None
+                        ),
                         passed_tests=passed_tests,
                         total_tests=total_tests,
-                        infrastructure_failure=bool(evaluation.get("infrastructure_failure")),
+                        infrastructure_failure=infrastructure_failure,
                         pytest_exit_code=evaluation.get("pytest_exit_code"),
                         cost=cost,
                         steps=steps,
                         decisions=_decision_count(problem_dir, checkpoint_dir.name),
+                        runtime_error=runtime_error,
                     )
                 )
     return summaries
@@ -353,17 +396,21 @@ def render_summary_markdown(summary: dict[str, Any]) -> str:
             "",
             "## Checkpoint Matrix",
             "",
-            "| Mode | Problem | Checkpoint | Passed | Tests | Infra | Steps | Decisions |",
-            "|---|---|---|---:|---:|---:|---:|---:|",
+            (
+                "| Mode | Problem | Checkpoint | Passed | Tests | Infra | Steps | "
+                "Decisions | Runtime Error |"
+            ),
+            "|---|---|---|---:|---:|---:|---:|---:|---|",
         ]
     )
     for row in summary["checkpoints"]:
+        display_row = {**row, "runtime_error": row.get("runtime_error") or ""}
         lines.append(
             (
                 "| {mode} | {problem} | {checkpoint} | {passed} | "
                 "{passed_tests}/{total_tests} | {infrastructure_failure} | "
-                "{steps} | {decisions} |"
-            ).format(**row)
+                "{steps} | {decisions} | {runtime_error} |"
+            ).format(**display_row)
         )
     return "\n".join(lines) + "\n"
 
