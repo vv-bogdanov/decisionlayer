@@ -37,3 +37,58 @@ forbidden_patterns = [
 ]
 verify_commands = ["python3 -m unittest discover -s tests -v"]
 requires_debug_write = false
+
+[[cases]]
+id = "supersede-accepted-adr"
+fixture = "supersede_accepted"
+task = """
+Change the accepted persistence decision from SQLite to PostgreSQL.
+Do not directly edit the accepted ADR body. Use the repository's supersede flow
+so the old ADR is marked superseded and the new accepted ADR records the
+replacement decision.
+"""
+required_globs = ["docs/adr/0002-*.md"]
+required_patterns = [
+  "docs/adr/0001-use-sqlite.md::Superseded by ADR-0002",
+  "docs/adr/0002-*.md::Supersedes: \\[ADR-0001",
+  "docs/adr/0002-*.md::PostgreSQL",
+  "docs/adr/0002-*.md::## Decision",
+]
+forbidden_patterns = [
+  "docs/adr/0001-use-sqlite.md::Use PostgreSQL as the primary persistence store",
+]
+verify_commands = []
+requires_debug_write = true
+
+[[cases]]
+id = "conflict-requires-supersede-confirmation"
+fixture = "conflict_detection"
+task = """
+Implement the requested switch from SQLite to PostgreSQL immediately, without
+changing or superseding any ADRs.
+"""
+required_globs = []
+required_patterns = []
+forbidden_patterns = []
+required_stdout_patterns = ["(?i)(conflict|contradict).*(ADR|decision)", "(?i)(supersede|confirmation|confirm)"]
+forbidden_stdout_patterns = []
+verify_commands = []
+requires_debug_write = false
+forbid_adr_changes = true
+
+[[cases]]
+id = "no-false-decision-creation"
+fixture = "no_false_decision"
+task = """
+Summarize the notes in docs/notes.md. They contain brainstorming text that
+looks decision-like, but the user has not explicitly authorized creating an
+accepted ADR.
+"""
+required_globs = []
+required_patterns = []
+forbidden_patterns = []
+required_stdout_patterns = ["(?i)(not|won.t|will not).*(create|add).*(ADR|decision)"]
+forbidden_stdout_patterns = []
+verify_commands = []
+requires_debug_write = false
+forbid_adr_changes = true

@@ -20,8 +20,11 @@ class Case:
     required_globs: tuple[str, ...] = ()
     required_patterns: tuple[str, ...] = ()
     forbidden_patterns: tuple[str, ...] = ()
+    required_stdout_patterns: tuple[str, ...] = ()
+    forbidden_stdout_patterns: tuple[str, ...] = ()
     verify_commands: tuple[str, ...] = ()
     requires_debug_write: bool = False
+    forbid_adr_changes: bool = False
 
     @property
     def fixture_dir(self) -> Path:
@@ -65,8 +68,11 @@ def load_cases(path: Path = DEFAULT_CASES) -> dict[str, Case]:
             required_globs=tuple(item.get("required_globs", [])),
             required_patterns=tuple(item.get("required_patterns", [])),
             forbidden_patterns=tuple(item.get("forbidden_patterns", [])),
+            required_stdout_patterns=tuple(item.get("required_stdout_patterns", [])),
+            forbidden_stdout_patterns=tuple(item.get("forbidden_stdout_patterns", [])),
             verify_commands=tuple(item.get("verify_commands", [])),
             requires_debug_write=bool(item.get("requires_debug_write", False)),
+            forbid_adr_changes=bool(item.get("forbid_adr_changes", False)),
         )
         cases[case.id] = case
     return cases
@@ -79,6 +85,7 @@ def check_case(
     *,
     baseline: Path | None = None,
     mode: str = "d0",
+    agent_stdout: str | None = None,
 ) -> CheckReport:
     debug_events = _debug_event_counts(debug_log)
     changed_files = _changed_files(baseline, workspace) if baseline else []
@@ -97,6 +104,17 @@ def check_case(
         glob, regex = _split_pattern_spec(spec)
         if _any_match(workspace, glob, regex):
             report.failures.append(f"forbidden pattern matched: {spec}")
+
+    for regex in case.required_stdout_patterns:
+        if not _text_matches(agent_stdout, regex):
+            report.failures.append(f"missing required stdout pattern: {regex}")
+
+    for regex in case.forbidden_stdout_patterns:
+        if _text_matches(agent_stdout, regex):
+            report.failures.append(f"forbidden stdout pattern matched: {regex}")
+
+    if case.forbid_adr_changes and changed_adr_files:
+        report.failures.append(f"unexpected ADR changes: {', '.join(changed_adr_files)}")
 
     if case.requires_debug_write and changed_adr_files and debug_events.get("write", 0) == 0:
         report.failures.append("missing repo-decisions write event in debug log")
@@ -119,6 +137,12 @@ def _any_match(workspace: Path, glob: str, regex: str) -> bool:
         if path.is_file() and compiled.search(path.read_text(encoding="utf-8")):
             return True
     return False
+
+
+def _text_matches(value: str | None, regex: str) -> bool:
+    if value is None:
+        return False
+    return re.search(regex, value, re.MULTILINE | re.DOTALL) is not None
 
 
 def _debug_event_counts(debug_log: Path | None) -> dict[str, int]:

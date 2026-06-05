@@ -12,7 +12,7 @@ from pathlib import Path
 from benchmarks.adr_agent import run_case
 from benchmarks.adr_agent.checks import check_case, load_cases
 from benchmarks.adr_agent.run_case import compose_effective_prompt
-from repo_decisions.core import add_decision
+from repo_decisions.core import add_decision, supersede_decision
 
 
 class AdrAgentHarnessTests(unittest.TestCase):
@@ -20,6 +20,9 @@ class AdrAgentHarnessTests(unittest.TestCase):
         cases = load_cases()
         self.assertIn("format-preservation-add-adr", cases)
         self.assertIn("code-follows-jsonl-adr", cases)
+        self.assertIn("supersede-accepted-adr", cases)
+        self.assertIn("conflict-requires-supersede-confirmation", cases)
+        self.assertIn("no-false-decision-creation", cases)
 
     def test_format_preservation_case_passes_after_repo_decisions_add(self) -> None:
         case = load_cases()["format-preservation-add-adr"]
@@ -84,6 +87,95 @@ class AdrAgentHarnessTests(unittest.TestCase):
 
         self.assertFalse(report.ok)
         self.assertIn("missing repo-decisions write event in debug log", report.failures)
+
+    def test_supersede_case_passes_after_repo_decisions_supersede(self) -> None:
+        case = load_cases()["supersede-accepted-adr"]
+        with tempfile.TemporaryDirectory() as tmp:
+            baseline = Path(tmp) / "baseline"
+            workspace = Path(tmp) / "workspace"
+            shutil.copytree(case.fixture_dir, baseline)
+            shutil.copytree(case.fixture_dir, workspace)
+            debug_log = Path(tmp) / "debug.jsonl"
+            old_debug_log = os.environ.get("REPO_DECISIONS_DEBUG_LOG")
+            os.environ["REPO_DECISIONS_DEBUG_LOG"] = str(debug_log)
+            try:
+                supersede_decision(
+                    workspace,
+                    "1",
+                    title="Use PostgreSQL",
+                    context="The project now needs concurrent writers.",
+                    decision="Use PostgreSQL as the primary persistence store.",
+                    consequences=["An external database service is required."],
+                    options=["SQLite", "PostgreSQL"],
+                )
+            finally:
+                if old_debug_log is None:
+                    os.environ.pop("REPO_DECISIONS_DEBUG_LOG", None)
+                else:
+                    os.environ["REPO_DECISIONS_DEBUG_LOG"] = old_debug_log
+
+            report = check_case(case, workspace, debug_log, baseline=baseline, mode="d1")
+
+        self.assertTrue(report.ok, report.failures)
+
+    def test_conflict_case_requires_confirmation_without_adr_changes(self) -> None:
+        case = load_cases()["conflict-requires-supersede-confirmation"]
+        with tempfile.TemporaryDirectory() as tmp:
+            baseline = Path(tmp) / "baseline"
+            workspace = Path(tmp) / "workspace"
+            shutil.copytree(case.fixture_dir, baseline)
+            shutil.copytree(case.fixture_dir, workspace)
+
+            report = check_case(
+                case,
+                workspace,
+                baseline=baseline,
+                mode="d1",
+                agent_stdout="This conflicts with ADR-0001. Please confirm a supersede flow.",
+            )
+
+        self.assertTrue(report.ok, report.failures)
+
+    def test_conflict_case_fails_on_adr_mutation(self) -> None:
+        case = load_cases()["conflict-requires-supersede-confirmation"]
+        with tempfile.TemporaryDirectory() as tmp:
+            baseline = Path(tmp) / "baseline"
+            workspace = Path(tmp) / "workspace"
+            shutil.copytree(case.fixture_dir, baseline)
+            shutil.copytree(case.fixture_dir, workspace)
+            (workspace / "docs/adr/0001-use-sqlite.md").write_text(
+                "# 1. Use PostgreSQL\n\n## Status\n\nAccepted\n\n## Decision\n\nUse PostgreSQL.\n",
+                encoding="utf-8",
+            )
+
+            report = check_case(
+                case,
+                workspace,
+                baseline=baseline,
+                mode="d1",
+                agent_stdout="Implemented.",
+            )
+
+        self.assertFalse(report.ok)
+        self.assertTrue(any(item.startswith("unexpected ADR changes") for item in report.failures))
+
+    def test_no_false_decision_case_passes_without_adr_creation(self) -> None:
+        case = load_cases()["no-false-decision-creation"]
+        with tempfile.TemporaryDirectory() as tmp:
+            baseline = Path(tmp) / "baseline"
+            workspace = Path(tmp) / "workspace"
+            shutil.copytree(case.fixture_dir, baseline)
+            shutil.copytree(case.fixture_dir, workspace)
+
+            report = check_case(
+                case,
+                workspace,
+                baseline=baseline,
+                mode="d1",
+                agent_stdout="I will not create an ADR because there is no explicit decision authorization.",
+            )
+
+        self.assertTrue(report.ok, report.failures)
 
     def test_prompt_modes(self) -> None:
         brief = "# Repository ADR Decisions\n\n- ADR-0001: Use JSONL.\n"

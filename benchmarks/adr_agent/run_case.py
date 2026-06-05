@@ -86,7 +86,14 @@ def main(argv: list[str] | None = None) -> int:
         result.update(_run_agent(case, args.mode, args.agent_command, workspace, prompt_file, effective_prompt_file, debug_log))
         result["final_brief"] = build_brief(workspace)
         result["diff"] = _run_diff(baseline, workspace)
-        report = check_case(case, workspace, debug_log, baseline=baseline, mode=args.mode)
+        report = check_case(
+            case,
+            workspace,
+            debug_log,
+            baseline=baseline,
+            mode=args.mode,
+            agent_stdout=result["agent"]["stdout"],
+        )
         result["checks"] = report.to_dict()
         result["metrics"].update(
             {

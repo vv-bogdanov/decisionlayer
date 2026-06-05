@@ -39,3 +39,11 @@ python3 -m benchmarks.adr_agent.run_case format-preservation-add-adr \
 ```
 
 Results are written under `benchmarks/adr_agent/runs/`.
+
+Current canary cases:
+
+- `format-preservation-add-adr`
+- `code-follows-jsonl-adr`
+- `supersede-accepted-adr`
+- `conflict-requires-supersede-confirmation`
+- `no-false-decision-creation`

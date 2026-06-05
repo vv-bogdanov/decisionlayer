@@ -175,16 +175,16 @@ repository ADRs during realistic tasks.
 - [x] Format preservation:
       ask the agent to add an ADR and verify it uses the existing repo
       directory, numbering, status style, headings, and template.
-- [ ] Supersede behavior:
+- [x] Supersede behavior:
       ask the agent to change an accepted ADR and verify it creates a new ADR,
       marks the old ADR superseded, and keeps only the new ADR active.
 - [x] Code follows ADR:
       create a task where the easiest implementation violates an accepted ADR,
       and verify the diff follows the ADR instead.
-- [ ] Conflict detection:
+- [x] Conflict detection:
       ask for a change that contradicts an accepted ADR and verify the agent
       asks for explicit supersede/confirmation instead of silently violating it.
-- [ ] No false decision creation:
+- [x] No false decision creation:
       include non-authoritative text that looks decision-like and verify no
       accepted ADR is created without explicit user authorization.
 
@@ -209,9 +209,9 @@ repository ADRs during realistic tasks.
 - [ ] `task_success`: the requested coding/documentation task is completed.
 - [x] `adr_compliance`: no active ADR is violated by the diff.
 - [x] `format_preservation`: new ADRs match the repository convention.
-- [ ] `unwanted_adr_mutation`: accepted ADRs are not directly edited except
+- [x] `unwanted_adr_mutation`: accepted ADRs are not directly edited except
       for supersede status/backlink.
-- [ ] `conflict_handling`: contradictory requests trigger confirmation or
+- [x] `conflict_handling`: contradictory requests trigger confirmation or
       supersede flow.
 - [x] `duration`, `diff_size`, changed files, debug write events, and
       `tool_calls`.
