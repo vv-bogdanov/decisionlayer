@@ -215,7 +215,7 @@ Canary config:
 ```text
 config=configs/slopcodebench-canary.json
 problems=file_backup,cfgpipe,etl_pipeline
-agent=codex
+agent=pi
 model=codex_auth/gpt-5.3-codex-spark
 thinking=low
 pass_policy=all-cases
@@ -230,3 +230,8 @@ Run canary:
 
 Resume is the default when lane output already has `config.yaml`. Use
 `--overwrite` only for an intentional fresh rerun.
+
+Direct SlopCodeBench `codex` agent was rejected during canary preflight because
+its retry command is incompatible with the installed Codex CLI
+(`codex exec resume` rejects `--skip-git-repo-check`). Use `pi` with the same
+`codex_auth/gpt-5.3-codex-spark` backend for the first practical lane.

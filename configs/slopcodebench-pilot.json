@@ -6,7 +6,7 @@
   "problems_commit": "ef6a9dd13911566b6b01075ca121758c9f7b5c5f",
   "docker_host": "unix:///run/user/1000/docker.sock",
   "environment": "/home/dev/memorycore/configs/slopcodebench-docker-python3.12-uv-rootless.yaml",
-  "agent": "codex",
+  "agent": "pi",
   "model": "codex_auth/gpt-5.3-codex-spark",
   "thinking": "low",
   "prompt": "just-solve",
