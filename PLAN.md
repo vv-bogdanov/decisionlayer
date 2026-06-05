@@ -160,23 +160,24 @@ repository ADRs during realistic tasks.
 
 ### Modes To Compare
 
-- [ ] `D0`: baseline Codex without repo-decisions enrichment.
-- [ ] `D1`: automatic accepted-ADR brief from the repo-decisions hook or wrapper
+- [x] `D0`: baseline Codex without repo-decisions enrichment.
+- [x] `D1`: automatic accepted-ADR brief from the repo-decisions hook or wrapper
       fallback.
-- [ ] `D2`: automatic enrichment plus repo-decisions MCP tools available.
+- [x] `D2`: automatic enrichment plus repo-decisions MCP tool guidance; actual
+      MCP availability is supplied by the agent command or lab setup.
 - [ ] Prompt variants:
       strict bullet brief, compact Y-statement brief, and fuller ADR excerpt
       brief.
 
 ### Canary Task Types
 
-- [ ] Format preservation:
+- [x] Format preservation:
       ask the agent to add an ADR and verify it uses the existing repo
       directory, numbering, status style, headings, and template.
 - [ ] Supersede behavior:
       ask the agent to change an accepted ADR and verify it creates a new ADR,
       marks the old ADR superseded, and keeps only the new ADR active.
-- [ ] Code follows ADR:
+- [x] Code follows ADR:
       create a task where the easiest implementation violates an accepted ADR,
       and verify the diff follows the ADR instead.
 - [ ] Conflict detection:
@@ -196,7 +197,7 @@ repository ADRs during realistic tasks.
 - [x] Add `benchmarks/adr_agent/checks.py` with deterministic checks:
       required globs, required/forbidden grep patterns, debug write events, and
       optional project tests.
-- [ ] Enable `REPO_DECISIONS_DEBUG_LOG` for each agent run and fail if ADR files
+- [x] Enable `REPO_DECISIONS_DEBUG_LOG` for each agent run and fail if ADR files
       changed without matching `repo-decisions` `mcp-tool-call` and `write`
       events.
 - [x] Keep LLM judging out of the first version; use it only later for
@@ -205,13 +206,15 @@ repository ADRs during realistic tasks.
 ### Metrics
 
 - [ ] `task_success`: the requested coding/documentation task is completed.
-- [ ] `adr_compliance`: no active ADR is violated by the diff.
-- [ ] `format_preservation`: new ADRs match the repository convention.
+- [x] `adr_compliance`: no active ADR is violated by the diff.
+- [x] `format_preservation`: new ADRs match the repository convention.
 - [ ] `unwanted_adr_mutation`: accepted ADRs are not directly edited except
       for supersede status/backlink.
 - [ ] `conflict_handling`: contradictory requests trigger confirmation or
       supersede flow.
-- [ ] `tokens`, `duration`, `diff_size`, and `tool_calls`.
+- [x] `duration`, `diff_size`, changed files, debug write events, and
+      `tool_calls`.
+- [ ] `tokens`, if the selected agent runner exposes reliable token usage.
 
 ### Initial Run
 
