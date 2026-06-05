@@ -217,6 +217,7 @@ config=configs/slopcodebench-canary.json
 problems=file_backup,cfgpipe,etl_pipeline
 agent=pi
 model=codex_auth/gpt-5.3-codex-spark
+prompt=/home/dev/memorycore/configs/slopcodebench-just-solve-workspace.jinja
 thinking=low
 pass_policy=all-cases
 output_root=/home/dev/benchmarks/slopcodebench-runs/canary-d0-d1
@@ -240,3 +241,7 @@ Rootless Docker requires the wrapper to patch SlopCodeBench temp workspaces to
 mode `0755`; otherwise agent containers running as user `agent` cannot write to
 `/workspace`, and PI writes into its own `/tmp/repo` instead of the benchmark
 snapshot directory.
+
+The custom prompt keeps the benchmark's original `just-solve` content but adds
+one guard: solution files must be created and edited in `/workspace`, because
+that is the directory SlopCodeBench snapshots and evaluates.

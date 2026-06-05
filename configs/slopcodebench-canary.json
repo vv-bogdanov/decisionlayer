@@ -9,7 +9,7 @@
   "agent": "pi",
   "model": "codex_auth/gpt-5.3-codex-spark",
   "thinking": "low",
-  "prompt": "just-solve",
+  "prompt": "/home/dev/memorycore/configs/slopcodebench-just-solve-workspace.jinja",
   "pass_policy": "all-cases",
   "num_workers": 1,
   "live_progress": false,
