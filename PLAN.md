@@ -191,6 +191,39 @@ Delta classification:
 - The canary gives no positive Decision Layer evidence and shows high agent
   variance around first-checkpoint acceptance.
 
+### XJQ Repeat Variance Check
+
+```text
+runs=/home/dev/benchmarks/slopcodebench-runs/repeat-xjq-medium-r{1,2,3}
+agent=pi
+model=codex_auth/gpt-5.3-codex-spark
+thinking=medium
+problem=xjq
+```
+
+| Repeat | Mode | Checkpoint | Passed | Tests | Steps | Memory-Exposed |
+|---|---|---|---:|---:|---:|---:|
+| r1 | D0 | checkpoint_1 | True | 23/23 | 148 | No |
+| r1 | D0 | checkpoint_2 | False | 46/51 | 117 | No |
+| r1 | D1 | checkpoint_1 | False | 22/23 | 63 | No |
+| r2 | D0 | checkpoint_1 | True | 23/23 | 57 | No |
+| r2 | D0 | checkpoint_2 | False | 45/51 | 83 | No |
+| r2 | D1 | checkpoint_1 | True | 23/23 | 59 | No |
+| r2 | D1 | checkpoint_2 | False | 47/51 | 125 | Yes |
+| r3 | D0 | checkpoint_1 | True | 23/23 | 131 | No |
+| r3 | D0 | checkpoint_2 | False | 46/51 | 79 | No |
+| r3 | D1 | checkpoint_1 | False | 22/23 | 49 | No |
+
+Repeat interpretation:
+
+- D0 reached checkpoint 2 in all three repeats.
+- D1 reached checkpoint 2 in only one of three repeats.
+- The only memory-exposed paired observation is `r2/checkpoint_2`: D1 scored
+  47/51 vs D0 45/51, but both failed.
+- This is a weak positive test-count delta, not an accepted checkpoint win.
+- The variance is still dominated by checkpoint-1 acceptance, where D1 has no
+  prior decisions and therefore cannot prove Decision Layer value.
+
 ## Interpretation
 
 - The SlopCodeBench integration is valid enough to run a real D0/D1 canary:
@@ -200,10 +233,11 @@ Delta classification:
   checkpoint 1.
 - `xjq` with PI + Spark medium can pass checkpoint 1, but it is not stable
   enough to support a single-run D0/D1 claim.
+- Repeated `xjq` confirms that uncontrolled D0/D1 launches are too noisy:
+  checkpoint-1 acceptance variance hides the actual layer effect.
 - The current evidence does not justify a 10-problem pilot.
-- The next experiment must reduce variance before testing the layer: either
-  repeated `xjq` runs or a paired checkpoint-2 setup from the same accepted
-  checkpoint-1 snapshot.
+- The next experiment must reduce variance before testing the layer: use a
+  paired checkpoint-2 setup from the same accepted checkpoint-1 snapshot.
 
 ## Active Checklist
 
@@ -228,8 +262,9 @@ Delta classification:
 - [x] Run the updated 3-problem D0/D1 canary:
   `xjq`, `l2m`, `etl_pipeline`.
 - [x] Manually inspect every current canary D0/D1 delta and classify it.
-- [ ] Design the next variance-controlled `xjq` experiment before any pilot:
-  repeated runs or paired checkpoint-2 runs from an identical accepted
+- [x] Run repeated `xjq` D0/D1 checks and classify checkpoint-level variance.
+- [x] Design the next variance-controlled `xjq` experiment before any pilot.
+- [ ] Run paired `xjq` checkpoint-2 comparison from an identical accepted
   checkpoint-1 snapshot.
 - [ ] Proceed to a 10-problem pilot only if a controlled canary has at least one
   attributable D1-only win or regression-prevention case with no systematic D1
@@ -241,13 +276,14 @@ Delta classification:
 1. Do not run the 10-problem pilot yet.
 2. Use `xjq` as the controlled problem because it has at least one accepted
    checkpoint and a real memory-exposed checkpoint 2.
-3. Prefer the simplest controlled design:
-   run several D0/D1 `xjq` repeats with distinct output roots and classify only
-   checkpoints where D1 prompt decisions are non-empty.
-4. If repeats remain too noisy, switch to a paired checkpoint-2 setup: start D0
-   and D1 from the same accepted checkpoint-1 snapshot, with the Decision Brief
-   as the only intended difference.
-5. Only after controlled evidence shows a D1 benefit should the 10-problem pilot
+3. Build a paired checkpoint-2 run:
+   start D0 and D1 from the same accepted checkpoint-1 snapshot, with the
+   Decision Brief as the only intended difference.
+4. Use `/home/dev/benchmarks/slopcodebench-runs/repeat-xjq-medium-r2/D0/xjq`
+   as the first candidate base because checkpoint 1 passed there and checkpoint
+   2 already has comparable D0/D1 observations.
+5. Accept only memory-exposed checkpoint-2 deltas as layer evidence.
+6. Only after controlled evidence shows a D1 benefit should the 10-problem pilot
    be run.
 
 ## Stop Criteria
