@@ -224,6 +224,58 @@ Repeat interpretation:
 - The variance is still dominated by checkpoint-1 acceptance, where D1 has no
   prior decisions and therefore cannot prove Decision Layer value.
 
+### Paired XJQ Checkpoint-2 Comparison
+
+```text
+run=/home/dev/benchmarks/slopcodebench-runs/paired-xjq-cp2-from-d0r2
+base_snapshot=/home/dev/benchmarks/slopcodebench-runs/repeat-xjq-medium-r2/D0/xjq/checkpoint_1
+agent=pi
+model=codex_auth/gpt-5.3-codex-spark
+thinking=medium
+problem=xjq
+```
+
+Dry-run resume preview confirmed both modes start from `checkpoint_2` with the
+same accepted `checkpoint_1` snapshot:
+
+```text
+Resume from: checkpoint_2
+Completed: checkpoint_1
+```
+
+| Mode | Checkpoint | Passed | Tests | Steps | Prompt Decisions |
+|---|---|---:|---:|---:|---:|
+| D0 | checkpoint_1 | True | 23/23 | 57 | 0 |
+| D0 | checkpoint_2 | False | 46/51 | 111 | 0 |
+| D1 | checkpoint_1 | True | 23/23 | 57 | 0 |
+| D1 | checkpoint_2 | False | 48/51 | 149 | 6 |
+
+Checkpoint-2 pass-count delta:
+
+| Group | D0 | D1 |
+|---|---:|---:|
+| checkpoint_1-Regression | 22/23 | 23/23 |
+| checkpoint_2-Functionality | 10/13 | 11/13 |
+| checkpoint_2-Error | 2/2 | 2/2 |
+| checkpoint_2-Core | 12/13 | 12/13 |
+
+D1 avoided two D0 failures:
+
+- `checkpoint_1-Regression/test_xpath_multiple_xml_nodes_default_to_first_only`
+- `checkpoint_2-Functionality/test_css_without_text_returns_only_first_matching_xml_node`
+
+Paired interpretation:
+
+- This is the first controlled positive Decision Layer signal on
+  SlopCodeBench: D1 had the same starting snapshot and received 6 prior
+  decisions only at checkpoint 2.
+- The result is positive but not sufficient for a claim: D1 improved from
+  46/51 to 48/51, but checkpoint 2 still failed.
+- The strongest signal is regression prevention: D1 preserved one checkpoint-1
+  behavior that D0 lost while extending the solution.
+- Runtime cost increased in this sample: D1 used 149 checkpoint-2 steps vs D0
+  111.
+
 ## Interpretation
 
 - The SlopCodeBench integration is valid enough to run a real D0/D1 canary:
@@ -235,9 +287,11 @@ Repeat interpretation:
   enough to support a single-run D0/D1 claim.
 - Repeated `xjq` confirms that uncontrolled D0/D1 launches are too noisy:
   checkpoint-1 acceptance variance hides the actual layer effect.
-- The current evidence does not justify a 10-problem pilot.
-- The next experiment must reduce variance before testing the layer: use a
-  paired checkpoint-2 setup from the same accepted checkpoint-1 snapshot.
+- The initial canary evidence did not justify a 10-problem pilot by itself.
+- A single paired checkpoint-2 run now justifies an exploratory pilot, but not a
+  publication claim.
+- The next experiment should check whether the positive controlled signal
+  survives more problems or more paired checkpoint-2 samples.
 
 ## Active Checklist
 
@@ -264,27 +318,25 @@ Repeat interpretation:
 - [x] Manually inspect every current canary D0/D1 delta and classify it.
 - [x] Run repeated `xjq` D0/D1 checks and classify checkpoint-level variance.
 - [x] Design the next variance-controlled `xjq` experiment before any pilot.
-- [ ] Run paired `xjq` checkpoint-2 comparison from an identical accepted
+- [x] Run paired `xjq` checkpoint-2 comparison from an identical accepted
   checkpoint-1 snapshot.
-- [ ] Proceed to a 10-problem pilot only if a controlled canary has at least one
-  attributable D1-only win or regression-prevention case with no systematic D1
-  harm.
+- [x] Check the pilot gate: paired `xjq` has a D1 regression-prevention case
+  with no infra errors and no observed pass-count harm in this sample.
+- [ ] Run an exploratory 10-problem SlopCodeBench pilot with the current PI +
+  Spark medium lane.
 - [ ] Write `reports/slopcodebench-d0-d1-pilot.md` only after a valid pilot.
 
 ## Next Run Plan
 
-1. Do not run the 10-problem pilot yet.
-2. Use `xjq` as the controlled problem because it has at least one accepted
-   checkpoint and a real memory-exposed checkpoint 2.
-3. Build a paired checkpoint-2 run:
-   start D0 and D1 from the same accepted checkpoint-1 snapshot, with the
-   Decision Brief as the only intended difference.
-4. Use `/home/dev/benchmarks/slopcodebench-runs/repeat-xjq-medium-r2/D0/xjq`
-   as the first candidate base because checkpoint 1 passed there and checkpoint
-   2 already has comparable D0/D1 observations.
-5. Accept only memory-exposed checkpoint-2 deltas as layer evidence.
-6. Only after controlled evidence shows a D1 benefit should the 10-problem pilot
-   be run.
+1. Run the current 10-problem pilot as exploratory, not as final proof.
+2. Keep the lane fixed:
+   PI + `codex_auth/gpt-5.3-codex-spark` + medium + `all-cases`.
+3. Classify only memory-exposed D1 checkpoints as Decision Layer evidence.
+4. Treat checkpoint-1 deltas as agent variance because no prior decisions are
+   available there.
+5. After the pilot, write `reports/slopcodebench-d0-d1-pilot.md` with:
+   setup, pinned commits, per-checkpoint matrix, prompt-decision counts,
+   D1-only wins/regressions, runtime cost, and a clear claim/no-claim verdict.
 
 ## Stop Criteria
 
