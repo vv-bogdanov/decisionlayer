@@ -40,55 +40,55 @@ lets the user manage decisions through tools.
 
 ### Phase 1: ADR Core CLI
 
-- [ ] Implement `repo-decisions locate`.
-- [ ] Implement fast ADR directory discovery:
+- [x] Implement `repo-decisions locate`.
+- [x] Implement fast ADR directory discovery:
       local config, global config, existing ADR templates/examples, common ADR
       directories, then default `docs/adr`.
-- [ ] Implement ADR format profiling from existing files:
+- [x] Implement ADR format profiling from existing files:
       filename numbering, date/status placement, heading names, section order,
       and template file detection.
-- [ ] Implement `repo-decisions list`.
-- [ ] Implement `repo-decisions brief` that emits a compact requirements block
+- [x] Implement `repo-decisions list`.
+- [x] Implement `repo-decisions brief` that emits a compact requirements block
       from active accepted ADRs only.
-- [ ] Implement `repo-decisions add` using the repository's current template or
+- [x] Implement `repo-decisions add` using the repository's current template or
       nearest recent ADR as the structural example.
-- [ ] Implement `repo-decisions supersede`:
+- [x] Implement `repo-decisions supersede`:
       create a replacement ADR, mark the old ADR as superseded, and backlink
       both records.
-- [ ] Implement `repo-decisions config` for local/global defaults and prompt
+- [x] Implement `repo-decisions config` for local/global defaults and prompt
       size limits.
 
 ### Phase 2: Tests
 
-- [ ] Add fixture repositories for:
+- [x] Add fixture repositories for:
       no ADRs, Nygard ADRs, MADR ADRs, adr-tools-style ADRs, custom directory,
       local config override, and superseded ADRs.
-- [ ] Test ADR discovery and config precedence.
-- [ ] Test format profiling and fallback template selection.
-- [ ] Test brief generation excludes non-active statuses.
-- [ ] Test `add` preserves the detected repository convention.
-- [ ] Test `supersede` creates a new ADR and updates the old status/backlink.
+- [x] Test ADR discovery and config precedence.
+- [x] Test format profiling and fallback template selection.
+- [x] Test brief generation excludes non-active statuses.
+- [x] Test `add` preserves the detected repository convention.
+- [x] Test `supersede` creates a new ADR and updates the old status/backlink.
 
 ### Phase 3: Codex Integration
 
-- [ ] Implement automatic prompt enrichment through `repo-decisions codex ...`,
+- [x] Implement automatic prompt enrichment through `repo-decisions codex ...`,
       a wrapper that prepends `repo-decisions brief` to the user prompt before
       invoking Codex.
-- [ ] Expose the management commands as a local MCP server:
+- [x] Expose the management commands as a local MCP server:
       `locate`, `list`, `brief`, `add`, `supersede`, and `config`.
-- [ ] Package wrapper and MCP server as a local Codex plugin.
-- [ ] Keep Codex hooks optional until prompt mutation is verified through a
+- [x] Package wrapper and MCP server as a local Codex plugin.
+- [x] Keep Codex hooks optional until prompt mutation is verified through a
       trusted manual `/hooks` flow.
-- [ ] Add plugin instructions that keep the first 512 characters focused on
+- [x] Add plugin instructions that keep the first 512 characters focused on
       authority rules and tool usage.
 
 ### Phase 4: POC Verification
 
-- [ ] Add a minimal README with install, hook trust, config, and daily usage.
-- [ ] Run an end-to-end check proving Codex receives the ADR requirements block
+- [x] Add a minimal README with install, hook trust, config, and daily usage.
+- [x] Run an end-to-end check proving Codex receives the ADR requirements block
       without needing to call a tool first.
-- [ ] Run an end-to-end tool check for `add` and `supersede`.
-- [ ] Commit each completed phase separately.
+- [x] Run an end-to-end tool check for `add` and `supersede`.
+- [x] Commit each completed phase separately.
 
 ## Default Paths
 

@@ -162,6 +162,54 @@ class RepoDecisionTests(unittest.TestCase):
         self.assertEqual(location.source, "config")
         self.assertEqual(location.profile.number_width, 3)
 
+    def test_detects_adr_tools_style_doc_adr_directory(self) -> None:
+        self.write(
+            "doc/adr/0001-record-architecture-decisions.md",
+            """
+            # 1. Record architecture decisions
+
+            Date: 2026-06-05
+
+            ## Status
+
+            Accepted
+
+            ## Context
+
+            We need to record architectural decisions.
+
+            ## Decision
+
+            We will use Architecture Decision Records.
+
+            ## Consequences
+
+            Decisions are visible in the project repository.
+            """,
+        )
+
+        location = locate_adrs(self.root)
+
+        self.assertEqual(location.adr_dir, self.root / "doc/adr")
+        self.assertEqual(location.records[0].status, "accepted")
+        self.assertEqual(location.profile.filename_style, "{number:04d}-{slug}.md")
+
+    def test_add_uses_fallback_template_when_no_adrs_exist(self) -> None:
+        path = add_decision(
+            self.root,
+            title="Start ADR log",
+            context="The repository has no ADR convention yet.",
+            decision="We will start with the fallback ADR template.",
+            consequences=["Future decisions have a consistent shape."],
+            options=["No ADRs", "Fallback template"],
+        )
+        text = path.read_text(encoding="utf-8")
+
+        self.assertEqual(path, self.root / "docs/adr/0001-start-adr-log.md")
+        self.assertIn("## Context and Problem Statement", text)
+        self.assertIn("## Considered Options", text)
+        self.assertIn("## Decision", text)
+
     def test_add_preserves_detected_numbering_and_headings(self) -> None:
         self.write(
             "docs/adr/007-existing.md",

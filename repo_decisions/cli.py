@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 
 from .core import (
@@ -41,6 +43,17 @@ def main(argv: list[str] | None = None) -> int:
     config_parser.add_argument("--scope", choices=("local", "global"), default="local")
     config_parser.add_argument("--set", dest="set_values", action="append", default=[])
 
+    codex_parser = subparsers.add_parser("codex", help="Run Codex with ADR brief prepended")
+    codex_parser.add_argument("--print-prompt", action="store_true", help="Print enriched prompt and exit")
+    codex_parser.add_argument("--codex-bin", default=os.environ.get("REPO_DECISIONS_CODEX_BIN", "codex"))
+    codex_parser.add_argument(
+        "--codex-arg",
+        action="append",
+        default=[],
+        help="Argument passed to `codex exec`. Repeat for multiple args.",
+    )
+    codex_parser.add_argument("prompt", nargs=argparse.REMAINDER)
+
     args = parser.parse_args(argv)
     root = Path(args.root)
 
@@ -78,6 +91,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "config":
         return _config(root, args.scope, args.set_values)
+    if args.command == "codex":
+        return _codex(root, args)
     return 2
 
 
@@ -191,3 +206,33 @@ def _split_assignment(value: str) -> tuple[str, str]:
         raise argparse.ArgumentTypeError(f"Expected key=value: {value}")
     key, raw = value.split("=", 1)
     return key.strip(), raw.strip().strip('"').strip("'")
+
+
+def _codex(root: Path, args: argparse.Namespace) -> int:
+    prompt_parts = list(args.prompt)
+    if prompt_parts and prompt_parts[0] == "--":
+        prompt_parts = prompt_parts[1:]
+    user_prompt = " ".join(prompt_parts).strip()
+    if not user_prompt and not sys.stdin.isatty():
+        user_prompt = sys.stdin.read().strip()
+    if not user_prompt:
+        print("repo-decisions codex requires a prompt or stdin", file=sys.stderr)
+        return 2
+
+    enriched = compose_codex_prompt(root, user_prompt)
+    if args.print_prompt:
+        print(enriched)
+        return 0
+
+    codex_args = list(args.codex_arg)
+    if "--cd" not in codex_args and "-C" not in codex_args:
+        codex_args.extend(["--cd", str(root)])
+    command = [args.codex_bin, "exec", *codex_args, enriched]
+    return subprocess.call(command)
+
+
+def compose_codex_prompt(root: Path, user_prompt: str) -> str:
+    brief = build_brief(root).strip()
+    if not brief:
+        return user_prompt
+    return f"{brief}\n\n---\n\n{user_prompt}"
