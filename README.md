@@ -234,6 +234,7 @@ uv run --extra dev ruff check .
 uv run --extra dev mypy repo_decisions tests benchmarks
 python3 /home/dev/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /home/dev/memorycore/plugins/repo-decisions
 scripts/codex-plugin-lab doctor
+scripts/check-wheel
 ```
 
 Auth-gated runtime proof:
@@ -242,10 +243,11 @@ Auth-gated runtime proof:
 scripts/codex-plugin-lab runtime-smoke
 ```
 
-Before publishing or tagging a release, also verify the Python package builds:
+Before publishing or tagging a release, also verify the Python package installs
+from the built wheel:
 
 ```bash
-uv build
+scripts/check-wheel
 ```
 
 See [docs/PUBLISHING.md](docs/PUBLISHING.md) for the release checklist.

@@ -13,9 +13,9 @@ Runs the local publication/readiness checks:
   ruff, mypy, coverage, plugin validation when available, lab doctor, and build.
 
 Options:
-  --quick       Skip lab doctor and package build.
+  --quick       Skip lab doctor and wheel install smoke.
   --skip-lab    Skip isolated Codex plugin lab checks.
-  --skip-build  Skip uv build.
+  --skip-build  Skip wheel build/install smoke.
 EOF
 }
 
@@ -53,7 +53,7 @@ run() {
 
 run uv run --extra dev ruff check .
 run uv run --extra dev mypy repo_decisions tests benchmarks
-run bash -n scripts/codex-plugin-lab scripts/check scripts/check-coverage scripts/sync-plugin-package
+run bash -n scripts/codex-plugin-lab scripts/check scripts/check-coverage scripts/check-wheel scripts/sync-plugin-package
 run uv run repo-decisions --help
 run uv run --extra dev python -m coverage run -m unittest discover -s tests -v
 run uv run --extra dev python -m coverage report
@@ -71,5 +71,5 @@ if [ "$SKIP_LAB" -eq 0 ]; then
 fi
 
 if [ "$SKIP_BUILD" -eq 0 ]; then
-  run uv build
+  run scripts/check-wheel
 fi

@@ -32,5 +32,5 @@ jobs:
       - name: Prepare ADR-agent canaries
         run: python3 -m benchmarks.adr_agent.run_suite --mode d0 --mode d1 --mode d2 --quiet
 
-      - name: Build package
-        run: uv build
+      - name: Check installed wheel
+        run: scripts/check-wheel
