@@ -33,6 +33,8 @@ Use the repo-decisions MCP tools for ADR operations:
 - Add new ADRs with `adr_add_decision`.
 - Change accepted ADRs only with `adr_supersede_decision`.
 - Do not edit accepted ADR files directly.
+- If a requested code change conflicts with an accepted ADR, stop and ask for
+  explicit supersede confirmation before changing code or ADRs.
 
 If this runner does not expose MCP tools, use the CLI path from
 `REPO_DECISIONS_CLI` instead:
@@ -168,9 +170,10 @@ def _run_agent(
     env = os.environ.copy()
     env["REPO_DECISIONS_DEBUG_LOG"] = str(debug_log)
     env["REPO_DECISIONS_RUN_ID"] = case.id
-    env["REPO_DECISIONS_CLI"] = str(REPO_ROOT / "scripts/repo-decisions")
     env["ADR_AGENT_MODE"] = mode
     env["GIT_CEILING_DIRECTORIES"] = str(workspace.parent)
+    if mode == "d2":
+        env["REPO_DECISIONS_CLI"] = str(REPO_ROOT / "scripts/repo-decisions")
     started = time.monotonic()
     completed = subprocess.run(
         command,

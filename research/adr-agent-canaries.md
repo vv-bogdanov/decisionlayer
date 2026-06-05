@@ -42,6 +42,44 @@ markdown directly and had no repo-decisions debug write event. D2 passed
 because the prompt exposed `REPO_DECISIONS_CLI` as a non-MCP fallback and the
 agent used it.
 
+### `pi-fixtures-002`
+
+Cases: all five local fixtures after adding the CLI fallback and root-isolation
+fixes.
+
+| Case | D0 | D1 | D2 |
+| --- | --- | --- | --- |
+| `code-follows-jsonl-adr` | passed | failed | passed |
+| `format-preservation-add-adr` | failed | passed | passed |
+| `supersede-accepted-adr` | failed | failed | passed |
+| `conflict-requires-supersede-confirmation` | failed | failed | failed |
+| `no-false-decision-creation` | passed | passed | passed |
+
+Important observations:
+
+- `supersede-accepted-adr` is the clearest decision-tool case: only D2 passed
+  because it used the repo-decisions CLI and produced write evidence.
+- `format-preservation-add-adr` passed in D1 once the local runner discovered an
+  installed `repo-decisions` CLI, but D2 is the intended reliable path because
+  it explicitly exposes the tool surface.
+- `conflict-requires-supersede-confirmation` caught a real D2 prompt weakness:
+  the agent detected the conflict but still changed code. The D2 prompt was
+  updated to require stopping and asking for explicit supersede confirmation
+  before changing code or ADRs.
+- `no-false-decision-creation` now passes all modes after broadening the oracle
+  to accept semantically equivalent "not an accepted ADR / not authorized"
+  wording.
+
+Follow-up run:
+
+| Run | Case | Mode | Status | Changed files |
+| --- | --- | --- | --- | ---: |
+| `pi-conflict-d2-003` | `conflict-requires-supersede-confirmation` | D2 | passed | 0 |
+
+The follow-up run confirms the hardened D2 guidance can make the local runner
+stop on a conflicting request and ask for supersede confirmation without editing
+code.
+
 ## Harness Fixes From This Run
 
 - Runtime artifacts such as `__pycache__`, `.pytest_cache`, `.coverage`, and
@@ -51,6 +89,8 @@ agent used it.
   target root.
 - D2 accepts either `mcp-tool-call` or `cli-command` debug evidence, because
   local non-MCP runners can use the CLI fallback.
+- D2 now explicitly tells the agent to stop and ask for supersede confirmation
+  before making a code change that conflicts with an accepted ADR.
 
 ## Next
 

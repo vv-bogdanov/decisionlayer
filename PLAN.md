@@ -231,7 +231,7 @@ repository ADRs during realistic tasks.
 
 - [x] Run initial fixture canaries with local `pi` for `D0`, `D1`, and `D2`:
       `code-follows-jsonl-adr` and `format-preservation-add-adr`.
-- [ ] Run remaining fixture canaries with local `pi`:
+- [x] Run remaining fixture canaries with local `pi`:
       `supersede-accepted-adr`, `conflict-requires-supersede-confirmation`,
       and `no-false-decision-creation`.
 - [ ] Run one real repo canary on `asyncapi/studio`.

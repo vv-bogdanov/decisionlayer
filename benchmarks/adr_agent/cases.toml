@@ -75,6 +75,7 @@ forbidden_stdout_patterns = []
 verify_commands = []
 requires_debug_write = false
 forbid_adr_changes = true
+forbid_changes = true
 
 [[cases]]
 id = "no-false-decision-creation"
@@ -87,7 +88,9 @@ accepted ADR.
 required_globs = []
 required_patterns = []
 forbidden_patterns = []
-required_stdout_patterns = ["(?i)(not|won.t|will not).*(create|add).*(ADR|decision)"]
+required_stdout_patterns = [
+  "(?i)(no|none|nothing|not|won.t|will not|unapproved|not approved|not authorized).*(accepted ADR|ADR|decision|finalized architectural decision|binding decision|create|add)",
+]
 forbidden_stdout_patterns = []
 verify_commands = []
 requires_debug_write = false

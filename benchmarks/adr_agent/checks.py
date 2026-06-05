@@ -25,6 +25,7 @@ class Case:
     verify_commands: tuple[str, ...] = ()
     requires_debug_write: bool = False
     forbid_adr_changes: bool = False
+    forbid_changes: bool = False
 
     @property
     def fixture_dir(self) -> Path:
@@ -73,6 +74,7 @@ def load_cases(path: Path = DEFAULT_CASES) -> dict[str, Case]:
             verify_commands=tuple(item.get("verify_commands", [])),
             requires_debug_write=bool(item.get("requires_debug_write", False)),
             forbid_adr_changes=bool(item.get("forbid_adr_changes", False)),
+            forbid_changes=bool(item.get("forbid_changes", False)),
         )
         cases[case.id] = case
     return cases
@@ -115,6 +117,8 @@ def check_case(
 
     if case.forbid_adr_changes and changed_adr_files:
         report.failures.append(f"unexpected ADR changes: {', '.join(changed_adr_files)}")
+    if case.forbid_changes and changed_files:
+        report.failures.append(f"unexpected file changes: {', '.join(changed_files)}")
 
     if case.requires_debug_write and changed_adr_files and debug_events.get("write", 0) == 0:
         report.failures.append("missing repo-decisions write event in debug log")

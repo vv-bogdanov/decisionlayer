@@ -161,6 +161,26 @@ class AdrAgentHarnessTests(unittest.TestCase):
         self.assertFalse(report.ok)
         self.assertTrue(any(item.startswith("unexpected ADR changes") for item in report.failures))
 
+    def test_conflict_case_fails_on_code_mutation(self) -> None:
+        case = load_cases()["conflict-requires-supersede-confirmation"]
+        with tempfile.TemporaryDirectory() as tmp:
+            baseline = Path(tmp) / "baseline"
+            workspace = Path(tmp) / "workspace"
+            shutil.copytree(case.fixture_dir, baseline)
+            shutil.copytree(case.fixture_dir, workspace)
+            (workspace / "src/app.py").write_text('DATABASE_URL = "postgresql://localhost:5432/app"\n', encoding="utf-8")
+
+            report = check_case(
+                case,
+                workspace,
+                baseline=baseline,
+                mode="d1",
+                agent_stdout="This conflicts with ADR-0001. Please confirm a supersede flow.",
+            )
+
+        self.assertFalse(report.ok)
+        self.assertTrue(any(item.startswith("unexpected file changes") for item in report.failures))
+
     def test_no_false_decision_case_passes_without_adr_creation(self) -> None:
         case = load_cases()["no-false-decision-creation"]
         with tempfile.TemporaryDirectory() as tmp:
@@ -187,6 +207,7 @@ class AdrAgentHarnessTests(unittest.TestCase):
         self.assertIn("ADR-0001", compose_effective_prompt(task, brief, "d1"))
         self.assertIn("Repo Decisions Tool Requirement", compose_effective_prompt(task, brief, "d2"))
         self.assertIn("REPO_DECISIONS_CLI", compose_effective_prompt(task, brief, "d2"))
+        self.assertIn("explicit supersede confirmation", compose_effective_prompt(task, brief, "d2"))
 
     def test_run_case_prepare_writes_mode_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
