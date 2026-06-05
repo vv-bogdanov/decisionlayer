@@ -1,0 +1,253 @@
+from __future__ import annotations
+
+import os
+import tempfile
+import unittest
+from pathlib import Path
+
+from repo_decisions.core import (
+    add_decision,
+    build_brief,
+    locate_adrs,
+    parse_adr_file,
+    supersede_decision,
+)
+
+
+class RepoDecisionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.global_config = self.root / "global.toml"
+        os.environ["REPO_DECISIONS_GLOBAL_CONFIG"] = str(self.global_config)
+
+    def tearDown(self) -> None:
+        os.environ.pop("REPO_DECISIONS_GLOBAL_CONFIG", None)
+        self.tmp.cleanup()
+
+    def write(self, rel: str, text: str) -> Path:
+        path = self.root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text.strip() + "\n", encoding="utf-8")
+        return path
+
+    def test_locate_defaults_to_docs_adr_when_empty(self) -> None:
+        location = locate_adrs(self.root)
+
+        self.assertEqual(location.adr_dir, self.root / "docs/adr")
+        self.assertEqual(location.records, tuple())
+        self.assertEqual(location.source, "default")
+
+    def test_parses_nygard_and_brief_includes_only_accepted(self) -> None:
+        self.write(
+            "docs/adr/0001-record-decisions.md",
+            """
+            # 1. Record decisions
+
+            Date: 2026-06-05
+
+            ## Status
+
+            Accepted
+
+            ## Context
+
+            Decisions are easy to forget.
+
+            ## Decision
+
+            We will record architecture decisions as ADRs.
+
+            ## Consequences
+
+            Future agents can see the rationale.
+            """,
+        )
+        self.write(
+            "docs/adr/0002-draft.md",
+            """
+            # 2. Draft only
+
+            ## Status
+
+            Proposed
+
+            ## Context
+
+            Work in progress.
+
+            ## Decision
+
+            Not active yet.
+
+            ## Consequences
+
+            None.
+            """,
+        )
+
+        location = locate_adrs(self.root)
+        brief = build_brief(self.root)
+
+        self.assertEqual(len(location.records), 2)
+        self.assertIn("ADR-0001", brief)
+        self.assertIn("We will record architecture decisions", brief)
+        self.assertNotIn("Draft only", brief)
+
+    def test_parses_madr_frontmatter(self) -> None:
+        path = self.write(
+            "docs/decisions/0001-use-madr.md",
+            """
+            ---
+            status: accepted
+            date: 2026-06-05
+            ---
+
+            # Use MADR
+
+            ## Context and Problem Statement
+
+            We need options and rationale.
+
+            ## Considered Options
+
+            - Nygard
+            - MADR
+
+            ## Decision Outcome
+
+            Chosen option: "MADR", because it captures tradeoffs.
+
+            ### Consequences
+
+            Good, because future readers see alternatives.
+            """,
+        )
+
+        record = parse_adr_file(path)
+
+        self.assertEqual(record.status, "accepted")
+        self.assertEqual(record.date, "2026-06-05")
+        self.assertEqual(record.options, ["Nygard", "MADR"])
+        self.assertIn("MADR", record.decision)
+
+    def test_local_config_overrides_directory(self) -> None:
+        self.write(".codex/repo-decisions.toml", 'adr_dir = "architecture/decisions"\n')
+        self.write(
+            "architecture/decisions/001-use-custom-dir.md",
+            """
+            # 001. Use custom dir
+
+            ## Status
+
+            Accepted
+
+            ## Context
+
+            Existing repo convention.
+
+            ## Decision
+
+            Keep ADRs here.
+
+            ## Consequences
+
+            Plugin must find them.
+            """,
+        )
+
+        location = locate_adrs(self.root)
+
+        self.assertEqual(location.adr_dir, self.root / "architecture/decisions")
+        self.assertEqual(location.source, "config")
+        self.assertEqual(location.profile.number_width, 3)
+
+    def test_add_preserves_detected_numbering_and_headings(self) -> None:
+        self.write(
+            "docs/adr/007-existing.md",
+            """
+            # 7. Existing
+
+            Date: 2026-06-05
+
+            ## Status
+
+            Accepted
+
+            ## Context
+
+            Existing Nygard style.
+
+            ## Decision
+
+            Keep the style.
+
+            ## Consequences
+
+            New records should match.
+            """,
+        )
+
+        path = add_decision(
+            self.root,
+            title="Use wrapper enrichment",
+            context="Hooks are not verified.",
+            decision="We will use a wrapper for the first POC.",
+            consequences=["Prompt enrichment is deterministic."],
+            options=["Hook", "Wrapper"],
+        )
+        text = path.read_text(encoding="utf-8")
+
+        self.assertEqual(path.name, "008-use-wrapper-enrichment.md")
+        self.assertIn("## Status", text)
+        self.assertIn("## Context", text)
+        self.assertIn("## Decision", text)
+        self.assertIn("Wrapper", text)
+
+    def test_supersede_creates_replacement_and_updates_old_status(self) -> None:
+        old = self.write(
+            "docs/adr/0001-use-hooks.md",
+            """
+            # 1. Use hooks
+
+            Date: 2026-06-05
+
+            ## Status
+
+            Accepted
+
+            ## Context
+
+            We wanted automatic injection.
+
+            ## Decision
+
+            Use hooks for prompt enrichment.
+
+            ## Consequences
+
+            Depends on hook mutation.
+            """,
+        )
+
+        old_path, new_path = supersede_decision(
+            self.root,
+            "1",
+            title="Use wrapper enrichment",
+            context="Hook prompt mutation is not verified.",
+            decision="Use wrapper prompt enrichment for the first POC.",
+            consequences=["Prompt enrichment is deterministic."],
+            options=["Hook", "Wrapper"],
+        )
+
+        self.assertEqual(old_path, old)
+        self.assertEqual(new_path.name, "0002-use-wrapper-enrichment.md")
+        self.assertIn("Superseded by ADR-0002", old.read_text(encoding="utf-8"))
+        self.assertIn("Supersedes: [ADR-0001", new_path.read_text(encoding="utf-8"))
+        brief = build_brief(self.root)
+        self.assertIn("ADR-0002", brief)
+        self.assertNotIn("ADR-0001", brief)
+
+
+if __name__ == "__main__":
+    unittest.main()
